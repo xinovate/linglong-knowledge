@@ -17,6 +17,7 @@ from linglong.composer.state import ComposerState
 from linglong.composer.templates.blog import BlogTemplate
 from linglong.core.config import get_config
 from linglong.core.models import EntityStatus
+from linglong.dispatch.manager import DispatchManager
 from linglong.knowledge.store import KnowledgeStore
 
 logger = logging.getLogger(__name__)
@@ -221,7 +222,7 @@ class Composer:
                 "status": "dry_run",
             }
 
-        return {
+        article_result = {
             "date": date_key,
             "fragments_count": len(fragments),
             "title": material.title,
@@ -231,3 +232,14 @@ class Composer:
             "dispatch_ready": True,
             "status": "dispatch_ready",
         }
+
+        if self.config.auto_publish:
+            try:
+                dispatch = DispatchManager()
+                publish_result = dispatch.publish(article_result, self.config.default_publisher)
+                article_result["publish_result"] = publish_result
+            except Exception as e:
+                logger.exception("Auto-publish failed for %s: %s", date_key, e)
+                article_result["publish_error"] = str(e)
+
+        return article_result

@@ -39,6 +39,14 @@ class ComposerConfig(BaseSettings):
         default=Path.home() / "linglong" / "data" / "drafts", description="Drafts directory"
     )
 
+    # Dispatch settings
+    auto_publish: bool = Field(
+        default=False, description="Auto-publish dispatch-ready articles via DispatchManager"
+    )
+    default_publisher: str = Field(
+        default="local", description="Default publisher name for auto-publish"
+    )
+
 
 class KnowledgeConfig(BaseSettings):
     """Knowledge module configuration."""
