@@ -88,9 +88,32 @@
 
 ---
 
-## 3. 提交信息风格
+## 3. 文档驱动开发流程
 
-### 3.1 格式
+所有变更必须先遵循 `docs/` 中定义的流程，再写代码。
+
+### 3.1 变更类型与对应文档
+
+| 变更类型 | 前置文档动作 | 关联文档 |
+|---------|------------|---------|
+| 需求变更 | 先更新对应版本的 roadmap | `docs/00-roadmap/` |
+| 架构决策 | 先写 ADR（Architecture Decision Record） | `docs/20-architecture/adr/` |
+| 开发工作 | 遵循本文档的 Git 分支策略 | `docs/30-development/workflow.md` |
+| 新增测试 | 遵循测试策略，代码与测试同步提交 | `docs/40-testing/strategy.md` |
+| 发版 | 遵循发版 checklist | `docs/50-operations/release-process.md` |
+| 技术债务 | 同步更新债务清单 | `docs/30-development/tech-debt.md` |
+
+### 3.2 文档维护原则
+
+- **同步更新**：修改代码时同步更新对应文档，不允许 "TODO" 或 "待补充" 占位。
+- **ADR 不可变**：已接受的 ADR 不可修改，只能废弃后新建。
+- **单一真相源**：项目全貌以 `docs/PROJECT_OVERVIEW.md` 为准，进入项目时优先阅读。
+
+---
+
+## 4. 提交信息风格
+
+### 4.1 格式
 
 ```
 <type>(<scope>): <subject>
@@ -100,7 +123,7 @@
 <footer>
 ```
 
-### 3.2 Type 定义
+### 4.2 Type 定义
 
 | Type | 含义 | 示例 |
 |------|------|------|
@@ -111,14 +134,14 @@
 | `test` | 测试相关 | `test(distiller): 增加 LLMDistiller 回退路径测试` |
 | `chore` | 构建/工具链 | `chore(deps): 增加 watchdog 依赖` |
 
-### 3.3 Scope 定义
+### 4.3 Scope 定义
 
 常用 scope 与代码目录对应：
 
 - `core`: `src/linglong/core/`
 - `ingest`: `src/linglong/ingest/`
 - `knowledge`: `src/linglong/knowledge/`
-- `pipeline`: `src/linglong/composer/`
+- `composer`: `src/linglong/composer/`
 - `dispatch`: `src/linglong/dispatch/`
 - `distiller`: `src/linglong/composer/distiller/`
 - `template`: `src/linglong/composer/templates/`
@@ -127,7 +150,7 @@
 - `config`: `src/linglong/core/config.py`
 - `docs`: `docs/` 目录
 
-### 3.4 示例
+### 4.4 示例
 
 ```
 feat(distiller): 实现跨天主题合并的 LLM 分组
@@ -143,7 +166,7 @@ Closes #12
 
 ## 4. AI Agent 协作规范
 
-### 4.1 职责边界
+### 5.1 职责边界
 
 各 Agent 不得越界修改对方主责代码：
 
@@ -152,13 +175,13 @@ Closes #12
 - **博客 Claude Code**: 负责下游博客规范对接，不修改 `src/linglong/composer/` 业务代码。
 - **OpenClaw (violet)**: 负责上游知识生产，不直接参与 Composer 代码。
 
-### 4.2 信息同步
+### 5.2 信息同步
 
 1. **代码同步**: 通过 Git 提交同步，每个 Agent 独立 commit，commit message 需标明 Agent 身份（如 `Co-Authored-By: Hermes <...>`）。
 2. **规范同步**: 修改 `core/config.py` 或 `docs/` 目录后，需在 PR 描述中 `@` 相关 Agent。
 3. **陷阱同步**: 发现新的技术债务或已知陷阱时，同步更新 `CLAUDE.md` 和 `docs/30-development/tech-debt.md`。
 
-### 4.3 代码审查
+### 5.3 代码审查
 
 - AI Agent 提交的代码需经过至少一次其他 Agent 或人类 Owner 的审查。
 - 审查重点：
@@ -170,7 +193,7 @@ Closes #12
 
 ## 5. 发布流程
 
-### 5.1 版本号规则
+### 6.1 版本号规则
 
 采用语义化版本 `MAJOR.MINOR.PATCH`：
 
@@ -178,7 +201,7 @@ Closes #12
 - `MINOR`: 功能新增（如新增 Source 类型、新增 LLM 提供商）
 - `PATCH`: 缺陷修复和文档更新
 
-### 5.2 发布检查清单
+### 6.2 发布检查清单
 
 - [ ] `main` 分支的全部测试通过
 - [ ] `docs/` 中与本次变更相关的文档已更新
