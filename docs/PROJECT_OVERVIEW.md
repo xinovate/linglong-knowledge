@@ -36,7 +36,7 @@ Codex ──────┘         ↓
 | v0.6 | **多 Agent 接入** | 🟡 部分完成 | Codex 已接入，冲突解决与自动同步待完善 | — |
 | v0.7 | composer 产品化 | 🔴 未开始 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
 | v0.8 | **dispatch 正式化** | ✅ 已完成 | DispatchManager、LocalPublisher、HexoPublisher、集成测试 | 2026-05-12 |
-| v0.9 | 稳定化 | 🔴 未开始 | API 冻结、全链路测试、mypy strict、性能优化 | — |
+| v0.9 | 稳定化 | 🟡 部分完成 | CLI 入口、全链路集成测试、API 冻结待执行 | 2026-05-12 |
 | **v1.0** | **跨 Agent 知识中枢** | 🔴 未开始 | 完整闭环：任意 Agent 产出 → 统一知识库 → 智能编译 → 多平台分发 | — |
 
 ---
@@ -74,6 +74,9 @@ Codex ──────┘         ↓
 | TruthVerificationEngine（5 层验证） | v0.5 | ✅ | `e554106` | 2026-05-12 |
 | RSS/WebFetch/WebSearch/API Adapters | v0.5 | ✅ | `257cc7e` | 2026-05-12 |
 | PackageExecutor（并行执行） | v0.5 | ✅ | `5f6c43d` | 2026-05-12 |
+| Composer 自动发布（auto_publish → DispatchManager） | v0.8+ | ✅ | `be08313` | 2026-05-12 |
+| 全链路集成测试（ingest→knowledge→composer→dispatch） | v0.9 | ✅ | `b6281e6` | 2026-05-12 |
+| CLI 入口（linglong ingest/compose/publish/sync） | v0.9 | ✅ | `4ec1e16` | 2026-05-12 |
 
 ---
 
@@ -84,8 +87,9 @@ Codex ──────┘         ↓
 | `core/` | ✅ 10 个 | — | — | ✅ |
 | `ingest/` | ✅ 20 个 | ✅ 1 个 | — | ✅ |
 | `knowledge/` | ✅ 36 个 | — | — | ✅ |
-| `composer/` | ✅ 51 个 | — | — | ✅ |
+| `composer/` | ✅ 53 个 | ✅ 1 个 | — | ✅ |
 | `dispatch/` | ✅ 8 个 | ✅ 1 个 | — | ✅ |
+| `integration/` | — | — | ✅ 1 个 | ✅ |
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
 
@@ -109,11 +113,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
-| `25a2082` | test(ingest): add end-to-end package execution integration test | 2026-05-12 |
-| `5f6c43d` | feat(ingest): add PackageExecutor for parallel source fetching | 2026-05-12 |
-| `257cc7e` | feat(ingest): add RSS/WebFetch/WebSearch/API adapters with registry | 2026-05-12 |
-| `e554106` | feat(ingest): add TruthVerificationEngine with 5-layer validation | 2026-05-12 |
-| `6b4fab4` | feat(ingest): add SourcePackage YAML model and example config | 2026-05-12 |
+| `4ec1e16` | feat(cli): add linglong CLI with ingest/compose/publish/sync commands | 2026-05-12 |
+| `b6281e6` | test(integration): add end-to-end ingest→knowledge→composer→dispatch test | 2026-05-12 |
+| `be08313` | feat(composer): auto-publish dispatch-ready articles via DispatchManager | 2026-05-12 |
+| `e54c4d2` | feat(config): extract P0/P1 hardcoded values to config and add AI HOT RSS source | 2026-05-12 |
+| `289f33e` | docs(ingest): update modules.md and roadmap for v0.5 generalization | 2026-05-12 |
 
 ---
 
@@ -125,6 +129,6 @@ Codex ──────┘         ↓
 2. 🟡 **v0.6 完善** — 跨 Agent 写入冲突解决、自动同步触发机制
 3. 🟡 **WebSearchAdapter 实现** — DuckDuckGo/Bing CN 实际搜索能力（需外部依赖）
 4. 🟡 **发布队列与失败重试** — 为 DispatchManager 增加异步队列和重试机制
-5. 🟡 **v0.3 收尾** — 审核-发布联动工作流闭环设计（DraftManager → DispatchManager 已打通）
+5. 🟡 **v0.9 收尾** — API 冻结、mypy strict、性能优化、替换 datetime.utcnow() 弃用警告
 
 详细计划 → [00-roadmap/v0.3.md](00-roadmap/v0.3.md) | [v1.0 路线图](00-roadmap/v1.0.md)

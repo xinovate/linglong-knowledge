@@ -308,8 +308,8 @@ adapter.sync_to_linglong()
 ### 设计要点
 
 - 输入：只从 `knowledge` 模块读取（通过 `KnowledgeStore.search()`）
-- 输出：返回 `dispatch_ready=True` 的结果，不直接处理发布
-- 发布逻辑：已迁移到 `dispatch/_pending_publishers/` 占位，待 dispatch 模块启动
+- 输出：返回 `dispatch_ready=True` 的结果；当 `auto_publish=True` 时自动调用 `DispatchManager.publish()`
+- 草稿模式：生成内容到 `DraftManager` 等待人工审核
 
 ### 编译流程
 
@@ -368,6 +368,43 @@ routes = [
 
 ---
 
+## CLI（命令行入口）
+
+### 职责
+
+提供可执行的命令行入口，把库级别的模块串联成可操作的流水线。
+
+### 命令列表
+
+```bash
+linglong --help
+├── ingest              # 执行所有启用的采集包
+├── compose [--dry-run|--draft]  # 运行内容生产流水线
+├── publish <draft_id>  # 发布草稿到指定发布器
+└── sync <openclaw|claude|codex> [--path]  # 同步 Agent 知识
+```
+
+### 使用示例
+
+```bash
+# 运行采集
+linglong ingest
+
+# 试运行内容生产（不实际保存）
+linglong compose --dry-run
+
+# 生成草稿等待审核
+linglong compose --draft
+
+# 同步 Claude Code memory
+linglong sync claude
+
+# 同步指定路径
+linglong sync openclaw --path ~/.openclaw/workspace/memory/wiki
+```
+
+---
+
 ## 模块间协作
 
 ```
@@ -382,3 +419,4 @@ ingest → knowledge → composer → dispatch
 - 所有交互通过 `core` 的共享模型和配置
 - 每个模块只关注自己的核心逻辑
 - Agent 通过 knowledge 模块统一读写，避免各自为政
+- CLI 层负责编排调用顺序，模块内部保持无状态
