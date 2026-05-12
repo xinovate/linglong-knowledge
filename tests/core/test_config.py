@@ -7,6 +7,7 @@ import pytest
 
 from linglong.core.config import (
     ComposerConfig,
+    DispatchConfig,
     IngestConfig,
     KnowledgeConfig,
     LinglongConfig,
@@ -34,6 +35,7 @@ class TestLinglongConfig:
         assert isinstance(config.knowledge, KnowledgeConfig)
         assert isinstance(config.ingest, IngestConfig)
         assert isinstance(config.composer, ComposerConfig)
+        assert isinstance(config.dispatch, DispatchConfig)
 
     def test_ensure_directories(self):
         """Test ensure_directories creates required paths."""
@@ -68,6 +70,14 @@ class TestLinglongConfig:
         assert config.rss_sources == []
         assert config.fetch_interval_minutes == 30
         assert config.max_items_per_source == 50
+
+    def test_dispatch_defaults(self):
+        """Test DispatchConfig defaults."""
+        config = DispatchConfig()
+        assert config.enabled is True
+        assert config.default_publisher == "hexo"
+        assert len(config.publishers) == 2
+        assert config.publishers[0]["name"] == "hexo"
 
 
 class TestGlobalConfig:

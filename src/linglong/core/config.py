@@ -1,6 +1,7 @@
 """Configuration management for Linglong."""
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -73,6 +74,40 @@ class IngestConfig(BaseSettings):
     max_items_per_source: int = Field(default=50, description="Max items to fetch per source")
 
 
+class DispatchConfig(BaseSettings):
+    """Dispatch module configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="LL_DISPATCH_")
+
+    enabled: bool = Field(default=True, description="Enable dispatch module")
+    default_publisher: str = Field(default="hexo", description="Default publisher name")
+    publishers: list[dict[str, Any]] = Field(
+        default_factory=lambda: [
+            {
+                "name": "hexo",
+                "type": "hexo",
+                "enabled": True,
+                "config": {
+                    "hexo_path": "~/blog",
+                    "use_git_workflow": True,
+                    "git_remote": "origin",
+                    "git_branch": "master",
+                },
+            },
+            {
+                "name": "local",
+                "type": "local",
+                "enabled": False,
+                "config": {
+                    "output_dir": "~/Downloads",
+                    "overwrite": False,
+                },
+            },
+        ],
+        description="Publisher configurations",
+    )
+
+
 class LinglongConfig(BaseSettings):
     """Main Linglong configuration."""
 
@@ -90,6 +125,7 @@ class LinglongConfig(BaseSettings):
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
     ingest: IngestConfig = Field(default_factory=IngestConfig)
     composer: ComposerConfig = Field(default_factory=ComposerConfig)
+    dispatch: DispatchConfig = Field(default_factory=DispatchConfig)
 
     # Paths
     data_dir: Path = Field(default=Path("./data"), description="Data directory")
