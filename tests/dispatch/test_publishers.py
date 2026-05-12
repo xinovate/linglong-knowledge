@@ -2,9 +2,9 @@
 
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
-import pytest
-
+from linglong.dispatch.publishers.hexo import HexoPublisher
 from linglong.dispatch.publishers.local import LocalPublisher
 
 
@@ -33,11 +33,6 @@ def test_local_publisher_health_check():
         config = {"name": "local-test", "output_dir": tmpdir}
         publisher = LocalPublisher(config)
         assert publisher.health_check() is True
-
-
-from unittest.mock import patch
-
-from linglong.dispatch.publishers.hexo import HexoPublisher
 
 
 def test_hexo_publisher_git_publish_mock():

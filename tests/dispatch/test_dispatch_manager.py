@@ -1,7 +1,5 @@
 """Tests for DispatchManager."""
 
-from unittest.mock import patch
-
 import pytest
 
 from linglong.core.config import LinglongConfig, set_config

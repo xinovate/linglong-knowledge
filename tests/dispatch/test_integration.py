@@ -1,8 +1,5 @@
 """Integration test: composer DraftManager → DispatchManager."""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from linglong.composer.draft import DraftManager
@@ -19,9 +16,7 @@ def integrated_setup(tmp_path):
 
     config = LinglongConfig(
         data_dir=tmp_path / "data",
-        composer=LinglongConfig().composer.model_copy(
-            update={"drafts_dir": drafts_dir}
-        ),
+        composer=LinglongConfig().composer.model_copy(update={"drafts_dir": drafts_dir}),
         knowledge=LinglongConfig().knowledge.model_copy(
             update={
                 "wiki_path": tmp_path / "wiki",

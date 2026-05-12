@@ -62,10 +62,7 @@ class DispatchManager:
 
     def health_check(self) -> dict[str, bool]:
         """Run health checks on all initialized publishers."""
-        return {
-            name: pub.health_check()
-            for name, pub in self._publishers.items()
-        }
+        return {name: pub.health_check() for name, pub in self._publishers.items()}
 
     def list_publishers(self) -> list[str]:
         """Return names of initialized publishers."""
