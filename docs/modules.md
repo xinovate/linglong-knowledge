@@ -92,54 +92,84 @@ validation:
 | 源头权威性 | 优先官方渠道 | 工信部政策 > 自媒体解读 |
 | 常识判断 | 事件是否符合行业逻辑 | 单周增长 172K stars → 异常 |
 
-### 核心组件
+### 核心组件（v0.5 通用化架构）
 
-#### rss.py
+#### adapter.py
 
-RSS 源获取器：
+SourceAdapter 插件接口：
 
-- `RSSSource` — 单个 RSS 源配置
-- `RSSIngestor` — 多源管理器
+- `SourceAdapter` — 抽象基类，所有源适配器必须实现 `fetch()` 和 `health_check()`
+- `AdapterRegistry` — 适配器注册表，支持运行时发现
+
+#### package.py
+
+YAML 配置模型：
+
+- `SourcePackage` — 主题无关的采集包定义
+- `SourceDefinition` — 单个源定义（id / type / config / metadata）
+- `VerificationSettings` — 真实性验证配置
+
+#### verification.py
+
+TruthVerificationEngine — 5 层真实性验证：
+
+- 多源交叉验证
+- 数字合理性检查
+- 时间有效性检查
+- 来源权威性加权
+- 常识判断启发式
+
+#### executor.py
+
+PackageExecutor — 并行执行引擎：
+
+- 并发抓取包内所有启用源
+- 去重（按 entity ID）
+- 验证 → 审核 → 存储流水线
+
+#### adapters/
+
+内置适配器：
+
+- `RSSAdapter` — RSS 源（包装现有 RSSSource）
+- `WebFetchAdapter` — 并行 HTTP 抓取
+- `WebSearchAdapter` — 网页搜索（DuckDuckGo / Bing CN，placeholder）
+- `APIAdapter` — REST API 调用（支持 `{date-7d}` 动态参数）
 
 ### 使用示例
 
 ```python
-from linglong.ingest import RSSIngestor, RSSSource
+from linglong.ingest import PackageExecutor, SourcePackage
 from linglong.knowledge.store import KnowledgeStore
-
-# 创建存储
-store = KnowledgeStore()
-
-# 创建获取器
-ingestor = RSSIngestor(store)
-
-# 添加 RSS 源
-ingestor.add_source(
-    RSSSource(
-        name="techcrunch",
-        url="https://techcrunch.com/feed/",
-        category="tech",
-    )
-)
-
-# 执行获取
 import asyncio
-results = asyncio.run(ingestor.ingest_all())
+
+# 从 YAML 加载采集包
+package = SourcePackage.from_yaml("examples/packages/ai-morning-brief.yaml")
+
+# 执行采集
+store = KnowledgeStore()
+executor = PackageExecutor(store=store)
+results = asyncio.run(executor.execute(package))
 print(f"获取 {results['total']} 条，新建 {results['created']} 条")
 ```
 
-### 扩展新源
+### 扩展示例：自定义 Adapter
 
 ```python
 from linglong.core.models import Entity
-from typing import List
+from linglong.ingest.adapter import SourceAdapter, AdapterRegistry
 
-class CustomSource:
-    """自定义信息源"""
-    
-    async def fetch(self) -> List[Entity]:
+class MyAdapter(SourceAdapter):
+    adapter_type = "my_source"
+
+    async def fetch(self) -> list[Entity]:
         # 自定义获取逻辑
-        pass
+        return []
+
+    def health_check(self) -> bool:
+        return True
+
+AdapterRegistry.register(MyAdapter)
 ```
 
 ---
@@ -324,7 +354,7 @@ adapter.sync_to_linglong()
 
 ### 状态
 
-设计中，待 composer 迁移完成后开始。
+✅ 已完成（v0.8）。DispatchManager + LocalPublisher + HexoPublisher + 集成测试。
 
 ### 路由规则示例
 

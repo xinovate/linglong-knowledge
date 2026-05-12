@@ -32,7 +32,7 @@ Codex ──────┘         ↓
 | v0.2 | Composer 迁移 | ✅ 已完成 | Composer 从 linglong-pipeline 迁移并入，32 个测试通过 | 2026-05-12 |
 | v0.3 | 人工审核层 | ✅ 已完成 | Draft Mode、Git Workflow Publisher、frontmatter YAML list | 2026-05-12 |
 | v0.4 | **知识库统一** | ✅ 已完成 | OpenClaw/Claude Code/Codex 同步、向量搜索落地 | 2026-05-12 |
-| v0.5 | **ingest 通用化** | 🔴 未开始 | ai-morning-brief 抽象为通用引擎，支持任意主题采集 | — |
+| v0.5 | **ingest 通用化** | ✅ 已完成 | SourceAdapter、SourcePackage YAML、TruthVerificationEngine、PackageExecutor | 2026-05-12 |
 | v0.6 | **多 Agent 接入** | 🟡 部分完成 | Codex 已接入，冲突解决与自动同步待完善 | — |
 | v0.7 | composer 产品化 | 🔴 未开始 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
 | v0.8 | **dispatch 正式化** | ✅ 已完成 | DispatchManager、LocalPublisher、HexoPublisher、集成测试 | 2026-05-12 |
@@ -69,6 +69,11 @@ Codex ──────┘         ↓
 | LocalPublisher（本地文件输出） | v0.8 | ✅ | `6b9fc97` | 2026-05-12 |
 | HexoPublisher（Git/Local 工作流） | v0.8 | ✅ | `6b9fc97` | 2026-05-12 |
 | composer → dispatch 集成测试 | v0.8 | ✅ | `6b9fc97` | 2026-05-12 |
+| SourceAdapter ABC + AdapterRegistry | v0.5 | ✅ | `4721ec9` | 2026-05-12 |
+| SourcePackage YAML 模型 | v0.5 | ✅ | `6b4fab4` | 2026-05-12 |
+| TruthVerificationEngine（5 层验证） | v0.5 | ✅ | `e554106` | 2026-05-12 |
+| RSS/WebFetch/WebSearch/API Adapters | v0.5 | ✅ | `257cc7e` | 2026-05-12 |
+| PackageExecutor（并行执行） | v0.5 | ✅ | `5f6c43d` | 2026-05-12 |
 
 ---
 
@@ -77,7 +82,7 @@ Codex ──────┘         ↓
 | 模块 | 单元测试 | 集成测试 | E2E | 总评 |
 |------|---------|---------|-----|------|
 | `core/` | ✅ 10 个 | — | — | ✅ |
-| `ingest/` | ✅ 6 个 | — | — | ✅ |
+| `ingest/` | ✅ 20 个 | ✅ 1 个 | — | ✅ |
 | `knowledge/` | ✅ 36 个 | — | — | ✅ |
 | `composer/` | ✅ 51 个 | — | — | ✅ |
 | `dispatch/` | ✅ 8 个 | ✅ 1 个 | — | ✅ |
@@ -90,7 +95,7 @@ Codex ──────┘         ↓
 
 | 问题 | 严重度 | 状态 | 计划版本 | 详情 |
 |------|--------|------|----------|------|
-| ingest 仅支持 RSS | 🔴 高 | 待扩展 | v0.5 | 需支持 Web Search、爬虫、API 调用 |
+| WebSearchAdapter 未实现实际搜索 | 🟡 中 | 待实现 | v0.5+ | DuckDuckGo/Bing CN 搜索需外部依赖 |
 | 短期→长期记忆转换未实现 | 🟡 中 | 待实现 | v0.4+ | MEMORY.md 规则：任务完成后自动迁移到 wiki |
 | 发布队列与失败重试 | 🟡 中 | 待实现 | v0.8+ | DispatchManager 当前直连发布，无队列和重试 |
 | 向量搜索增强（混合搜索/MMR/时间衰减） | 🟡 低 | 待实现 | v0.7 | 当前仅基础 cosine 相似度 |
@@ -104,11 +109,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
-| `6b9fc97` | chore(dispatch): remove _pending_publishers/ stub directory | 2026-05-12 |
-| `e234c09` | docs: reposition Linglong as cross-agent knowledge hub | 2026-05-12 |
-| `8548815` | feat(v0.4): vector search with OpenClaw embedding service | 2026-05-12 |
-| `a11b013` | feat(v0.4): add CodexSyncAdapter for cross-agent knowledge sync | 2026-05-12 |
-| `463f8e6` | docs: sync progress status for v0.4 and agent integration roadmap | 2026-05-12 |
+| `25a2082` | test(ingest): add end-to-end package execution integration test | 2026-05-12 |
+| `5f6c43d` | feat(ingest): add PackageExecutor for parallel source fetching | 2026-05-12 |
+| `257cc7e` | feat(ingest): add RSS/WebFetch/WebSearch/API adapters with registry | 2026-05-12 |
+| `e554106` | feat(ingest): add TruthVerificationEngine with 5-layer validation | 2026-05-12 |
+| `6b4fab4` | feat(ingest): add SourcePackage YAML model and example config | 2026-05-12 |
 
 ---
 
@@ -116,10 +121,10 @@ Codex ──────┘         ↓
 
 按优先级排序，只看最前面 3 条：
 
-1. 🔴 **启动 v0.5：ingest 通用化** — 把 ai-morning-brief 抽象为可配置通用引擎，支持 Web Search / 爬虫 / API
-2. 🟡 **v0.7 启动：composer 产品化** — 多模板（早报/周报/PPT/视频脚本）、AI 封面图
-3. 🟡 **v0.6 完善** — 跨 Agent 写入冲突解决、自动同步触发机制
-4. 🟡 **v0.3 收尾** — 审核-发布联动工作流闭环设计（DraftManager → DispatchManager 已打通）
-5. 🟡 **发布队列与失败重试** — 为 DispatchManager 增加异步队列和重试机制
+1. 🟡 **v0.7 启动：composer 产品化** — 多模板（早报/周报/PPT/视频脚本）、AI 封面图
+2. 🟡 **v0.6 完善** — 跨 Agent 写入冲突解决、自动同步触发机制
+3. 🟡 **WebSearchAdapter 实现** — DuckDuckGo/Bing CN 实际搜索能力（需外部依赖）
+4. 🟡 **发布队列与失败重试** — 为 DispatchManager 增加异步队列和重试机制
+5. 🟡 **v0.3 收尾** — 审核-发布联动工作流闭环设计（DraftManager → DispatchManager 已打通）
 
 详细计划 → [00-roadmap/v0.3.md](00-roadmap/v0.3.md) | [v1.0 路线图](00-roadmap/v1.0.md)
