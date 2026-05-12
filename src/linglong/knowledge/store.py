@@ -41,7 +41,8 @@ class KnowledgeStore:
                     current_version INTEGER DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    embedding_id TEXT
+                    embedding_id TEXT,
+                    metadata TEXT  -- JSON
                 )
             """)
 
@@ -76,8 +77,8 @@ class KnowledgeStore:
                 INSERT INTO entities
                 (id, content, summary, created_by, confirmed_by, confirmed_at,
                  confidence, status, sources, relations, versions, current_version,
-                 created_at, updated_at, embedding_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 created_at, updated_at, embedding_id, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     entity.id,
@@ -95,6 +96,7 @@ class KnowledgeStore:
                     entity.created_at.isoformat(),
                     entity.updated_at.isoformat(),
                     entity.embedding_id,
+                    json.dumps(entity.metadata),
                 ),
             )
             conn.commit()
@@ -170,7 +172,8 @@ class KnowledgeStore:
                     versions = ?,
                     current_version = ?,
                     updated_at = ?,
-                    embedding_id = ?
+                    embedding_id = ?,
+                    metadata = ?
                 WHERE id = ?
                 """,
                 (
@@ -186,6 +189,7 @@ class KnowledgeStore:
                     entity.current_version,
                     entity.updated_at.isoformat(),
                     entity.embedding_id,
+                    json.dumps(entity.metadata),
                     entity.id,
                 ),
             )
@@ -256,4 +260,5 @@ class KnowledgeStore:
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
             embedding_id=row["embedding_id"],
+            metadata=json.loads(row["metadata"]) if row["metadata"] else {},
         )

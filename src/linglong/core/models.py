@@ -52,6 +52,7 @@ class SourceType(StrEnum):
     API = "api"
     AI_TASK = "ai_task"
     MANUAL = "manual"
+    FILE = "file"
 
 
 class Source(BaseModel):
@@ -155,6 +156,9 @@ class Entity(BaseModel):
 
     # Vector embedding (stored separately in sqlite-vec)
     embedding_id: str | None = None
+
+    # Additional metadata (e.g. frontmatter, wikilinks)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(
         json_schema_extra={
