@@ -53,6 +53,8 @@ class SourceType(StrEnum):
     AI_TASK = "ai_task"
     MANUAL = "manual"
     FILE = "file"
+    WEB_SEARCH = "web_search"
+    WEB_FETCH = "web_fetch"
 
 
 class Source(BaseModel):

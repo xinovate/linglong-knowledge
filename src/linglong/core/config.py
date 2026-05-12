@@ -72,6 +72,21 @@ class IngestConfig(BaseSettings):
     )
     fetch_interval_minutes: int = Field(default=30, description="Fetch interval in minutes")
     max_items_per_source: int = Field(default=50, description="Max items to fetch per source")
+    package_paths: list[str] = Field(
+        default_factory=lambda: ["./data/packages"],
+        description="Directories containing source package YAML files",
+    )
+    verification_enabled: bool = Field(
+        default=True, description="Enable truth verification engine"
+    )
+    default_verification: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "cross_reference_min": 1,
+            "max_age_days": 7,
+            "fallback_max_age_days": 14,
+        },
+        description="Default truth verification settings",
+    )
 
 
 class DispatchConfig(BaseSettings):
