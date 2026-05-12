@@ -2,6 +2,7 @@
 
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -20,6 +21,7 @@ def temp_store():
                 update={
                     "wiki_path": Path(tmpdir) / "wiki",
                     "db_path": Path(tmpdir) / "knowledge.db",
+                    "generate_embeddings": False,
                 }
             ),
         )
@@ -95,3 +97,124 @@ def test_delete_entity(temp_store):
     created = temp_store.create(entity)
     assert temp_store.delete(created.id) is True
     assert temp_store.get(created.id) is None
+
+
+def test_create_entity_with_embedding():
+    """Entity create triggers embedding generation when enabled."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config = LinglongConfig(
+            data_dir=Path(tmpdir) / "data",
+            knowledge=LinglongConfig().knowledge.model_copy(
+                update={
+                    "wiki_path": Path(tmpdir) / "wiki",
+                    "db_path": Path(tmpdir) / "knowledge.db",
+                    "generate_embeddings": True,
+                    "vector_dimensions": 768,
+                }
+            ),
+        )
+        set_config(config)
+        store = KnowledgeStore()
+
+        with patch(
+            "linglong.knowledge.embeddings.EmbeddingGenerator.generate",
+            return_value=[0.1] * 768,
+        ):
+            entity = Entity(content="hello world", created_by="agent:test")
+            created = store.create(entity)
+
+        assert created.embedding_id is not None
+
+        retrieved = store.get(created.id)
+        assert retrieved.embedding_id == created.embedding_id
+
+
+def test_search_similar_returns_results():
+    """Vector similarity search returns relevant entities."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config = LinglongConfig(
+            data_dir=Path(tmpdir) / "data",
+            knowledge=LinglongConfig().knowledge.model_copy(
+                update={
+                    "wiki_path": Path(tmpdir) / "wiki",
+                    "db_path": Path(tmpdir) / "knowledge.db",
+                    "generate_embeddings": True,
+                    "vector_dimensions": 3,
+                }
+            ),
+        )
+        set_config(config)
+        store = KnowledgeStore()
+
+        # Mock embeddings so we can control similarity
+        def _fake_generate(text):
+            # Return deterministic vectors based on text content
+            if "python" in text.lower():
+                return [1.0, 0.0, 0.0]
+            if "javascript" in text.lower():
+                return [0.0, 1.0, 0.0]
+            return [0.0, 0.0, 1.0]
+
+        with patch(
+            "linglong.knowledge.embeddings.EmbeddingGenerator.generate",
+            side_effect=_fake_generate,
+        ):
+            store.create(Entity(content="python tutorial", created_by="agent:test"))
+            store.create(Entity(content="javascript guide", created_by="agent:test"))
+            store.create(Entity(content="cooking recipes", created_by="agent:test"))
+
+        # Search for python-like content
+        with patch(
+            "linglong.knowledge.embeddings.EmbeddingGenerator.generate",
+            return_value=[1.0, 0.0, 0.0],
+        ):
+            results = store.search_similar("python", limit=3)
+
+        assert len(results) >= 1
+        assert results[0].content == "python tutorial"
+
+
+def test_search_similar_with_status_filter():
+    """Vector search respects status filter."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config = LinglongConfig(
+            data_dir=Path(tmpdir) / "data",
+            knowledge=LinglongConfig().knowledge.model_copy(
+                update={
+                    "wiki_path": Path(tmpdir) / "wiki",
+                    "db_path": Path(tmpdir) / "knowledge.db",
+                    "generate_embeddings": True,
+                    "vector_dimensions": 3,
+                }
+            ),
+        )
+        set_config(config)
+        store = KnowledgeStore()
+
+        with patch(
+            "linglong.knowledge.embeddings.EmbeddingGenerator.generate",
+            return_value=[1.0, 0.0, 0.0],
+        ):
+            store.create(
+                Entity(
+                    content="python tutorial",
+                    created_by="agent:test",
+                    status=EntityStatus.AUTO_CONFIRMED,
+                )
+            )
+            store.create(
+                Entity(
+                    content="python advanced",
+                    created_by="agent:test",
+                    status=EntityStatus.RAW,
+                )
+            )
+
+        with patch(
+            "linglong.knowledge.embeddings.EmbeddingGenerator.generate",
+            return_value=[1.0, 0.0, 0.0],
+        ):
+            results = store.search_similar("python", status=EntityStatus.AUTO_CONFIRMED, limit=3)
+
+        assert len(results) == 1
+        assert results[0].status == EntityStatus.AUTO_CONFIRMED

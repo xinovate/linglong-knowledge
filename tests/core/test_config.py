@@ -60,7 +60,7 @@ class TestLinglongConfig:
         assert config.wiki_path == Path("./wiki")
         assert config.db_path == Path("./knowledge.db")
         assert config.vector_enabled is True
-        assert config.vector_dimensions == 1536
+        assert config.vector_dimensions == 768
 
     def test_ingest_defaults(self):
         """Test IngestConfig defaults."""

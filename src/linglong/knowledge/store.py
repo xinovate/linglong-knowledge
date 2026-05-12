@@ -1,13 +1,23 @@
 """Knowledge storage layer - File + SQLite + Vector."""
 
 import json
-import sqlite3
+import logging
+
+try:
+    import sqlean.dbapi2 as sqlite3
+except ImportError:
+    import sqlite3
 import uuid
 from datetime import datetime
 from pathlib import Path
 
+import sqlite_vec
+
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityStatus
+from linglong.knowledge.embeddings import EmbeddingGenerator
+
+logger = logging.getLogger(__name__)
 
 
 class KnowledgeStore:
@@ -17,6 +27,8 @@ class KnowledgeStore:
         self.config = get_config().knowledge
         self.wiki_path = self.config.wiki_path
         self.db_path = self.config.db_path
+        self._vector_available = False
+        self._embedding_generator = EmbeddingGenerator()
         self._init_database()
 
     def _init_database(self) -> None:
@@ -49,17 +61,56 @@ class KnowledgeStore:
             # Vector virtual table (sqlite-vec)
             if self.config.vector_enabled:
                 try:
+                    if hasattr(conn, "enable_load_extension"):
+                        conn.enable_load_extension(True)
+                    sqlite_vec.load(conn)
                     conn.execute(f"""
                         CREATE VIRTUAL TABLE IF NOT EXISTS entity_embeddings USING vec0(
                             embedding_id TEXT PRIMARY KEY,
                             embedding FLOAT[{self.config.vector_dimensions}] distance_metric=cosine
                         )
                     """)
-                except sqlite3.OperationalError:
+                    self._vector_available = True
+                except Exception:
                     # sqlite-vec extension not available; disable vector features
-                    pass
+                    self._vector_available = False
 
             conn.commit()
+
+    def _write_embedding(
+        self, conn: sqlite3.Connection, embedding_id: str, embedding: list[float]
+    ) -> None:
+        """Write embedding vector into the sqlite-vec virtual table."""
+        if hasattr(conn, "enable_load_extension"):
+            conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        conn.execute(
+            "INSERT OR REPLACE INTO entity_embeddings (embedding_id, embedding) VALUES (?, ?)",
+            (embedding_id, json.dumps(embedding)),
+        )
+
+    def _delete_embedding(self, conn: sqlite3.Connection, embedding_id: str | None) -> None:
+        """Remove embedding vector from the sqlite-vec virtual table."""
+        if embedding_id:
+            if hasattr(conn, "enable_load_extension"):
+                conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.execute(
+                "DELETE FROM entity_embeddings WHERE embedding_id = ?",
+                (embedding_id,),
+            )
+
+    def _generate_and_store_embedding(self, entity: Entity) -> None:
+        """Generate embedding for entity and store it if vector search is available."""
+        if not self._vector_available or not self.config.generate_embeddings:
+            return
+
+        embedding = self._embedding_generator.generate(entity.content)
+        if embedding is not None:
+            entity.embedding_id = self._embedding_generator.generate_id()
+            with sqlite3.connect(self.db_path) as conn:
+                self._write_embedding(conn, entity.embedding_id, embedding)
+                conn.commit()
 
     def create(self, entity: Entity) -> Entity:
         """Create a new entity."""
@@ -100,6 +151,18 @@ class KnowledgeStore:
                 ),
             )
             conn.commit()
+
+        # Generate embedding after entity is persisted
+        self._generate_and_store_embedding(entity)
+
+        # Update embedding_id if embedding was generated
+        if entity.embedding_id:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    "UPDATE entities SET embedding_id = ? WHERE id = ?",
+                    (entity.embedding_id, entity.id),
+                )
+                conn.commit()
 
         return entity
 
@@ -145,6 +208,55 @@ class KnowledgeStore:
                 LIMIT ?
                 """,
                 (*params, limit),
+            ).fetchall()
+
+            return [self._row_to_entity(row) for row in rows]
+
+    def search_similar(
+        self,
+        query: str,
+        limit: int = 10,
+        status: EntityStatus | None = None,
+    ) -> list[Entity]:
+        """Search entities by vector similarity to the query text.
+
+        Falls back to filter-only search if vector search is unavailable.
+        """
+        if not self._vector_available:
+            logger.warning("Vector search unavailable; falling back to filter search")
+            return self.search(query=query, status=status, limit=limit)
+
+        query_embedding = self._embedding_generator.generate(query)
+        if query_embedding is None:
+            logger.warning("Failed to generate query embedding; falling back to filter search")
+            return self.search(query=query, status=status, limit=limit)
+
+        with sqlite3.connect(self.db_path) as conn:
+            if hasattr(conn, "enable_load_extension"):
+                conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.row_factory = sqlite3.Row
+
+            # Build base query with optional status filter
+            conditions = []
+            params: list = [json.dumps(query_embedding), limit]
+
+            if status:
+                conditions.append("e.status = ?")
+                params.insert(1, status.value)
+
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+            rows = conn.execute(
+                f"""
+                SELECT e.*, vec_distance_cosine(emb.embedding, ?) AS distance
+                FROM entity_embeddings AS emb
+                JOIN entities AS e ON e.embedding_id = emb.embedding_id
+                WHERE {where_clause}
+                ORDER BY distance
+                LIMIT ?
+                """,
+                params,
             ).fetchall()
 
             return [self._row_to_entity(row) for row in rows]
@@ -195,10 +307,36 @@ class KnowledgeStore:
             )
             conn.commit()
 
+        # Regenerate embedding if content changed and vector search is available
+        if self._vector_available and self.config.generate_embeddings:
+            old_entity = self.get(entity.id)
+            if old_entity is None or old_entity.content != entity.content:
+                if entity.embedding_id:
+                    with sqlite3.connect(self.db_path) as conn:
+                        self._delete_embedding(conn, entity.embedding_id)
+                        conn.commit()
+                self._generate_and_store_embedding(entity)
+                # Re-update embedding_id in entities table
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute(
+                        "UPDATE entities SET embedding_id = ? WHERE id = ?",
+                        (entity.embedding_id, entity.id),
+                    )
+                    conn.commit()
+
         return entity
 
     def delete(self, entity_id: str) -> bool:
         """Delete an entity."""
+        # Get embedding_id before deleting
+        embedding_id = None
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT embedding_id FROM entities WHERE id = ?", (entity_id,)
+            ).fetchone()
+            if row:
+                embedding_id = row[0]
+
         # Delete from filesystem
         entity_path = self._get_entity_path(entity_id)
         if entity_path.exists():
@@ -208,7 +346,15 @@ class KnowledgeStore:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
             conn.commit()
-            return cursor.rowcount > 0
+            deleted = cursor.rowcount > 0
+
+        # Delete embedding if vector search is available
+        if deleted and embedding_id and self._vector_available:
+            with sqlite3.connect(self.db_path) as conn:
+                self._delete_embedding(conn, embedding_id)
+                conn.commit()
+
+        return deleted
 
     def _save_to_filesystem(self, entity: Entity) -> None:
         """Save entity as Markdown file."""

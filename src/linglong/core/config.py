@@ -45,8 +45,20 @@ class KnowledgeConfig(BaseSettings):
     wiki_path: Path = Field(default=Path("./wiki"), description="Path to wiki directory")
     db_path: Path = Field(default=Path("./knowledge.db"), description="SQLite database path")
     vector_enabled: bool = Field(default=True, description="Enable vector search")
-    vector_dimensions: int = Field(default=1536, description="Embedding dimensions")
+    vector_dimensions: int = Field(default=768, description="Embedding dimensions")
     watch_enabled: bool = Field(default=True, description="Watch filesystem for changes")
+    embedding_url: str = Field(
+        default="http://localhost:7997", description="OpenClaw embedding service URL"
+    )
+    embedding_model: str = Field(
+        default="nomic-embed-text-v1.5", description="Embedding model name"
+    )
+    embedding_api_key: str | None = Field(
+        default=None, description="Optional API key for embedding service"
+    )
+    generate_embeddings: bool = Field(
+        default=True, description="Auto-generate embeddings on entity create/update"
+    )
 
 
 class IngestConfig(BaseSettings):
