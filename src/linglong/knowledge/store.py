@@ -47,20 +47,25 @@ class KnowledgeStore:
             """)
             
             # Vector virtual table (sqlite-vec)
-            conn.execute("""
-                CREATE VIRTUAL TABLE IF NOT EXISTS entity_embeddings USING vec0(
-                    embedding_id TEXT PRIMARY KEY,
-                    embedding FLOAT[{dimensions}] distance_metric=cosine
-                )
-            """.format(dimensions=self.config.vector_dimensions))
-            
+            if self.config.vector_enabled:
+                try:
+                    conn.execute("""
+                        CREATE VIRTUAL TABLE IF NOT EXISTS entity_embeddings USING vec0(
+                            embedding_id TEXT PRIMARY KEY,
+                            embedding FLOAT[{dimensions}] distance_metric=cosine
+                        )
+                    """.format(dimensions=self.config.vector_dimensions))
+                except sqlite3.OperationalError:
+                    # sqlite-vec extension not available; disable vector features
+                    pass
+
             conn.commit()
 
     def create(self, entity: Entity) -> Entity:
         """Create a new entity."""
         entity.id = entity.id or str(uuid.uuid4())
-        entity.created_at = datetime.utcnow()
-        entity.updated_at = entity.created_at
+        entity.created_at = entity.created_at or datetime.utcnow()
+        entity.updated_at = entity.updated_at or entity.created_at
 
         # Save to filesystem
         self._save_to_filesystem(entity)
@@ -249,15 +254,9 @@ class KnowledgeStore:
             else None,
             confidence=row["confidence"],
             status=EntityStatus(row["status"]),
-            sources=[json.loads(s) for s in json.loads(row["sources"])]
-            if row["sources"]
-            else [],
-            relations=[json.loads(r) for r in json.loads(row["relations"])]
-            if row["relations"]
-            else [],
-            versions=[json.loads(v) for v in json.loads(row["versions"])]
-            if row["versions"]
-            else [],
+            sources=json.loads(row["sources"]) if row["sources"] else [],
+            relations=json.loads(row["relations"]) if row["relations"] else [],
+            versions=json.loads(row["versions"]) if row["versions"] else [],
             current_version=row["current_version"],
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),

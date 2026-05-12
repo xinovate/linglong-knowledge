@@ -190,7 +190,7 @@ engine.add_rule(
 
 ---
 
-## pipeline（内容生产）— 待迁移
+## composer（内容生产）
 
 ### 职责
 
@@ -200,13 +200,26 @@ engine.add_rule(
 
 ### 状态
 
-待从 `linglong-pipeline` 项目迁移。
+✅ 已从 `linglong-pipeline` 项目迁移并入 monorepo。
+
+### 核心组件
+
+| 组件 | 路径 | 说明 |
+|------|------|------|
+| `Composer` | `composer/composer.py` | 编排器：读取 KnowledgeStore → 聚合 → 提炼 → 模板 → 输出 |
+| `DraftManager` | `composer/draft.py` | 草稿生命周期管理（保存/列出/发布/废弃） |
+| `ComposerState` | `composer/state.py` | 内容哈希去重与状态持久化 |
+| `IngestAdapter` | `composer/ingest_adapter.py` | Entity → MemoryFragment 适配层 |
+| `DailyAggregator` | `composer/distiller/aggregator.py` | 按天聚合记忆片段 |
+| `LLMDistiller` | `composer/distiller/llm_distiller.py` | LLM 智能提炼与主题合并 |
+| `BlogTemplate` | `composer/templates/blog.py` | Hexo 博客模板（frontmatter + 正文格式化） |
+| `TextAssetGenerator` | `composer/assets/text.py` | 摘要、标签、字数统计等文本资产生成 |
 
 ### 设计要点
 
-- 输入：只从 `knowledge` 模块读取
-- 输出：写入 `dispatch` 模块的队列
-- 不直接处理发布逻辑
+- 输入：只从 `knowledge` 模块读取（通过 `KnowledgeStore.search()`）
+- 输出：返回 `dispatch_ready=True` 的结果，不直接处理发布
+- 发布逻辑：已迁移到 `dispatch/_pending_publishers/` 占位，待 dispatch 模块启动
 
 ---
 
@@ -220,14 +233,14 @@ engine.add_rule(
 
 ### 状态
 
-设计中，待 pipeline 迁移完成后开始。
+设计中，待 composer 迁移完成后开始。
 
 ---
 
 ## 模块间协作
 
 ```
-ingest → knowledge → pipeline → dispatch
+ingest → knowledge → composer → dispatch
    ↑         ↑          ↑          ↓
    └─────────┴──────────┴──────────┘
               feedback loop

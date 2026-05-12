@@ -53,7 +53,7 @@ class Source(BaseModel):
 ```python
 class Task(BaseModel):
     id: str
-    project: str         # "ingest" / "knowledge" / "pipeline" / "dispatch"
+    project: str         # "ingest" / "knowledge" / "composer" / "dispatch"
     task_type: str       # 任务类型
     status: TaskStatus   # 状态
     scheduled_at: datetime

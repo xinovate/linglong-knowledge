@@ -3,15 +3,46 @@
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+
+
+from pydantic_core import core_schema
 
 
 class AgentID(str):
     """Agent identifier, e.g., 'agent:violet', 'agent:claude'."""
 
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        return core_schema.no_info_after_validator_function(
+            cls._validate,
+            core_schema.str_schema(),
+            serialization=core_schema.to_string_ser_schema(),
+        )
+
+    @classmethod
+    def _validate(cls, value):
+        if not isinstance(value, str):
+            raise ValueError("AgentID must be a string")
+        return cls(value)
+
 
 class HumanID(str):
     """Human identifier, e.g., 'human:alice'."""
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        return core_schema.no_info_after_validator_function(
+            cls._validate,
+            core_schema.str_schema(),
+            serialization=core_schema.to_string_ser_schema(),
+        )
+
+    @classmethod
+    def _validate(cls, value):
+        if not isinstance(value, str):
+            raise ValueError("HumanID must be a string")
+        return cls(value)
 
 
 class SourceType(str, Enum):
@@ -40,6 +71,23 @@ class ConfidenceScore(float):
         if not 0.0 <= value <= 1.0:
             raise ValueError("Confidence must be between 0.0 and 1.0")
         return super().__new__(cls, value)
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        from pydantic_core import core_schema
+
+        def validate(value):
+            if isinstance(value, cls):
+                return value
+            if not isinstance(value, (int, float)):
+                raise ValueError("ConfidenceScore must be a number")
+            return cls(value)
+
+        return core_schema.no_info_after_validator_function(
+            validate,
+            core_schema.float_schema(ge=0.0, le=1.0),
+            serialization=core_schema.to_string_ser_schema(),
+        )
 
 
 class EntityStatus(str, Enum):
@@ -77,7 +125,7 @@ class Entity(BaseModel):
     This is the central data model shared across all Linglong modules.
     """
 
-    id: str = Field(description="Unique identifier (UUID)")
+    id: Optional[str] = Field(default=None, description="Unique identifier (UUID)")
     content: str = Field(description="Markdown content")
     summary: Optional[str] = Field(
         default=None, description="AI-generated summary for quick browsing"
@@ -113,8 +161,8 @@ class Entity(BaseModel):
     # Vector embedding (stored separately in sqlite-vec)
     embedding_id: Optional[str] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
                 "content": "# Python Type Hints\n\nPython 3.11 introduced...",
@@ -127,6 +175,7 @@ class Entity(BaseModel):
                 ],
             }
         }
+    )
 
 
 class TaskStatus(str, Enum):
@@ -143,7 +192,7 @@ class Task(BaseModel):
     """Scheduled task for cross-module orchestration."""
 
     id: str
-    project: str  # "ingest", "knowledge", "pipeline", "dispatch"
+    project: str  # "ingest", "knowledge", "composer", "dispatch"
     task_type: str  # "rss_fetch", "distill", "publish", etc.
     status: TaskStatus = TaskStatus.PENDING
 

@@ -31,13 +31,13 @@ linglong-pipeline/
 ### 1. 移动核心模块到 linglong
 
 ```bash
-# 在 linglong 项目中创建 pipeline 模块
-mkdir src/linglong/pipeline
+# 在 linglong 项目中创建 composer 模块
+mkdir src/linglong/composer
 
 # 迁移文件（保留 Git 历史）
-# distiller/ → src/linglong/pipeline/distiller/
-# templates/ → src/linglong/pipeline/templates/
-# assets/ → src/linglong/pipeline/assets/
+# distiller/ → src/linglong/composer/distiller/
+# templates/ → src/linglong/composer/templates/
+# assets/ → src/linglong/composer/assets/
 ```
 
 ### 2. 修改输入接口
@@ -74,7 +74,7 @@ publisher.publish(article)
 **新代码**（写入 dispatch 队列）：
 ```python
 # linglong 新方式
-from linglong.pipeline import PipelineOutput
+from linglong.composer import PipelineOutput
 
 output = PipelineOutput(
     content=article,
@@ -97,10 +97,10 @@ output = PipelineOutput(
 ### 5. 新增适配
 
 ```python
-# src/linglong/pipeline/__init__.py
-from linglong.pipeline.distiller import Distiller
-from linglong.pipeline.templates import TemplateEngine
-from linglong.pipeline.formatter import Formatter
+# src/linglong/composer/__init__.py
+from linglong.composer.distiller import Distiller
+from linglong.composer.templates import TemplateEngine
+from linglong.composer.formatter import Formatter
 
 __all__ = ["Distiller", "TemplateEngine", "Formatter"]
 ```
@@ -120,7 +120,7 @@ publishers:
 
 **新配置**（环境变量）：
 ```env
-# pipeline 不再需要 source 配置，从 knowledge 读取
+# composer 不再需要 source 配置，从 knowledge 读取
 LL_KNOWLEDGE_WIKI_PATH=./wiki
 
 # dispatch 配置（未来）
@@ -134,7 +134,7 @@ LL_DISPATCH_BLOG_PATH=./blog
 pytest linglong-pipeline/tests/
 
 # 新测试
-pytest linglong/tests/pipeline/
+pytest linglong/tests/composer/
 ```
 
 ## 迁移检查清单
