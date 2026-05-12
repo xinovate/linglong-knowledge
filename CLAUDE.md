@@ -6,18 +6,28 @@
 
 ## 项目背景
 
-Linglong 是一个**个人知识管理平台**，目标是将信息获取、知识沉淀、内容生产和多平台分发串联成完整闭环。
+Linglong 是一个**跨 Agent 知识中枢**。
+
+**核心问题**：OpenClaw、Claude Code、Codex 等 AI Agent 各自维护独立的知识库，互不相通。同一个概念，OpenClaw 知道，Claude Code 不知道；Claude Code 记了，Codex 又记一遍。
+
+**解决方案**：Linglong 作为所有 AI Agent 的统一知识底座，串联信息获取、知识沉淀、内容生产和多平台分发的完整闭环。
 
 **当前状态**：
-- v0.2 已完成：core + ingest + knowledge + composer 四模块骨架
-- v0.3 进行中：人工审核层、Git Workflow Publisher、AI 封面图生成
+- v0.2 已完成：core + ingest + knowledge + composer 四模块骨架，composer 从旧项目迁移并入
+- v0.3 进行中：人工审核层、Git Workflow Publisher、frontmatter 复杂 YAML 支持
+- v0.4 即将启动：知识库统一（OpenClaw wiki 接入、向量搜索、跨 Agent 同步协议）
 - dispatch 模块已启动（`_pending_publishers/` 暂存发布器逻辑）
 
 **你的任务**：
-1. 阅读本文档和 `docs/PROJECT_OVERVIEW.md`
+1. 阅读本文档和 `docs/` 目录（尤其是 `PROJECT_OVERVIEW.md`、`architecture.md`、`modules.md`、`00-roadmap/v1.0.md`）
 2. 按 `docs/` 流程执行工作（roadmap → ADR → development → testing）
 3. 优先处理 `PROJECT_OVERVIEW.md` Next Actions 列表
 4. 确保测试通过
+
+**关键上下文**：
+- OpenClaw 的 wiki 在 `~/.openclaw/workspace/memory/wiki/`，Claude Code 的 memory 在 `~/.claude/projects/.../memory/`
+- OpenClaw 的 embedding 服务在 `http://localhost:7997`，模型 `nomic-embed-text-v1.5`
+- 各 Agent 写入知识库时带命名空间前缀：`openclaw:`、`claude:`、`codex:`
 
 ---
 
@@ -210,11 +220,11 @@ class PPTFormatter:
 ### Q: 当前优先工作是什么？
 
 查看 `docs/PROJECT_OVERVIEW.md` 的 **Next Actions** 列表，按优先级执行：
-1. 补充 core 和 ingest 模块测试
-2. 引入 lint / format 工具（ruff / mypy）
-3. LLM Prompt 外部化（已完成）
-4. frontmatter 复杂 YAML 支持
-5. dispatch 模块正式化
+1. frontmatter 复杂 YAML 支持（tags/categories 的 list 格式完善，v0.3 收尾）
+2. 启动 v0.4：知识库统一 —— 设计 OpenClaw wiki 与 Linglong knowledge 的同步协议，定义跨 Agent 知识存储 schema
+3. 启动 v0.5：ingest 通用化 —— 把 ai-morning-brief 抽象为可配置通用引擎，支持 Web Search / 爬虫 / API
+4. AI 封面图生成（依赖外部 API，需考虑成本和超时）
+5. dispatch 模块启动（将 `_pending_publishers/` 中的发布器正式接入 dispatch）
 
 ---
 

@@ -49,13 +49,48 @@ print(config.knowledge.wiki_path)
 
 ---
 
-## ingest（数据获取）
+## ingest（信息获取层）
 
 ### 职责
 
-- 从 RSS 源获取内容
-- 从 API 获取数据
-- 接收 AI 任务输出
+- **Web Search**：搜索引擎采集（DuckDuckGo、必应 CN）
+- **Web Fetch**：并行抓取预定义网站列表
+- **API 调用**：GitHub API、Twitter API、自定义 REST API
+- **RSS 源**：RSS feed 获取
+- **爬虫**：Playwright / Scrapy 预留接口
+- **AI 任务输出**：接收各 Agent 产出的结构化数据
+
+### 核心设计
+
+**可配置信息源**（YAML 定义，继承 ai-morning-brief 能力）：
+
+```yaml
+# sources/tech-radar.yaml
+name: "AI 技术雷达"
+schedule: "0 7 * * *"
+sources:
+  - type: web_search
+    engine: duckduckgo
+    queries: ["Karpathy AI", "OpenAI news"]
+  - type: web_fetch
+    urls: ["https://anthropic.com/news", "https://openai.com/news"]
+  - type: api
+    endpoint: "https://api.github.com/search/repositories"
+    params: { q: "created:>7d ai OR agent", sort: "stars" }
+validation:
+  cross_reference_min: 2
+  max_age_days: 3
+```
+
+**真实性验证**（5 层检查）：
+
+| 层级 | 检查方法 | 示例 |
+|------|----------|------|
+| 多源交叉验证 | 同一事件在≥2个数据源出现 → 可信 | OpenAI 融资在财新+36kr都有报道 |
+| 数字合理性 | 融资金额在历史合理范围内 | OpenAI 融资 $40B 合理，$122B 异常 |
+| 时间有效性 | 新闻日期在近 3 天内 | 过期内容静默跳过 |
+| 源头权威性 | 优先官方渠道 | 工信部政策 > 自媒体解读 |
+| 常识判断 | 事件是否符合行业逻辑 | 单周增长 172K stars → 异常 |
 
 ### 核心组件
 
@@ -96,24 +131,31 @@ print(f"获取 {results['total']} 条，新建 {results['created']} 条")
 ### 扩展新源
 
 ```python
-from linglong.ingest.rss import RSSSource
+from linglong.core.models import Entity
+from typing import List
 
-class CustomSource(RSSSource):
-    async def fetch(self):
+class CustomSource:
+    """自定义信息源"""
+    
+    async def fetch(self) -> List[Entity]:
         # 自定义获取逻辑
         pass
 ```
 
 ---
 
-## knowledge（知识库）
+## knowledge（跨 Agent 知识库）
 
 ### 职责
 
-- 存储知识条目（文件 + SQLite）
-- 向量索引（语义搜索）
-- 自动 Review 引擎
-- 版本历史
+- **统一存储**：兼容 OpenClaw wiki 结构 + Claude Code memory 结构 + Codex 记忆
+- **向量索引**：语义搜索（远程 OpenClaw 服务 + 本地 sqlite-vec fallback）
+- **混合搜索**：关键词 + 语义 + 时间衰减 + MMR
+- **多 Agent 读写**：OpenClaw、Claude Code、Codex 通过 API/文件同步接入
+- **WikiLinks 支持**：`[[概念名]]` 自动解析和补全
+- **短期→长期转换**：自动判断任务是否有长期价值，有则写入 wiki
+- **自动 Review 引擎**
+- **版本历史**
 
 ### 核心组件
 
@@ -121,9 +163,9 @@ class CustomSource(RSSSource):
 
 三层存储：
 
-- **文件系统** — Markdown + YAML frontmatter
-- **SQLite** — 结构化元数据
-- **向量索引** — sqlite-vec（预留）
+- **文件系统** — Markdown + YAML frontmatter，兼容 OpenClaw wiki/ 目录结构
+- **SQLite** — 结构化元数据，支持 Agent 命名空间（`openclaw:`、`claude:`、`codex:`）
+- **向量索引** — 远程 OpenClaw embedding 服务（nomic-embed-text-v1.5）+ sqlite-vec 本地 fallback
 
 #### review.py
 
@@ -188,15 +230,33 @@ engine.add_rule(
 )
 ```
 
+### 跨 Agent 同步
+
+```python
+# OpenClaw wiki 同步
+from linglong.knowledge.sync import OpenClawSyncAdapter
+
+adapter = OpenClawSyncAdapter(wiki_path="/Users/wangxin/.openclaw/workspace/memory/wiki")
+adapter.sync_to_linglong()
+
+# Claude Code memory 同步（预留）
+from linglong.knowledge.sync import ClaudeCodeSyncAdapter
+
+adapter = ClaudeCodeSyncAdapter(memory_path="/Users/wangxin/.claude/projects/.../memory")
+adapter.sync_to_linglong()
+```
+
 ---
 
-## composer（内容生产）
+## composer（知识编译引擎）
 
 ### 职责
 
-- 从知识库读取内容
-- 提炼和格式化
-- 生成多格式输出（Markdown / PPT / 视频脚本）
+- 从知识库读取各 Agent 产出的碎片
+- **主题聚类**：识别跨天、跨 Agent 的关联内容
+- **LLM 提炼**：总结、加解读、生成封面图提示词
+- **生成多格式输出**：博客、早报、周报、PPT 大纲、视频脚本
+- **内容验证**：检查是否符合模板规范
 
 ### 状态
 
@@ -221,19 +281,60 @@ engine.add_rule(
 - 输出：返回 `dispatch_ready=True` 的结果，不直接处理发布
 - 发布逻辑：已迁移到 `dispatch/_pending_publishers/` 占位，待 dispatch 模块启动
 
+### 编译流程
+
+```
+知识库碎片（多 Agent 产出）
+           │
+           ▼
+   ┌───────────────┐
+   │  IngestAdapter │  ← 统一读取接口
+   └───────┬───────┘
+           │
+   ┌───────┴───────┐
+   │  ThemeAggregator│  ← 按主题聚类（跨天、跨 Agent）
+   └───────┬───────┘
+           │
+   ┌───────┴───────┐
+   │  LLM Distiller  │  ← 提炼、总结、加解读
+   └───────┬───────┘
+           │
+   ┌───────┴───────┐
+   │  TemplateEngine │  ← 套用博客/早报/PPT/视频脚本模板
+   └───────┬───────┘
+           │
+           ▼
+    成品（Markdown / PPT / 视频脚本）
+```
+
 ---
 
-## dispatch（分发调度）— 未开始
+## dispatch（智能分发器）
 
 ### 职责
 
-- 多平台适配器（博客 / 公众号 / 抖音 / 小红书 / 知乎）
-- 发布调度（定时 / 立即 / 条件触发）
-- 反馈收集（阅读量 / 点赞 / 评论）
+- **发布队列**：待发布 / 发布中 / 已发布 / 失败（可重试）
+- **内容路由**：根据内容类型自动分发到不同平台
+  - 博客文章 → Hexo (`linglong.wiki`) → Git Workflow Publisher
+  - AI 早报 → 钉钉（复用 OpenClaw dingtalk-connector）
+  - 短视频脚本 → 抖音（脚本 + AI 封面图）
+  - Twitter 线程 → Twitter/X API
+  - 周报 → 邮件 / Notion
+- **反馈收集**：阅读量、点赞、评论回流到 knowledge
 
 ### 状态
 
 设计中，待 composer 迁移完成后开始。
+
+### 路由规则示例
+
+```python
+routes = [
+    {"content_type": "blog", "template": "blog", "publisher": "hexo"},
+    {"content_type": "morning_brief", "template": "morning_brief", "publisher": "dingtalk"},
+    {"content_type": "short_video_script", "template": "ppt", "publisher": "douyin"},
+]
+```
 
 ---
 
@@ -250,3 +351,4 @@ ingest → knowledge → composer → dispatch
 - 业务模块不直接通信
 - 所有交互通过 `core` 的共享模型和配置
 - 每个模块只关注自己的核心逻辑
+- Agent 通过 knowledge 模块统一读写，避免各自为政
