@@ -43,7 +43,7 @@ class SourcePackage(BaseModel):
     @classmethod
     def from_yaml(cls, path: str | Path) -> "SourcePackage":
         """Load a SourcePackage from a YAML file."""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return cls(**data)
 
@@ -61,7 +61,5 @@ class SourcePackage(BaseModel):
                 except Exception as e:
                     import logging
 
-                    logging.getLogger(__name__).warning(
-                        "Failed to load %s: %s", yaml_file, e
-                    )
+                    logging.getLogger(__name__).warning("Failed to load %s: %s", yaml_file, e)
         return packages

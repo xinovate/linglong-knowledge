@@ -11,12 +11,8 @@ def test_cross_reference_pass():
     config = VerificationConfig(cross_reference_min=2)
     engine = TruthVerificationEngine(config)
     entities = [
-        Entity(
-            id="e1", content="OpenAI raises funding round", created_by="test"
-        ),
-        Entity(
-            id="e2", content="OpenAI raises funding round", created_by="test"
-        ),
+        Entity(id="e1", content="OpenAI raises funding round", created_by="test"),
+        Entity(id="e2", content="OpenAI raises funding round", created_by="test"),
     ]
     results = engine.verify_batch(entities)
     assert results[0].checks["cross_reference"] is True
@@ -25,9 +21,7 @@ def test_cross_reference_pass():
 
 def test_numeric_sanity_fail():
     """Unreasonable numeric value fails."""
-    config = VerificationConfig(
-        numeric_ranges={"funding": (1_000_000, 100_000_000_000)}
-    )
+    config = VerificationConfig(numeric_ranges={"funding": (1_000_000, 100_000_000_000)})
     engine = TruthVerificationEngine(config)
     entity = Entity(content="OpenAI funding $999T announced today", created_by="test")
     result = engine.verify_batch([entity])[0]
@@ -52,9 +46,7 @@ def test_authority_score_high():
     entity = Entity(
         content="Test",
         created_by="test",
-        sources=[
-            Source(type="rss", name="test", metadata={"authority": "high"})
-        ],
+        sources=[Source(type="rss", name="test", metadata={"authority": "high"})],
     )
     result = engine.verify_batch([entity])[0]
     assert result.checks["source_authority"] is True

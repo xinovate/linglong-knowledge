@@ -76,9 +76,7 @@ class IngestConfig(BaseSettings):
         default_factory=lambda: ["./data/packages"],
         description="Directories containing source package YAML files",
     )
-    verification_enabled: bool = Field(
-        default=True, description="Enable truth verification engine"
-    )
+    verification_enabled: bool = Field(default=True, description="Enable truth verification engine")
     default_verification: dict[str, Any] = Field(
         default_factory=lambda: {
             "cross_reference_min": 1,

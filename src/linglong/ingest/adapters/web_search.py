@@ -1,6 +1,6 @@
 """Web search source adapter."""
 
-from linglong.core.models import Entity, Source, SourceType
+from linglong.core.models import Entity
 from linglong.ingest.adapter import SourceAdapter
 
 

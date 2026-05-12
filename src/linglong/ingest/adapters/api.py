@@ -22,9 +22,7 @@ class APIAdapter(SourceAdapter):
             if method.upper() == "GET":
                 response = await client.get(endpoint, headers=headers, params=params)
             else:
-                response = await client.request(
-                    method, endpoint, headers=headers, json=params
-                )
+                response = await client.request(method, endpoint, headers=headers, json=params)
             response.raise_for_status()
             data = response.json()
 
@@ -46,11 +44,7 @@ class APIAdapter(SourceAdapter):
         return resolved
 
     def _parse_response(self, data: dict | list) -> list[Entity]:
-        items = (
-            data
-            if isinstance(data, list)
-            else data.get("items", []) or data.get("results", [])
-        )
+        items = data if isinstance(data, list) else data.get("items", []) or data.get("results", [])
         return [self._item_to_entity(item) for item in items]
 
     def _item_to_entity(self, item: dict) -> Entity:

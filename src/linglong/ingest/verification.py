@@ -1,9 +1,9 @@
 """Truth verification engine for multi-source validation."""
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Callable
+from datetime import datetime
 
 from linglong.core.models import Entity
 
@@ -30,9 +30,7 @@ class VerificationConfig:
         default_factory=lambda: {"high": 1.0, "medium": 0.7, "low": 0.4}
     )
     numeric_ranges: dict[str, tuple[float, float]] = field(default_factory=dict)
-    custom_validators: list[Callable[[Entity], tuple[bool, str]]] = field(
-        default_factory=list
-    )
+    custom_validators: list[Callable[[Entity], tuple[bool, str]]] = field(default_factory=list)
 
 
 class TruthVerificationEngine:
@@ -159,9 +157,7 @@ class TruthVerificationEngine:
 
         if isinstance(entity_date, str):
             try:
-                entity_date = datetime.fromisoformat(
-                    entity_date.replace("Z", "+00:00")
-                )
+                entity_date = datetime.fromisoformat(entity_date.replace("Z", "+00:00"))
             except ValueError:
                 return True, ""
 
