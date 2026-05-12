@@ -2,10 +2,12 @@
 
 import tempfile
 from pathlib import Path
+
 import pytest
+
 from linglong.core.config import LinglongConfig, set_config
-from linglong.knowledge.store import KnowledgeStore
 from linglong.core.models import Entity, EntityStatus
+from linglong.knowledge.store import KnowledgeStore
 
 
 @pytest.fixture
@@ -33,10 +35,10 @@ def test_create_and_get(temp_store):
         created_by="agent:violet",
         confidence=0.85,
     )
-    
+
     created = temp_store.create(entity)
     assert created.id is not None
-    
+
     retrieved = temp_store.get(created.id)
     assert retrieved is not None
     assert retrieved.content == entity.content
@@ -55,10 +57,10 @@ def test_search_by_status(temp_store):
         created_by="agent:claude",
         status=EntityStatus.RAW,
     )
-    
+
     temp_store.create(entity1)
     temp_store.create(entity2)
-    
+
     results = temp_store.search(status=EntityStatus.CONFIRMED)
     assert len(results) == 1
     assert results[0].content == "Entity 1"
@@ -70,15 +72,15 @@ def test_update_entity(temp_store):
         content="Original content",
         created_by="agent:violet",
     )
-    
+
     created = temp_store.create(entity)
     created.content = "Updated content"
     created.confidence = 0.95
-    
+
     updated = temp_store.update(created)
     assert updated.content == "Updated content"
     assert float(updated.confidence) == 0.95
-    
+
     retrieved = temp_store.get(created.id)
     assert retrieved.content == "Updated content"
 
@@ -89,7 +91,7 @@ def test_delete_entity(temp_store):
         content="To be deleted",
         created_by="agent:violet",
     )
-    
+
     created = temp_store.create(entity)
     assert temp_store.delete(created.id) is True
     assert temp_store.get(created.id) is None

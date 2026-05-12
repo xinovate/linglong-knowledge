@@ -1,11 +1,10 @@
 """Shared data models for Linglong."""
 
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from enum import StrEnum
+from typing import Any
 
-
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import core_schema
 
 
@@ -45,7 +44,7 @@ class HumanID(str):
         return cls(value)
 
 
-class SourceType(str, Enum):
+class SourceType(StrEnum):
     """Source types for knowledge entries."""
 
     RSS = "rss"
@@ -60,8 +59,8 @@ class Source(BaseModel):
 
     type: SourceType
     name: str  # e.g., "techcrunch", "openclaw"
-    url: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    url: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ConfidenceScore(float):
@@ -90,7 +89,7 @@ class ConfidenceScore(float):
         )
 
 
-class EntityStatus(str, Enum):
+class EntityStatus(StrEnum):
     """Status of a knowledge entity."""
 
     RAW = "raw"  # Just ingested
@@ -106,7 +105,7 @@ class Relation(BaseModel):
     target_id: str
     relation_type: str  # e.g., "related", "parent", "derived_from"
     strength: float = 1.0  # 0.0 to 1.0
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class Version(BaseModel):
@@ -116,7 +115,7 @@ class Version(BaseModel):
     content: str
     modified_by: AgentID
     modified_at: datetime
-    change_summary: Optional[str] = None
+    change_summary: str | None = None
 
 
 class Entity(BaseModel):
@@ -125,33 +124,29 @@ class Entity(BaseModel):
     This is the central data model shared across all Linglong modules.
     """
 
-    id: Optional[str] = Field(default=None, description="Unique identifier (UUID)")
+    id: str | None = Field(default=None, description="Unique identifier (UUID)")
     content: str = Field(description="Markdown content")
-    summary: Optional[str] = Field(
-        default=None, description="AI-generated summary for quick browsing"
-    )
+    summary: str | None = Field(default=None, description="AI-generated summary for quick browsing")
 
     # Authorship
     created_by: AgentID = Field(description="Agent that created this entity")
-    confirmed_by: Optional[HumanID] = Field(
+    confirmed_by: HumanID | None = Field(
         default=None, description="Human who confirmed this entity"
     )
-    confirmed_at: Optional[datetime] = None
+    confirmed_at: datetime | None = None
 
     # Quality
-    confidence: ConfidenceScore = Field(
-        default=0.5, description="AI confidence score"
-    )
+    confidence: ConfidenceScore = Field(default=0.5, description="AI confidence score")
     status: EntityStatus = Field(default=EntityStatus.RAW)
 
     # Source tracking
-    sources: List[Source] = Field(default_factory=list)
+    sources: list[Source] = Field(default_factory=list)
 
     # Relations
-    relations: List[Relation] = Field(default_factory=list)
+    relations: list[Relation] = Field(default_factory=list)
 
     # Version history
-    versions: List[Version] = Field(default_factory=list)
+    versions: list[Version] = Field(default_factory=list)
     current_version: int = Field(default=1)
 
     # Timestamps
@@ -159,7 +154,7 @@ class Entity(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Vector embedding (stored separately in sqlite-vec)
-    embedding_id: Optional[str] = None
+    embedding_id: str | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -170,15 +165,13 @@ class Entity(BaseModel):
                 "created_by": "agent:violet",
                 "confidence": 0.92,
                 "status": "auto_confirmed",
-                "sources": [
-                    {"type": "rss", "name": "python-blog", "url": "https://..."}
-                ],
+                "sources": [{"type": "rss", "name": "python-blog", "url": "https://..."}],
             }
         }
     )
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """Status of a scheduled task."""
 
     PENDING = "pending"
@@ -198,15 +191,15 @@ class Task(BaseModel):
 
     # Scheduling
     scheduled_at: datetime
-    executed_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    executed_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Context
-    entity_id: Optional[str] = None  # Related entity (if any)
-    params: Dict[str, Any] = Field(default_factory=dict)
+    entity_id: str | None = None  # Related entity (if any)
+    params: dict[str, Any] = Field(default_factory=dict)
 
     # Result
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
 
     created_at: datetime = Field(default_factory=datetime.utcnow)

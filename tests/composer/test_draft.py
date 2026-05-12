@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from linglong.composer.draft import DraftManager
 from linglong.core.config import LinglongConfig, set_config
-from linglong.composer.draft import DraftManager, DraftEntry
 
 
 class TestDraftManager:

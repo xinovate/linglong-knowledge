@@ -10,11 +10,10 @@ from pathlib import Path
 
 import pytest
 
+from linglong.composer.composer import Composer, ComposerResult
 from linglong.core.config import LinglongConfig, set_config
 from linglong.core.models import Entity, EntityStatus, Source, SourceType
 from linglong.knowledge.store import KnowledgeStore
-from linglong.composer.composer import Composer, ComposerResult
-from linglong.composer.state import ComposerState
 
 
 @pytest.fixture
@@ -61,12 +60,8 @@ class TestComposerRun:
 
     def test_run_daily_success(self, composer, store):
         """Normal run should process entities and return dispatch-ready result."""
-        store.create(
-            _create_entity("测试内容 1", datetime(2026, 5, 11, 10, 0))
-        )
-        store.create(
-            _create_entity("测试内容 2", datetime(2026, 5, 11, 11, 0))
-        )
+        store.create(_create_entity("测试内容 1", datetime(2026, 5, 11, 10, 0)))
+        store.create(_create_entity("测试内容 2", datetime(2026, 5, 11, 11, 0)))
 
         result = composer.run()
 
@@ -81,9 +76,7 @@ class TestComposerRun:
 
     def test_run_dry_run(self, composer, store):
         """dry_run=True should not mark processed or save drafts."""
-        store.create(
-            _create_entity("测试内容", datetime(2026, 5, 11, 10, 0))
-        )
+        store.create(_create_entity("测试内容", datetime(2026, 5, 11, 10, 0)))
 
         result = composer.run(dry_run=True)
 
@@ -106,9 +99,7 @@ class TestComposerRun:
 
     def test_run_all_already_processed(self, composer, store):
         """Second run should skip already-processed entities."""
-        store.create(
-            _create_entity("测试内容", datetime(2026, 5, 11, 10, 0))
-        )
+        store.create(_create_entity("测试内容", datetime(2026, 5, 11, 10, 0)))
 
         result1 = composer.run()
         assert len(result1.articles) == 1
@@ -119,9 +110,7 @@ class TestComposerRun:
 
     def test_run_draft_mode(self, composer, store):
         """draft=True should save to DraftManager instead of dispatch-ready."""
-        store.create(
-            _create_entity("草稿测试内容", datetime(2026, 5, 11, 10, 0))
-        )
+        store.create(_create_entity("草稿测试内容", datetime(2026, 5, 11, 10, 0)))
 
         result = composer.run(draft=True)
 
@@ -142,12 +131,8 @@ class TestComposerRun:
 
     def test_run_since_filter(self, composer, store):
         """since parameter should filter entities by timestamp."""
-        store.create(
-            _create_entity("旧内容", datetime(2026, 5, 10, 10, 0))
-        )
-        store.create(
-            _create_entity("新内容", datetime(2026, 5, 12, 10, 0))
-        )
+        store.create(_create_entity("旧内容", datetime(2026, 5, 10, 10, 0)))
+        store.create(_create_entity("新内容", datetime(2026, 5, 12, 10, 0)))
 
         result = composer.run(since=datetime(2026, 5, 11, 0, 0))
 

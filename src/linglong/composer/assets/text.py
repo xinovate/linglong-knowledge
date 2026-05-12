@@ -4,7 +4,6 @@
 """
 
 import logging
-from typing import List
 
 from ..ingest_adapter import MemoryFragment
 
@@ -18,7 +17,7 @@ class TextAssetGenerator:
         self.config = config or {}
         self.excerpt_length = self.config.get("excerpt_length", 200)
 
-    def generate_excerpt(self, fragments: List[MemoryFragment]) -> str:
+    def generate_excerpt(self, fragments: list[MemoryFragment]) -> str:
         """基于记忆片段生成摘要
 
         当前实现：拼接所有片段的前 N 个字符。
@@ -31,14 +30,14 @@ class TextAssetGenerator:
         for frag in fragments:
             content = frag.content.strip()
             if content:
-                excerpt = content[:self.excerpt_length]
+                excerpt = content[: self.excerpt_length]
                 if len(content) > self.excerpt_length:
                     excerpt += "..."
                 return excerpt.replace("\n", " ")
 
         return "今日暂无记录。"
 
-    def generate_tags(self, fragments: List[MemoryFragment]) -> List[str]:
+    def generate_tags(self, fragments: list[MemoryFragment]) -> list[str]:
         """基于记忆片段生成标签
 
         当前实现：从 source 和 type 中提取。

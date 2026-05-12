@@ -2,9 +2,9 @@
 
 from datetime import datetime
 
-from linglong.core.models import Entity, EntityStatus, Source, SourceType
+from linglong.composer.distiller.aggregator import ArticleMaterial, DailyAggregator
 from linglong.composer.ingest_adapter import IngestAdapter, MemoryFragment
-from linglong.composer.distiller.aggregator import DailyAggregator, ArticleMaterial
+from linglong.core.models import Entity, EntityStatus, Source, SourceType
 
 
 class TestIngestAdapter:

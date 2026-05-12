@@ -4,10 +4,10 @@ import json
 import logging
 import shutil
 import uuid
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 from linglong.core.config import get_config
 
@@ -23,8 +23,8 @@ class DraftEntry:
     date: str
     status: str  # pending | published | discarded
     created_at: str
-    published_at: Optional[str] = None
-    fragment_hashes: Optional[List[str]] = None
+    published_at: str | None = None
+    fragment_hashes: list[str] | None = None
     markdown_path: str = ""
     review_path: str = ""
 
@@ -36,7 +36,7 @@ class DraftEntry:
 class DraftManager:
     """Manage drafts for human review before publishing."""
 
-    def __init__(self, drafts_dir: Optional[Path] = None):
+    def __init__(self, drafts_dir: Path | None = None):
         self.drafts_dir = drafts_dir or get_config().composer.drafts_dir
         self.state_file = self.drafts_dir / "state.json"
         self._ensure_dirs()
@@ -46,17 +46,17 @@ class DraftManager:
         self.drafts_dir.mkdir(parents=True, exist_ok=True)
         (self.drafts_dir / "discard").mkdir(exist_ok=True)
 
-    def _load_state(self) -> Dict:
+    def _load_state(self) -> dict:
         """Load state file."""
         if self.state_file.exists():
             try:
-                with open(self.state_file, "r", encoding="utf-8") as f:
+                with open(self.state_file, encoding="utf-8") as f:
                     return json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.warning(f"状态文件加载失败: {e}，将创建新状态")
         return {"version": 1, "drafts": []}
 
-    def _save_state(self, state: Dict):
+    def _save_state(self, state: dict):
         """Save state file."""
         with open(self.state_file, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
@@ -70,8 +70,8 @@ class DraftManager:
         title: str,
         date: str,
         content: str,
-        metadata: Dict[str, Any],
-        fragment_hashes: List[str],
+        metadata: dict[str, Any],
+        fragment_hashes: list[str],
     ) -> DraftEntry:
         """Save a draft.
 
@@ -109,7 +109,7 @@ class DraftManager:
             title=title,
             date=date,
             status="pending",
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             fragment_hashes=fragment_hashes,
             markdown_path=str(md_path),
             review_path=str(review_path),
@@ -120,9 +120,7 @@ class DraftManager:
         logger.info(f"草稿已保存: {draft_id} - {title}")
         return entry
 
-    def _build_review(
-        self, metadata: Dict[str, Any], fragment_hashes: List[str]
-    ) -> str:
+    def _build_review(self, metadata: dict[str, Any], fragment_hashes: list[str]) -> str:
         """Generate review summary Markdown."""
         title = metadata.get("title", "无标题")
         excerpt = metadata.get("excerpt", "")
@@ -155,7 +153,7 @@ class DraftManager:
         ]
         return "\n".join(lines)
 
-    def list_drafts(self, status: Optional[str] = "pending") -> List[DraftEntry]:
+    def list_drafts(self, status: str | None = "pending") -> list[DraftEntry]:
         """List drafts.
 
         Args:
@@ -172,7 +170,7 @@ class DraftManager:
                 drafts.append(entry)
         return sorted(drafts, key=lambda x: x.created_at, reverse=True)
 
-    def get_draft(self, draft_id: str) -> Optional[DraftEntry]:
+    def get_draft(self, draft_id: str) -> DraftEntry | None:
         """Get draft details."""
         state = self._load_state()
         for d in state.get("drafts", []):
@@ -180,7 +178,7 @@ class DraftManager:
                 return DraftEntry(**d)
         return None
 
-    def read_draft_content(self, draft_id: str) -> Optional[str]:
+    def read_draft_content(self, draft_id: str) -> str | None:
         """Read draft Markdown content."""
         entry = self.get_draft(draft_id)
         if not entry:
@@ -190,7 +188,7 @@ class DraftManager:
             return path.read_text(encoding="utf-8")
         return None
 
-    def read_draft_review(self, draft_id: str) -> Optional[str]:
+    def read_draft_review(self, draft_id: str) -> str | None:
         """Read review summary."""
         entry = self.get_draft(draft_id)
         if not entry:
@@ -200,7 +198,7 @@ class DraftManager:
             return path.read_text(encoding="utf-8")
         return None
 
-    def read_draft_metadata(self, draft_id: str) -> Optional[Dict[str, Any]]:
+    def read_draft_metadata(self, draft_id: str) -> dict[str, Any] | None:
         """Read saved draft metadata."""
         entry = self.get_draft(draft_id)
         if not entry:
@@ -208,15 +206,15 @@ class DraftManager:
         meta_path = Path(entry.markdown_path).parent / "metadata.json"
         if meta_path.exists():
             try:
-                with open(meta_path, "r", encoding="utf-8") as f:
+                with open(meta_path, encoding="utf-8") as f:
                     return json.load(f)
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 pass
         return None
 
     def publish_draft(
-        self, draft_id: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, draft_id: str, metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Prepare a draft for dispatch.
 
         In the modular architecture, pipeline does not publish directly.
@@ -250,7 +248,7 @@ class DraftManager:
         for d in state.get("drafts", []):
             if d["id"] == draft_id:
                 d["status"] = "published"
-                d["published_at"] = datetime.now(timezone.utc).isoformat()
+                d["published_at"] = datetime.now(UTC).isoformat()
                 break
         self._save_state(state)
         logger.info(f"草稿已标记为发布就绪: {draft_id}")

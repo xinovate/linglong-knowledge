@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from .base import LLMClient
 from .openai_compatible_client import OpenAICompatibleClient
@@ -19,7 +19,7 @@ _DEFAULT_BASE_URLS = {
 }
 
 
-def create_llm_client(config: Dict[str, Any]) -> LLMClient:
+def create_llm_client(config: dict[str, Any]) -> LLMClient:
     """根据配置创建 LLM 客户端
 
     Args:

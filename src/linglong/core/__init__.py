@@ -1,7 +1,7 @@
 """Linglong Core - Shared infrastructure."""
 
-from linglong.core.models import Entity, Task, AgentID, HumanID, Source, SourceType
-from linglong.core.config import get_config, LinglongConfig
+from linglong.core.config import LinglongConfig, get_config
+from linglong.core.models import AgentID, Entity, HumanID, Source, SourceType, Task
 
 __all__ = [
     "Entity",

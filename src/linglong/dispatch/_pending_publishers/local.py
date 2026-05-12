@@ -7,7 +7,7 @@ import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ..publishers.base import Publisher, PublishResult
 
@@ -23,13 +23,13 @@ class LocalPublisher(Publisher):
     3. 目录输出（保持文件结构）
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__(config)
         self.output_dir = Path(config.get("output_dir", "~/Downloads")).expanduser()
         self.naming_template = config.get("naming", "{name}_{date}")
         self.overwrite = config.get("overwrite", False)
 
-    def publish(self, content: str, metadata: Dict[str, Any]) -> PublishResult:
+    def publish(self, content: str, metadata: dict[str, Any]) -> PublishResult:
         """发布内容到本地
 
         Args:
@@ -53,7 +53,7 @@ class LocalPublisher(Publisher):
             logger.exception(f"本地发布失败: {e}")
             return PublishResult(success=False, error=str(e))
 
-    def _publish_article(self, content: str, metadata: Dict[str, Any]) -> PublishResult:
+    def _publish_article(self, content: str, metadata: dict[str, Any]) -> PublishResult:
         """发布单篇文章"""
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -84,7 +84,7 @@ class LocalPublisher(Publisher):
             message=f"文章已保存到 {output_path}",
         )
 
-    def _publish_zip(self, zip_path: Path, metadata: Dict[str, Any]) -> PublishResult:
+    def _publish_zip(self, zip_path: Path, metadata: dict[str, Any]) -> PublishResult:
         """发布图片包（复制 zip 到输出目录）"""
         self.output_dir.mkdir(parents=True, exist_ok=True)
 

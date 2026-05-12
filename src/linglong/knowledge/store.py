@@ -5,7 +5,6 @@ import sqlite3
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityStatus
@@ -23,7 +22,7 @@ class KnowledgeStore:
     def _init_database(self) -> None:
         """Initialize SQLite database with required tables."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with sqlite3.connect(self.db_path) as conn:
             # Entities table
             conn.execute("""
@@ -45,16 +44,16 @@ class KnowledgeStore:
                     embedding_id TEXT
                 )
             """)
-            
+
             # Vector virtual table (sqlite-vec)
             if self.config.vector_enabled:
                 try:
-                    conn.execute("""
+                    conn.execute(f"""
                         CREATE VIRTUAL TABLE IF NOT EXISTS entity_embeddings USING vec0(
                             embedding_id TEXT PRIMARY KEY,
-                            embedding FLOAT[{dimensions}] distance_metric=cosine
+                            embedding FLOAT[{self.config.vector_dimensions}] distance_metric=cosine
                         )
-                    """.format(dimensions=self.config.vector_dimensions))
+                    """)
                 except sqlite3.OperationalError:
                     # sqlite-vec extension not available; disable vector features
                     pass
@@ -74,7 +73,7 @@ class KnowledgeStore:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """
-                INSERT INTO entities 
+                INSERT INTO entities
                 (id, content, summary, created_by, confirmed_by, confirmed_at,
                  confidence, status, sources, relations, versions, current_version,
                  created_at, updated_at, embedding_id)
@@ -102,13 +101,11 @@ class KnowledgeStore:
 
         return entity
 
-    def get(self, entity_id: str) -> Optional[Entity]:
+    def get(self, entity_id: str) -> Entity | None:
         """Get entity by ID."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            row = conn.execute(
-                "SELECT * FROM entities WHERE id = ?", (entity_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
 
             if row is None:
                 return None
@@ -117,11 +114,11 @@ class KnowledgeStore:
 
     def search(
         self,
-        query: Optional[str] = None,
-        status: Optional[EntityStatus] = None,
-        created_by: Optional[str] = None,
+        query: str | None = None,
+        status: EntityStatus | None = None,
+        created_by: str | None = None,
         limit: int = 50,
-    ) -> List[Entity]:
+    ) -> list[Entity]:
         """Search entities with filters."""
         conditions = []
         params = []
@@ -140,7 +137,7 @@ class KnowledgeStore:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 f"""
-                SELECT * FROM entities 
+                SELECT * FROM entities
                 WHERE {where_clause}
                 ORDER BY updated_at DESC
                 LIMIT ?
@@ -205,9 +202,7 @@ class KnowledgeStore:
 
         # Delete from SQLite
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                "DELETE FROM entities WHERE id = ?", (entity_id,)
-            )
+            cursor = conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
             conn.commit()
             return cursor.rowcount > 0
 
@@ -249,9 +244,9 @@ class KnowledgeStore:
             summary=row["summary"],
             created_by=row["created_by"],
             confirmed_by=row["confirmed_by"],
-            confirmed_at=datetime.fromisoformat(row["confirmed_at"])
-            if row["confirmed_at"]
-            else None,
+            confirmed_at=(
+                datetime.fromisoformat(row["confirmed_at"]) if row["confirmed_at"] else None
+            ),
             confidence=row["confidence"],
             status=EntityStatus(row["status"]),
             sources=json.loads(row["sources"]) if row["sources"] else [],

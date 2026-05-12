@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from linglong.core.models import Entity
 
@@ -14,7 +14,7 @@ class MemoryFragment:
     source: str
     content: str
     timestamp: datetime
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     raw_path: str = ""
 
     @property
@@ -40,13 +40,15 @@ class IngestAdapter:
             metadata={
                 "entity_id": entity.id,
                 "confidence": float(entity.confidence),
-                "status": entity.status.value if hasattr(entity.status, "value") else str(entity.status),
+                "status": (
+                    entity.status.value if hasattr(entity.status, "value") else str(entity.status)
+                ),
                 "created_by": str(entity.created_by),
             },
             raw_path="",
         )
 
     @staticmethod
-    def adapt_many(entities: List[Entity]) -> List[MemoryFragment]:
+    def adapt_many(entities: list[Entity]) -> list[MemoryFragment]:
         """Convert multiple Entities."""
         return [IngestAdapter.adapt(e) for e in entities]

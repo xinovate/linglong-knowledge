@@ -1,8 +1,8 @@
 """Review engine for automatic quality control."""
 
 import re
+from collections.abc import Callable
 from enum import Enum
-from typing import Callable, List, Optional
 
 from linglong.core.models import Entity, EntityStatus
 
@@ -32,7 +32,7 @@ class Rule:
         self.action = action
         self.priority = priority
 
-    def evaluate(self, entity: Entity) -> Optional[Action]:
+    def evaluate(self, entity: Entity) -> Action | None:
         """Evaluate rule against entity."""
         try:
             if self.condition(entity):
@@ -52,7 +52,7 @@ class ReviewEngine:
     SENSITIVE_CATEGORIES = {"personal", "financial", "health", "password", "secret"}
 
     def __init__(self):
-        self.rules: List[Rule] = []
+        self.rules: list[Rule] = []
         self._setup_default_rules()
 
     def _setup_default_rules(self) -> None:
@@ -64,9 +64,7 @@ class ReviewEngine:
                 name="high_confidence_trusted",
                 condition=lambda e: (
                     float(e.confidence) > 0.9
-                    and any(
-                        s.name in self.TRUSTED_SOURCES for s in e.sources
-                    )
+                    and any(s.name in self.TRUSTED_SOURCES for s in e.sources)
                 ),
                 action=Action.AUTO_CONFIRM,
                 priority=100,
@@ -119,9 +117,7 @@ class ReviewEngine:
 
         return entity
 
-    def _apply_action(
-        self, entity: Entity, action: Action, rule_name: str
-    ) -> Entity:
+    def _apply_action(self, entity: Entity, action: Action, rule_name: str) -> Entity:
         """Apply review action to entity."""
         if action == Action.AUTO_CONFIRM:
             entity.status = EntityStatus.AUTO_CONFIRMED
@@ -131,10 +127,14 @@ class ReviewEngine:
             entity.status = EntityStatus.PENDING_REVIEW
             # Add metadata indicating human confirmation required
             entity.sources.append(
-                type("Source", (), {
-                    "type": "review",
-                    "name": f"requires_human_confirm:{rule_name}",
-                })()
+                type(
+                    "Source",
+                    (),
+                    {
+                        "type": "review",
+                        "name": f"requires_human_confirm:{rule_name}",
+                    },
+                )()
             )
         elif action == Action.REJECT:
             entity.status = EntityStatus.REJECTED

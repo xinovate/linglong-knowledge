@@ -6,19 +6,18 @@
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from linglong.composer.assets.text import TextAssetGenerator
+from linglong.composer.distiller.aggregator import ArticleMaterial, DailyAggregator
+from linglong.composer.distiller.llm_distiller import LLMDistiller
+from linglong.composer.draft import DraftManager
+from linglong.composer.ingest_adapter import IngestAdapter, MemoryFragment
+from linglong.composer.state import ComposerState
+from linglong.composer.templates.blog import BlogTemplate
 from linglong.core.config import get_config
 from linglong.core.models import EntityStatus
 from linglong.knowledge.store import KnowledgeStore
-from linglong.composer.draft import DraftManager
-from linglong.composer.ingest_adapter import IngestAdapter, MemoryFragment
-from linglong.composer.distiller.aggregator import DailyAggregator, ArticleMaterial
-from linglong.composer.distiller.llm_distiller import LLMDistiller
-from linglong.composer.assets.text import TextAssetGenerator
-from linglong.composer.templates.blog import BlogTemplate
-from linglong.composer.state import ComposerState
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +27,8 @@ class ComposerResult:
     """流水线执行结果"""
 
     success: bool = True
-    articles: List[Dict[str, Any]] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    articles: list[dict[str, Any]] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
     def add_article(self, article_info: dict):
         self.articles.append(article_info)
@@ -47,9 +46,7 @@ class Composer:
 
     def __init__(self):
         self.config = get_config().composer
-        self.text_gen = TextAssetGenerator(
-            {"excerpt_length": self.config.assets_excerpt_length}
-        )
+        self.text_gen = TextAssetGenerator({"excerpt_length": self.config.assets_excerpt_length})
 
         # 状态管理：内容哈希去重
         self.state = ComposerState()
@@ -76,7 +73,7 @@ class Composer:
 
     def run(
         self,
-        since: Optional[datetime] = None,
+        since: datetime | None = None,
         dry_run: bool = False,
         draft: bool = False,
     ) -> ComposerResult:
@@ -125,9 +122,7 @@ class Composer:
         # 3. 逐组生成文章
         for key, frags in groups.items():
             try:
-                article_result = self._process_day(
-                    key, frags, dry_run=dry_run, draft=draft
-                )
+                article_result = self._process_day(key, frags, dry_run=dry_run, draft=draft)
                 result.add_article(article_result)
                 if not dry_run and not draft:
                     self.state.mark_processed(frags)
@@ -138,9 +133,7 @@ class Composer:
 
         return result
 
-    def _extract_fragments(
-        self, since: Optional[datetime] = None
-    ) -> List[MemoryFragment]:
+    def _extract_fragments(self, since: datetime | None = None) -> list[MemoryFragment]:
         """从 KnowledgeStore 提取片段"""
         store = KnowledgeStore()
         entities = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
@@ -155,7 +148,7 @@ class Composer:
     def _process_day(
         self,
         date_key: str,
-        fragments: List[MemoryFragment],
+        fragments: list[MemoryFragment],
         dry_run: bool = False,
         draft: bool = False,
     ) -> dict:

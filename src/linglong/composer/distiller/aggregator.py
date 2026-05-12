@@ -5,8 +5,6 @@
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Dict, List
 
 from ..ingest_adapter import MemoryFragment
 
@@ -16,10 +14,10 @@ logger = logging.getLogger(__name__)
 class DailyAggregator:
     """按天聚合记忆片段"""
 
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: dict = None):
         self.config = config or {}
 
-    def aggregate(self, fragments: List[MemoryFragment]) -> Dict[str, List[MemoryFragment]]:
+    def aggregate(self, fragments: list[MemoryFragment]) -> dict[str, list[MemoryFragment]]:
         """按天分组
 
         Returns:
@@ -40,11 +38,11 @@ class ArticleMaterial:
     def __init__(
         self,
         date: str,
-        fragments: List[MemoryFragment],
+        fragments: list[MemoryFragment],
         title: str = "",
         excerpt: str = "",
-        tags: List[str] = None,
-        categories: List[str] = None,
+        tags: list[str] = None,
+        categories: list[str] = None,
     ):
         self.date = date
         self.fragments = fragments

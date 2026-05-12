@@ -5,7 +5,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class LLMClient(ABC):
     """LLM 客户端抽象基类"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.model = config.get("model", "")
         self.temperature = config.get("temperature", 0.7)
@@ -22,10 +22,10 @@ class LLMClient(ABC):
     @abstractmethod
     def chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         system: str = "",
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         """发送对话请求，返回文本内容
 
@@ -44,8 +44,8 @@ class LLMClient(ABC):
         self,
         user_content: str,
         system: str = "",
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         """快捷方法：单条用户消息 + 系统提示"""
         messages = [{"role": "user", "content": user_content}]

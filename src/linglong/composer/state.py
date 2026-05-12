@@ -4,10 +4,9 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional, Set
 
-from linglong.core.config import get_config
 from linglong.composer.ingest_adapter import MemoryFragment
+from linglong.core.config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +18,15 @@ def _default_state_file() -> Path:
 class ComposerState:
     """Manage processed fragment state."""
 
-    def __init__(self, state_file: Optional[Path] = None):
+    def __init__(self, state_file: Path | None = None):
         self.state_file = state_file or _default_state_file()
-        self._hashes: Set[str] = set()
+        self._hashes: set[str] = set()
         self._load()
 
     def _load(self):
         if self.state_file.exists():
             try:
-                with open(self.state_file, "r", encoding="utf-8") as f:
+                with open(self.state_file, encoding="utf-8") as f:
                     data = json.load(f)
                 self._hashes = set(data.get("processed_hashes", []))
                 logger.info(f"已加载 {len(self._hashes)} 条处理记录")
@@ -59,7 +58,7 @@ class ComposerState:
     def is_processed(self, frag: MemoryFragment) -> bool:
         return self._hash_fragment(frag) in self._hashes
 
-    def filter_new(self, fragments: List[MemoryFragment]) -> List[MemoryFragment]:
+    def filter_new(self, fragments: list[MemoryFragment]) -> list[MemoryFragment]:
         """Filter out already-processed fragments."""
         new_frags = []
         for frag in fragments:
@@ -72,7 +71,7 @@ class ComposerState:
             logger.info(f"跳过 {skipped} 条已处理片段")
         return new_frags
 
-    def mark_processed(self, fragments: List[MemoryFragment]):
+    def mark_processed(self, fragments: list[MemoryFragment]):
         """Mark fragments as processed."""
         for frag in fragments:
             self._hashes.add(self._hash_fragment(frag))

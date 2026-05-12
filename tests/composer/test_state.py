@@ -1,11 +1,9 @@
 """ComposerState unit tests."""
 
-import pytest
 from datetime import datetime
-from pathlib import Path
 
-from linglong.composer.state import ComposerState
 from linglong.composer.ingest_adapter import MemoryFragment
+from linglong.composer.state import ComposerState
 
 
 class TestPipelineState:

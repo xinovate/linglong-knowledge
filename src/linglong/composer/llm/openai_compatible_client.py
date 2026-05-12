@@ -7,10 +7,9 @@
 - 阿里云百炼、硅基流动等
 """
 
-import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -22,13 +21,13 @@ logger = logging.getLogger(__name__)
 class OpenAICompatibleClient(LLMClient):
     """OpenAI-compatible API 客户端"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__(config)
         self.api_key = self._resolve_api_key(config)
         self.base_url = config.get("base_url", "https://api.openai.com").rstrip("/")
         self.timeout = config.get("timeout", 60)
 
-    def _resolve_api_key(self, config: Dict[str, Any]) -> str:
+    def _resolve_api_key(self, config: dict[str, Any]) -> str:
         """解析 API Key，支持环境变量引用"""
         raw = config.get("api_key", "")
         if raw.startswith("${") and raw.endswith("}"):
@@ -41,10 +40,10 @@ class OpenAICompatibleClient(LLMClient):
 
     def chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         system: str = "",
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         """调用 OpenAI-compatible Chat Completions API"""
         url = f"{self.base_url}/v1/chat/completions"

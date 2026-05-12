@@ -6,13 +6,11 @@
 
 import json
 import logging
-import re
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from ..llm.factory import create_llm_client
 from ..ingest_adapter import MemoryFragment
+from ..llm.factory import create_llm_client
 from .aggregator import ArticleMaterial
 
 logger = logging.getLogger(__name__)
@@ -30,13 +28,13 @@ def _load_prompt(name: str) -> str:
 class LLMDistiller:
     """LLM 智能提炼器"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.llm_client = create_llm_client(config)
         self.system_prompt = _load_prompt("system")
         self.user_prompt_template = _load_prompt("user_template")
 
-    def distill(self, date: str, fragments: List[MemoryFragment]) -> ArticleMaterial:
+    def distill(self, date: str, fragments: list[MemoryFragment]) -> ArticleMaterial:
         """提炼一天的记忆片段为文章素材
 
         Args:
@@ -94,7 +92,7 @@ class LLMDistiller:
         logger.info(f"LLM 提炼完成: {material.title}")
         return material
 
-    def _format_fragments(self, fragments: List[MemoryFragment]) -> str:
+    def _format_fragments(self, fragments: list[MemoryFragment]) -> str:
         """将记忆片段格式化为 prompt 输入文本"""
         sections = []
         for i, frag in enumerate(fragments, 1):
@@ -106,7 +104,7 @@ class LLMDistiller:
             )
         return "\n\n---\n\n".join(sections)
 
-    def _parse_json(self, text: str) -> Dict[str, Any]:
+    def _parse_json(self, text: str) -> dict[str, Any]:
         """从 LLM 输出中提取 JSON"""
         # 去掉可能的 markdown 代码块标记
         text = text.strip()
@@ -120,7 +118,7 @@ class LLMDistiller:
 
         return json.loads(text)
 
-    def group_by_theme(self, fragments: List[MemoryFragment]) -> Dict[str, List[MemoryFragment]]:
+    def group_by_theme(self, fragments: list[MemoryFragment]) -> dict[str, list[MemoryFragment]]:
         """跨天主题合并：让所有片段过 LLM，按主题分组
 
         Args:
@@ -187,7 +185,7 @@ class LLMDistiller:
 
         return result
 
-    def _format_fragments_for_grouping(self, fragments: List[MemoryFragment]) -> str:
+    def _format_fragments_for_grouping(self, fragments: list[MemoryFragment]) -> str:
         """为主题分析格式化所有片段"""
         sections = []
         for i, frag in enumerate(fragments):
@@ -227,13 +225,16 @@ class LLMDistiller:
   ]
 }}"""
 
-    def _fallback_group_by_day(self, fragments: List[MemoryFragment]) -> Dict[str, List[MemoryFragment]]:
+    def _fallback_group_by_day(
+        self, fragments: list[MemoryFragment]
+    ) -> dict[str, list[MemoryFragment]]:
         """回退：按天分组"""
         from .aggregator import DailyAggregator
+
         aggregator = DailyAggregator()
         return aggregator.aggregate(fragments)
 
-    def _build_body(self, data: Dict[str, Any], excerpt: str) -> str:
+    def _build_body(self, data: dict[str, Any], excerpt: str) -> str:
         """从 outline 构建文章正文，增加段落衔接"""
         parts = []
 
@@ -261,9 +262,13 @@ class LLMDistiller:
                 curr_heading = heading.lower()
 
                 # 在"背景→探索"、"问题→方案"之间添加自然过渡
-                if ("背景" in prev_heading or "问题" in prev_heading) and ("探索" in curr_heading or "方案" in curr_heading):
+                if ("背景" in prev_heading or "问题" in prev_heading) and (
+                    "探索" in curr_heading or "方案" in curr_heading
+                ):
                     parts.append("\n基于以上分析，我开始尝试具体的实现方案。\n")
-                elif ("探索" in prev_heading or "实践" in prev_heading) and ("结论" in curr_heading or "总结" in curr_heading):
+                elif ("探索" in prev_heading or "实践" in prev_heading) and (
+                    "结论" in curr_heading or "总结" in curr_heading
+                ):
                     parts.append("\n经过实际验证，以下是几条可以复用的经验。\n")
 
             if heading:
@@ -273,12 +278,12 @@ class LLMDistiller:
 
         return "\n".join(parts)
 
-    def _fallback(self, date: str, fragments: List[MemoryFragment]) -> ArticleMaterial:
+    def _fallback(self, date: str, fragments: list[MemoryFragment]) -> ArticleMaterial:
         """LLM 失败时的回退：使用规则聚合"""
         from .aggregator import DailyAggregator
 
         logger.warning(f"{date} 回退到规则聚合模式")
-        aggregator = DailyAggregator()
+        DailyAggregator()
         material = ArticleMaterial(date=date, fragments=fragments)
         material.compile_content()
         return material

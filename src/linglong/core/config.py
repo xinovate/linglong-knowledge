@@ -1,7 +1,6 @@
 """Configuration management for Linglong."""
 
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,8 +14,8 @@ class ComposerConfig(BaseSettings):
     # LLM settings
     llm_provider: str = Field(default="openai", description="LLM provider")
     llm_model: str = Field(default="gpt-4", description="LLM model name")
-    llm_api_key: Optional[str] = Field(default=None, description="LLM API key")
-    llm_base_url: Optional[str] = Field(default=None, description="LLM base URL")
+    llm_api_key: str | None = Field(default=None, description="LLM API key")
+    llm_base_url: str | None = Field(default=None, description="LLM base URL")
     llm_temperature: float = Field(default=0.7, description="LLM temperature")
     llm_max_tokens: int = Field(default=4096, description="LLM max tokens")
 
@@ -25,9 +24,7 @@ class ComposerConfig(BaseSettings):
     distiller_theme_threshold: float = Field(
         default=0.7, description="Theme grouping similarity threshold"
     )
-    distiller_max_themes: int = Field(
-        default=5, description="Max themes per aggregation"
-    )
+    distiller_max_themes: int = Field(default=5, description="Max themes per aggregation")
 
     # Asset settings
     assets_excerpt_length: int = Field(default=200, description="Excerpt length")
@@ -37,9 +34,7 @@ class ComposerConfig(BaseSettings):
     template_name: str = Field(default="blog", description="Default template")
 
     # Draft settings
-    drafts_dir: Path = Field(
-        default=Path("./data/drafts"), description="Drafts directory"
-    )
+    drafts_dir: Path = Field(default=Path("./data/drafts"), description="Drafts directory")
 
 
 class KnowledgeConfig(BaseSettings):
@@ -59,7 +54,7 @@ class IngestConfig(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="LL_INGEST_")
 
-    rss_sources: List[Dict[str, str]] = Field(
+    rss_sources: list[dict[str, str]] = Field(
         default_factory=list, description="RSS source configurations"
     )
     fetch_interval_minutes: int = Field(default=30, description="Fetch interval in minutes")
@@ -95,7 +90,7 @@ class LinglongConfig(BaseSettings):
 
 
 # Global config instance
-_config: Optional[LinglongConfig] = None
+_config: LinglongConfig | None = None
 
 
 def get_config() -> LinglongConfig:

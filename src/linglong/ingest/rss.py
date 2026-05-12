@@ -1,8 +1,6 @@
 """RSS feed ingestion source."""
 
 import hashlib
-from datetime import datetime
-from typing import List, Optional
 
 import feedparser
 import httpx
@@ -19,7 +17,7 @@ class RSSSource:
         self,
         name: str,
         url: str,
-        category: Optional[str] = None,
+        category: str | None = None,
         max_items: int = 50,
     ):
         self.name = name
@@ -28,7 +26,7 @@ class RSSSource:
         self.max_items = max_items
         self.review_engine = ReviewEngine()
 
-    async def fetch(self) -> List[Entity]:
+    async def fetch(self) -> list[Entity]:
         """Fetch and parse RSS feed."""
         async with httpx.AsyncClient() as client:
             response = await client.get(self.url, timeout=30.0)
@@ -47,9 +45,7 @@ class RSSSource:
     def _entry_to_entity(self, entry) -> Entity:
         """Convert RSS entry to knowledge entity."""
         # Generate deterministic ID from URL
-        entity_id = hashlib.sha256(
-            entry.link.encode()
-        ).hexdigest()[:16]
+        entity_id = hashlib.sha256(entry.link.encode()).hexdigest()[:16]
 
         # Build content
         content = f"""# {entry.title}
@@ -91,7 +87,7 @@ class RSSIngestor:
 
     def __init__(self, store: KnowledgeStore):
         self.store = store
-        self.sources: List[RSSSource] = []
+        self.sources: list[RSSSource] = []
 
     def add_source(self, source: RSSSource) -> None:
         """Add an RSS source."""
