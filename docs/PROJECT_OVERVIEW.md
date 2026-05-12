@@ -31,9 +31,9 @@ Codex ──────┘         ↓
 | v0.1 | MVP 骨架 | ✅ 已完成 | core + ingest + knowledge 三模块骨架 | 2025-04 |
 | v0.2 | Composer 迁移 | ✅ 已完成 | Composer 从 linglong-pipeline 迁移并入，32 个测试通过 | 2026-05-12 |
 | v0.3 | 人工审核层 | 🟡 进行中 | Draft Mode、Git Workflow Publisher、AI 封面图生成 | — |
-| v0.4 | **知识库统一** | 🔴 未开始 | OpenClaw wiki 接入、跨 Agent 同步协议、向量搜索兼容 | — |
+| v0.4 | **知识库统一** | 🟡 进行中 | OpenClaw wiki 接入、Claude Code memory 同步、向量搜索兼容 | 2026-05-12 |
 | v0.5 | **ingest 通用化** | 🔴 未开始 | ai-morning-brief 抽象为通用引擎，支持任意主题采集 | — |
-| v0.6 | **多 Agent 接入** | 🔴 未开始 | Claude Code memory 同步、Codex 接入方案 | — |
+| v0.6 | **多 Agent 接入** | 🔴 未开始 | Codex 接入方案、冲突解决策略 | — |
 | v0.7 | composer 产品化 | 🔴 未开始 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
 | v0.8 | dispatch 正式化 | 🔴 未开始 | 发布队列、多平台路由、失败重试 | — |
 | v0.9 | 稳定化 | 🔴 未开始 | API 冻结、全链路测试、mypy strict、性能优化 | — |
@@ -60,6 +60,8 @@ Codex ──────┘         ↓
 | pytest 测试骨架 | v0.2 | ✅ | — | 2026-05-12 |
 | ruff/black 格式化 | v0.3 | ✅ | — | 2026-05-12 |
 | tests/core/ + tests/ingest/ 补齐 | v0.3 | ✅ | — | 2026-05-12 |
+| OpenClawSyncAdapter（wiki → KnowledgeStore） | v0.4 | ✅ | `ccd2011` | 2026-05-12 |
+| ClaudeCodeSyncAdapter（memory → KnowledgeStore） | v0.4 | ✅ | `ffb7c10` | 2026-05-12 |
 
 ---
 
@@ -69,7 +71,7 @@ Codex ──────┘         ↓
 |------|---------|---------|-----|------|
 | `core/` | ✅ 9 个 | — | — | ✅ |
 | `ingest/` | ✅ 7 个 | — | — | ✅ |
-| `knowledge/` | ✅ 部分覆盖 | — | — | 🟡 进行中 |
+| `knowledge/` | ✅ 20 个 | — | — | ✅ |
 | `composer/` | ✅ 32 个 | — | — | ✅ |
 | `dispatch/` | ❌ 未开始 | — | — | ⚪ 低优 |
 
@@ -82,7 +84,7 @@ Codex ──────┘         ↓
 | 问题 | 严重度 | 状态 | 计划版本 | 详情 |
 |------|--------|------|----------|------|
 | knowledge 向量搜索未落地 | 🔴 高 | 待实现 | v0.4 | sqlite-vec 预留，需兼容 OpenClaw embedding 服务 |
-| 缺少跨 Agent 同步协议 | 🔴 高 | 待设计 | v0.4 | OpenClaw/Claude Code/Codex 各自为政 |
+| 缺少跨 Agent 同步协议 | 🟡 中 | 部分实现 | v0.4 | OpenClaw/Claude Code 已接入，Codex 待接入 |
 | ingest 仅支持 RSS | 🔴 高 | 待扩展 | v0.5 | 需支持 Web Search、爬虫、API 调用 |
 | dispatch 模块未启动 | 🟡 中 | 待启动 | v0.8 | `_pending_publishers/` 暂存，需正式化 |
 | frontmatter 不支持复杂 YAML list | 🟡 中 | 待修复 | v0.3 | `templates/blog.py` |
@@ -95,11 +97,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
-| `8026443` | chore: apply ruff/black formatting and add test skeleton | 2026-05-12 |
-| `d9568c8` | docs: sync CLAUDE.md and workflow with v0.3 status | 2026-05-12 |
-| `8692188` | SSH 远程触发和文档同步 | 2026-05-12 |
-| `54f0dc2` | Git Workflow Publisher：含代理支持 | 2026-05-11 |
-| `4600e04` | Composer 集成测试 + State 隔离 bug 修复 | 2026-05-11 |
+| `ffb7c10` | feat(v0.4): add ClaudeCodeSyncAdapter for cross-agent knowledge sync | 2026-05-12 |
+| `ccd2011` | feat(v0.4): add OpenClawSyncAdapter for knowledge unification | 2026-05-12 |
+| `25be4c3` | chore: add Makefile, CI workflow, and agent orchestration docs | 2026-05-12 |
+| `35bc663` | feat: frontmatter YAML list validation and tests | 2026-05-12 |
+| `ca20429` | docs: reposition Linglong as cross-agent knowledge hub | 2026-05-12 |
 
 ---
 
@@ -107,8 +109,8 @@ Codex ──────┘         ↓
 
 按优先级排序，只看最前面 3 条：
 
-1. 🔴 **frontmatter 复杂 YAML 支持** — tags/categories 的 list 格式完善（v0.3 收尾）
-2. 🔴 **启动 v0.4：知识库统一** — 设计 OpenClaw wiki 与 Linglong knowledge 的同步协议，定义跨 Agent 知识存储 schema
+1. 🔴 **CodexSyncAdapter** — 接入 `~/.codex/`（`AGENTS.md`、`history.jsonl`、SQLite）到 Linglong knowledge store（v0.4 收尾 → v0.6 提前）
+2. 🔴 **向量搜索落地** — sqlite-vec 集成，复用 OpenClaw 远程 embedding 服务（`nomic-embed-text-v1.5`）
 3. 🔴 **启动 v0.5：ingest 通用化** — 把 ai-morning-brief 抽象为可配置通用引擎，支持 Web Search / 爬虫 / API
 4. 🟡 **AI 封面图生成** — 依赖外部 API，需考虑成本和超时
 5. 🟡 **dispatch 模块启动** — 将 `_pending_publishers/` 中的发布器正式接入 dispatch
