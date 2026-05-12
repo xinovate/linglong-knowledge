@@ -42,6 +42,12 @@ class BlogTemplate(Template):
                 if field not in frontmatter:
                     errors.append(f"frontmatter 缺少必需字段: {field}")
 
+            # 检查 tags 和 categories 是否为列表
+            if "tags" in frontmatter and not isinstance(frontmatter["tags"], list):
+                warnings.append("tags 应为列表格式（YAML list）")
+            if "categories" in frontmatter and not isinstance(frontmatter["categories"], list):
+                warnings.append("categories 应为列表格式（YAML list）")
+
         # 2. 检查标题长度
         if frontmatter and "title" in frontmatter:
             if len(frontmatter["title"]) > self.MAX_TITLE_LENGTH:

@@ -78,7 +78,7 @@ class ConfidenceScore(float):
         def validate(value):
             if isinstance(value, cls):
                 return value
-            if not isinstance(value, (int, float)):
+            if not isinstance(value, int | float):
                 raise ValueError("ConfidenceScore must be a number")
             return cls(value)
 
