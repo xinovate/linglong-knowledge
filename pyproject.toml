@@ -27,6 +27,9 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.scripts]
+linglong = "linglong.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",

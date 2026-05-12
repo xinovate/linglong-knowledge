@@ -100,6 +100,17 @@ class KnowledgeConfig(BaseSettings):
         default=0.95, description="Default confidence for synced entities"
     )
 
+    # Sync source paths
+    openclaw_wiki_path: Path | None = Field(
+        default=None, description="Path to OpenClaw wiki directory"
+    )
+    claude_memory_path: Path | None = Field(
+        default=None, description="Path to Claude Code memory directory"
+    )
+    codex_path: Path | None = Field(
+        default=None, description="Path to Codex CLI data directory"
+    )
+
 
 class IngestConfig(BaseSettings):
     """Ingest module configuration."""
