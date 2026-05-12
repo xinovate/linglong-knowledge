@@ -4,6 +4,7 @@ import re
 from collections.abc import Callable
 from enum import Enum
 
+from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityStatus
 
 
@@ -45,26 +46,23 @@ class Rule:
 class ReviewEngine:
     """Automatic review engine with configurable rules."""
 
-    # Trusted sources that can auto-confirm
-    TRUSTED_SOURCES = {"openclaw", "claude-code", "codex"}
-
-    # Sensitive categories requiring human confirmation
-    SENSITIVE_CATEGORIES = {"personal", "financial", "health", "password", "secret"}
-
     def __init__(self):
         self.rules: list[Rule] = []
+        self._config = get_config().knowledge
         self._setup_default_rules()
 
     def _setup_default_rules(self) -> None:
         """Setup default review rules."""
+        cfg = self._config
+        trusted = set(cfg.review_trusted_sources)
 
         # Rule 1: High confidence + trusted source = auto confirm
         self.rules.append(
             Rule(
                 name="high_confidence_trusted",
                 condition=lambda e: (
-                    float(e.confidence) > 0.9
-                    and any(s.name in self.TRUSTED_SOURCES for s in e.sources)
+                    float(e.confidence) > cfg.review_high_confidence_threshold
+                    and any(s.name in trusted for s in e.sources)
                 ),
                 action=Action.AUTO_CONFIRM,
                 priority=100,
@@ -75,7 +73,7 @@ class ReviewEngine:
         self.rules.append(
             Rule(
                 name="low_confidence",
-                condition=lambda e: float(e.confidence) < 0.6,
+                condition=lambda e: float(e.confidence) < cfg.review_low_confidence_threshold,
                 action=Action.FLAG_FOR_REVIEW,
                 priority=90,
             )
@@ -95,7 +93,7 @@ class ReviewEngine:
         self.rules.append(
             Rule(
                 name="too_short",
-                condition=lambda e: len(e.content) < 50,
+                condition=lambda e: len(e.content) < cfg.review_min_content_length,
                 action=Action.FLAG_FOR_REVIEW,
                 priority=50,
             )
@@ -146,7 +144,7 @@ class ReviewEngine:
         content_lower = entity.content.lower()
 
         # Check for sensitive keywords
-        for category in self.SENSITIVE_CATEGORIES:
+        for category in self._config.review_sensitive_categories:
             if category in content_lower:
                 return True
 

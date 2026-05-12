@@ -32,6 +32,20 @@ class VerificationConfig:
     numeric_ranges: dict[str, tuple[float, float]] = field(default_factory=dict)
     custom_validators: list[Callable[[Entity], tuple[bool, str]]] = field(default_factory=list)
 
+    # Layer weights (must sum to 1.0)
+    layer_weights: dict[str, float] = field(
+        default_factory=lambda: {
+            "cross_reference": 0.25,
+            "numeric_sanity": 0.2,
+            "time_validity": 0.2,
+            "source_authority": 0.2,
+            "common_sense": 0.15,
+        }
+    )
+    pass_threshold: float = 0.6
+    signature_length: int = 100
+    max_star_count: int = 500_000
+
 
 class TruthVerificationEngine:
     """5-layer truth verification engine.
@@ -63,13 +77,15 @@ class TruthVerificationEngine:
         reasons: list[str] = []
         score = 0.0
 
+        w = self.config.layer_weights
+
         # Layer 1: Cross-reference
         sig = self._content_signature(entity)
         ref_count = len(signature_index.get(sig, []))
         cross_ref_pass = ref_count >= self.config.cross_reference_min
         checks["cross_reference"] = cross_ref_pass
         if cross_ref_pass:
-            score += 0.25
+            score += w.get("cross_reference", 0.25)
         else:
             reasons.append(f"Only {ref_count} source(s) for this event")
 
@@ -77,7 +93,7 @@ class TruthVerificationEngine:
         numeric_pass, numeric_reason = self._check_numeric_sanity(entity)
         checks["numeric_sanity"] = numeric_pass
         if numeric_pass:
-            score += 0.2
+            score += w.get("numeric_sanity", 0.2)
         elif numeric_reason:
             reasons.append(numeric_reason)
 
@@ -85,20 +101,20 @@ class TruthVerificationEngine:
         time_pass, time_reason = self._check_time_validity(entity)
         checks["time_validity"] = time_pass
         if time_pass:
-            score += 0.2
+            score += w.get("time_validity", 0.2)
         elif time_reason:
             reasons.append(time_reason)
 
         # Layer 4: Source authority
         authority_score = self._compute_authority_score(entity)
         checks["source_authority"] = authority_score >= 0.5
-        score += authority_score * 0.2
+        score += authority_score * w.get("source_authority", 0.2)
 
         # Layer 5: Common sense
         common_pass, common_reason = self._check_common_sense(entity)
         checks["common_sense"] = common_pass
         if common_pass:
-            score += 0.15
+            score += w.get("common_sense", 0.15)
         elif common_reason:
             reasons.append(common_reason)
 
@@ -108,7 +124,7 @@ class TruthVerificationEngine:
             if not ok and reason:
                 reasons.append(reason)
 
-        passed = score >= 0.6
+        passed = score >= self.config.pass_threshold
         return VerificationResult(
             entity_id=entity.id or "",
             passed=passed,
@@ -122,7 +138,7 @@ class TruthVerificationEngine:
         content = re.sub(r"https?://\S+", "", content)
         content = re.sub(r"\d+", "", content)
         content = re.sub(r"[^\w\s]", "", content)
-        return content[:100].strip()
+        return content[: self.config.signature_length].strip()
 
     def _check_numeric_sanity(self, entity: Entity) -> tuple[bool, str]:
         for field_name, (min_val, max_val) in self.config.numeric_ranges.items():
@@ -186,6 +202,6 @@ class TruthVerificationEngine:
         star_match = re.search(r"(\d+(?:\.\d+)?[KMB]?)\s*stars?", content)
         if star_match:
             stars = self._parse_number(star_match.group(1))
-            if stars > 500000:
+            if stars > self.config.max_star_count:
                 return False, f"Suspicious star count: {star_match.group(1)}"
         return True, ""

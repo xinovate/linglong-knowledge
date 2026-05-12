@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from linglong.core.config import get_config
 from linglong.dispatch.publishers.base import Publisher, PublishResult
 
 logger = logging.getLogger(__name__)
@@ -29,10 +30,9 @@ class HexoPublisher(Publisher):
         self.git_branch = config.get("git_branch", "master")
         self.git_proxy = config.get("git_proxy")
         self.ssh_host = config.get("ssh_host")
-        self.ssh_command = config.get(
-            "ssh_command",
-            "cd /root/hexo-blog/ && git pull origin master && hexo clean && hexo generate && cp -r public/* /var/www/",
-        )
+        default_ssh = get_config().dispatch.hexo_deploy_command
+        self.ssh_command = config.get("ssh_command", default_ssh)
+        self.site_url = config.get("site_url", get_config().dispatch.hexo_site_url).rstrip("/")
 
     def publish(self, content: str, metadata: dict[str, Any]) -> PublishResult:
         """发布到 Hexo 博客"""
@@ -139,7 +139,7 @@ class HexoPublisher(Publisher):
                     logger.warning(f"SSH 远程触发失败: {ssh_result.stderr}")
                     return PublishResult(
                         success=True,
-                        url=f"https://www.linglong.wiki/{metadata.get('slug', '')}",
+                        url=f"{self.site_url}/{metadata.get('slug', '')}",
                         message=f"文章已提交并推送: {filename}（SSH 触发失败: {ssh_result.stderr.strip()[:100]}）",
                     )
                 else:
@@ -147,7 +147,7 @@ class HexoPublisher(Publisher):
 
             return PublishResult(
                 success=True,
-                url=f"https://www.linglong.wiki/{metadata.get('slug', '')}",
+                url=f"{self.site_url}/{metadata.get('slug', '')}",
                 message=f"文章已提交并推送: {filename}",
             )
 
@@ -180,7 +180,7 @@ class HexoPublisher(Publisher):
 
             return PublishResult(
                 success=True,
-                url=f"https://www.linglong.wiki/{metadata.get('slug', '')}",
+                url=f"{self.site_url}/{metadata.get('slug', '')}",
                 message=f"文章已发布: {filename}",
             )
 

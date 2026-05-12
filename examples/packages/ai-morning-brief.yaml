@@ -4,6 +4,16 @@ schedule: "0 7 * * *"
 enabled: true
 
 sources:
+  - id: "aihot-selected"
+    type: rss
+    enabled: true
+    config:
+      url: "https://aihot.virxact.com/feed.xml"
+      max_items: 20
+    metadata:
+      category: "aggregator"
+      authority: high
+
   - id: "anthropic-news"
     type: rss
     enabled: true

@@ -5,6 +5,7 @@ import hashlib
 import feedparser
 import httpx
 
+from linglong.core.config import get_config
 from linglong.core.models import Entity, Source, SourceType
 from linglong.knowledge.review import ReviewEngine
 from linglong.knowledge.store import KnowledgeStore
@@ -28,8 +29,9 @@ class RSSSource:
 
     async def fetch(self) -> list[Entity]:
         """Fetch and parse RSS feed."""
+        timeout = get_config().ingest.rss_timeout
         async with httpx.AsyncClient() as client:
-            response = await client.get(self.url, timeout=30.0)
+            response = await client.get(self.url, timeout=timeout)
             response.raise_for_status()
 
         feed = feedparser.parse(response.text)
@@ -66,7 +68,7 @@ class RSSSource:
             content=content,
             summary=getattr(entry, "summary", None),
             created_by="agent:ingest",
-            confidence=0.7,  # RSS content has moderate confidence
+            confidence=get_config().ingest.default_confidence.get("rss", 0.7),  # RSS content has moderate confidence
             sources=[
                 Source(
                     type=SourceType.RSS,

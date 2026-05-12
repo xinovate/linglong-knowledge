@@ -2,6 +2,7 @@
 
 import httpx
 
+from linglong.core.config import get_config
 from linglong.core.models import Entity, Source, SourceType
 from linglong.ingest.adapter import SourceAdapter
 
@@ -16,7 +17,8 @@ class APIAdapter(SourceAdapter):
         method = self.config.get("method", "GET")
         headers = self.config.get("headers", {})
         params = self._resolve_params(self.config.get("params", {}))
-        timeout = self.config.get("timeout", 10)
+        default_timeout = get_config().ingest.api_timeout
+        timeout = self.config.get("timeout", default_timeout)
 
         async with httpx.AsyncClient(timeout=timeout) as client:
             if method.upper() == "GET":
@@ -51,7 +53,7 @@ class APIAdapter(SourceAdapter):
         return Entity(
             content=f"```json\n{item}\n```",
             created_by="agent:ingest",
-            confidence=0.75,
+            confidence=get_config().ingest.default_confidence.get("api", 0.75),
             sources=[
                 Source(
                     type=SourceType.API,

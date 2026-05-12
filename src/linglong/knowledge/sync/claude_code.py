@@ -10,6 +10,7 @@ from pathlib import Path
 
 import frontmatter
 
+from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityStatus, Source, SourceType
 from linglong.knowledge.store import KnowledgeStore
 
@@ -59,7 +60,7 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
         created_by="agent:claude",
         status=EntityStatus.AUTO_CONFIRMED,
         sources=[source],
-        confidence=0.95,
+        confidence=get_config().knowledge.sync_confidence,
         metadata=metadata,
     )
 

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def _default_state_file() -> Path:
-    return get_config().data_dir / "composer_state.json"
+    return Path.home() / "linglong" / "state" / "composer_state.json"
 
 
 class ComposerState:

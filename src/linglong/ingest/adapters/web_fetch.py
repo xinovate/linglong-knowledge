@@ -4,6 +4,7 @@ import asyncio
 
 import httpx
 
+from linglong.core.config import get_config
 from linglong.core.models import Entity, Source, SourceType
 from linglong.ingest.adapter import SourceAdapter
 
@@ -16,7 +17,8 @@ class WebFetchAdapter(SourceAdapter):
     async def fetch(self) -> list[Entity]:
         urls = self.config.get("urls", [])
         max_chars = self.config.get("max_chars", 1500)
-        timeout = self.config.get("timeout", 10)
+        default_timeout = get_config().ingest.web_fetch_timeout
+        timeout = self.config.get("timeout", default_timeout)
 
         tasks = [self._fetch_one(url, max_chars, timeout) for url in urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -42,7 +44,7 @@ class WebFetchAdapter(SourceAdapter):
         return Entity(
             content=f"# Fetched Content\n\n{content}\n\n[Source]({url})",
             created_by="agent:ingest",
-            confidence=0.65,
+            confidence=get_config().ingest.default_confidence.get("web_fetch", 0.65),
             sources=[
                 Source(
                     type=SourceType.WEB_FETCH,
