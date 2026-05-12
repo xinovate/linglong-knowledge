@@ -1,0 +1,76 @@
+"""Configuration management for Linglong."""
+
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class KnowledgeConfig(BaseSettings):
+    """Knowledge module configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="LL_KNOWLEDGE_")
+
+    wiki_path: Path = Field(default=Path("./wiki"), description="Path to wiki directory")
+    db_path: Path = Field(default=Path("./knowledge.db"), description="SQLite database path")
+    vector_enabled: bool = Field(default=True, description="Enable vector search")
+    vector_dimensions: int = Field(default=1536, description="Embedding dimensions")
+    watch_enabled: bool = Field(default=True, description="Watch filesystem for changes")
+
+
+class IngestConfig(BaseSettings):
+    """Ingest module configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="LL_INGEST_")
+
+    rss_sources: List[Dict[str, str]] = Field(
+        default_factory=list, description="RSS source configurations"
+    )
+    fetch_interval_minutes: int = Field(default=30, description="Fetch interval in minutes")
+    max_items_per_source: int = Field(default=50, description="Max items to fetch per source")
+
+
+class LinglongConfig(BaseSettings):
+    """Main Linglong configuration."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="LL_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
+
+    # General
+    debug: bool = Field(default=False, description="Debug mode")
+    log_level: str = Field(default="INFO", description="Logging level")
+
+    # Module configs
+    knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
+    ingest: IngestConfig = Field(default_factory=IngestConfig)
+
+    # Paths
+    data_dir: Path = Field(default=Path("./data"), description="Data directory")
+
+    def ensure_directories(self) -> None:
+        """Ensure all required directories exist."""
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.knowledge.wiki_path.mkdir(parents=True, exist_ok=True)
+
+
+# Global config instance
+_config: Optional[LinglongConfig] = None
+
+
+def get_config() -> LinglongConfig:
+    """Get or create global configuration."""
+    global _config
+    if _config is None:
+        _config = LinglongConfig()
+        _config.ensure_directories()
+    return _config
+
+
+def set_config(config: LinglongConfig) -> None:
+    """Set global configuration (useful for testing)."""
+    global _config
+    _config = config

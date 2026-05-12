@@ -1,0 +1,118 @@
+"""RSS feed ingestion source."""
+
+import hashlib
+from datetime import datetime
+from typing import List, Optional
+
+import feedparser
+import httpx
+
+from linglong.core.models import Entity, Source, SourceType
+from linglong.knowledge.review import ReviewEngine
+from linglong.knowledge.store import KnowledgeStore
+
+
+class RSSSource:
+    """RSS feed source for ingesting articles."""
+
+    def __init__(
+        self,
+        name: str,
+        url: str,
+        category: Optional[str] = None,
+        max_items: int = 50,
+    ):
+        self.name = name
+        self.url = url
+        self.category = category or "general"
+        self.max_items = max_items
+        self.review_engine = ReviewEngine()
+
+    async def fetch(self) -> List[Entity]:
+        """Fetch and parse RSS feed."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(self.url, timeout=30.0)
+            response.raise_for_status()
+
+        feed = feedparser.parse(response.text)
+        entities = []
+
+        for entry in feed.entries[: self.max_items]:
+            entity = self._entry_to_entity(entry)
+            entity = self.review_engine.review(entity)
+            entities.append(entity)
+
+        return entities
+
+    def _entry_to_entity(self, entry) -> Entity:
+        """Convert RSS entry to knowledge entity."""
+        # Generate deterministic ID from URL
+        entity_id = hashlib.sha256(
+            entry.link.encode()
+        ).hexdigest()[:16]
+
+        # Build content
+        content = f"""# {entry.title}
+
+**Source:** [{self.name}]({entry.link})
+**Published:** {getattr(entry, 'published', 'Unknown')}
+
+{getattr(entry, 'summary', '')}
+"""
+
+        # Extract tags if available
+        tags = []
+        if hasattr(entry, "tags"):
+            tags = [tag.term for tag in entry.tags]
+
+        return Entity(
+            id=entity_id,
+            content=content,
+            summary=getattr(entry, "summary", None),
+            created_by="agent:ingest",
+            confidence=0.7,  # RSS content has moderate confidence
+            sources=[
+                Source(
+                    type=SourceType.RSS,
+                    name=self.name,
+                    url=entry.link,
+                    metadata={
+                        "category": self.category,
+                        "tags": tags,
+                        "published": getattr(entry, "published", None),
+                    },
+                )
+            ],
+        )
+
+
+class RSSIngestor:
+    """Manager for multiple RSS sources."""
+
+    def __init__(self, store: KnowledgeStore):
+        self.store = store
+        self.sources: List[RSSSource] = []
+
+    def add_source(self, source: RSSSource) -> None:
+        """Add an RSS source."""
+        self.sources.append(source)
+
+    async def ingest_all(self) -> dict:
+        """Ingest from all sources."""
+        results = {"total": 0, "created": 0, "failed": 0}
+
+        for source in self.sources:
+            try:
+                entities = await source.fetch()
+                for entity in entities:
+                    # Check if entity already exists
+                    existing = self.store.get(entity.id)
+                    if existing is None:
+                        self.store.create(entity)
+                        results["created"] += 1
+                    results["total"] += 1
+            except Exception as e:
+                print(f"Failed to ingest from {source.name}: {e}")
+                results["failed"] += 1
+
+        return results
