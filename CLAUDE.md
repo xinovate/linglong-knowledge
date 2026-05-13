@@ -17,8 +17,8 @@ Linglong 是一个**跨 Agent 知识中枢**。
 - v1.0 进行中：博客流水线端到端跑通（image assets 集成、Playwright 解析、YAML 配置）
 
 **你的任务**：
-1. 阅读本文档和 `docs/` 目录（尤其是 `PROJECT_OVERVIEW.md`、`modules.md`、`00-roadmap/v1.0.md`）
-2. 按 `docs/` 流程执行工作（roadmap → ADR → development → testing）
+1. 阅读本文档和 `docs/` 目录（尤其是 `PROJECT_OVERVIEW.md`、`roadmap.md`、`rules.md`）
+2. 按 `docs/` 流程执行工作（roadmap → architecture → rules → testing）
 3. 优先处理 `PROJECT_OVERVIEW.md` Next Actions 列表
 4. 确保测试通过
 
@@ -223,11 +223,12 @@ class NewsletterTemplate(BaseTemplate):
 
 ## 参考文档
 
-- [项目总览 / 单一真相源](docs/PROJECT_OVERVIEW.md)
+- [项目总览](docs/PROJECT_OVERVIEW.md)
 - [架构设计](docs/architecture.md)
-- [模块说明](docs/modules.md)
+- [开发规范](docs/rules.md)
+- [版本路线图](docs/roadmap.md)
 - [API 文档](docs/api.md)
-- [开发指南](docs/development.md)
+- 模块文档：[ingest](docs/ingest/) | [knowledge](docs/knowledge/) | [composer](docs/composer/) | [dispatch](docs/dispatch/)
 
 ---
 

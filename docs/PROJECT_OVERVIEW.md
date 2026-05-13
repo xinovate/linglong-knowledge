@@ -106,7 +106,7 @@ Codex ──────┘         ↓
 | 向量搜索增强（混合搜索/MMR/时间衰减） | 🟡 低 | 待实现 | v2.0 | 当前仅基础 cosine 相似度 |
 | `datetime.utcnow()` 已弃用 | 🟡 低 | 待修复 | v2.0 | Pydantic 和 store.py 多处使用，需替换为 timezone-aware |
 
-完整债务清单 → [30-development/tech-debt.md](30-development/tech-debt.md)
+完整债务清单 → [operations.md](operations.md)
 
 ---
 
@@ -127,7 +127,7 @@ Codex ──────┘         ↓
 按优先级排序：
 
 1. ✅ **v1.0 配图系统** — ImageAssetFetcher + ImageAssetSelector + PageImageResolver 已集成
-2. ✅ **v1.0 文档更新** — CLAUDE.md、README.md、modules.md、tech-debt 等已同步
+2. ✅ **v1.0 文档更新** — CLAUDE.md、README.md、docs 重组、tech-debt 等已同步
 3. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish
 
 **v2.0 延后项**（非阻塞）：
@@ -138,4 +138,4 @@ Codex ──────┘         ↓
 - 跨 Agent 写入冲突解决
 - API 冻结、mypy strict、datetime.utcnow() 修复
 
-详细计划 → [v1.0 路线图](00-roadmap/v1.0.md)
+详细计划 → [版本路线图](roadmap.md)

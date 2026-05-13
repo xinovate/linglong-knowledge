@@ -45,6 +45,41 @@ Linglong 是一个**跨 Agent 知识中枢**，采用模块化设计，支持从
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+### Mermaid 架构图
+
+```mermaid
+graph LR
+    A[信息获取<br/>ingest] --> B[知识沉淀<br/>knowledge]
+    B --> C[内容生产<br/>composer]
+    C --> D[多平台分发<br/>dispatch]
+
+    B -.->|跨 Agent 同步| E[OpenClaw]
+    B -.->|跨 Agent 同步| F[Claude Code]
+    B -.->|跨 Agent 同步| G[Codex]
+
+    H[core<br/>共享基础设施] --> A
+    H --> B
+    H --> C
+    H --> D
+```
+
+```mermaid
+graph TD
+    subgraph composer 流水线
+        A[KnowledgeStore] -->|search| B[IngestAdapter]
+        B --> C[DailyAggregator]
+        C --> D{distiller_use_llm?}
+        D -->|是| E[LLMDistiller]
+        D -->|否| F[规则聚合]
+        E --> G[BlogTemplate]
+        F --> G
+        G --> H{auto_publish?}
+        H -->|是| I[DispatchManager]
+        H -->|否| J[ComposerResult]
+        I --> J
+    end
+```
+
 ## 模块详解
 
 ### core（共享基础设施）
@@ -188,34 +223,40 @@ storage:
 
 ### 正常流程
 
-```
-ingest → knowledge → composer → dispatch
+```mermaid
+graph LR
+    A[ingest<br/>信息获取] --> B[knowledge<br/>知识沉淀]
+    B --> C[composer<br/>内容生产]
+    C --> D[dispatch<br/>多平台分发]
 ```
 
 ### 反馈流程
 
-```
-dispatch → 反馈数据 → knowledge（更新实体状态）
+```mermaid
+graph LR
+    A[dispatch] -->|反馈数据| B[knowledge<br/>更新实体状态]
 ```
 
 ### 审核流程
 
-```
-ingest → Review引擎 → [自动确认] → knowledge
-                ↓
-         [标记待审] → 人工确认 → knowledge
+```mermaid
+graph TD
+    A[ingest] --> B[Review 引擎]
+    B -->|高置信度| C[自动确认]
+    B -->|低置信度| D[标记待审]
+    B -->|敏感内容| D
+    C --> E[knowledge]
+    D --> F[人工确认]
+    F --> E
 ```
 
 ### 跨 Agent 同步流程
 
-```
-OpenClaw wiki/    ──→    Linglong Knowledge Store    ←──    Claude Code memory/
-    │                              │                              │
-    ▼                              ▼                              ▼
- concepts/                    /wiki/concepts/                  project/
- experiences/                 /wiki/experiences/               feedback/
- projects/                    /wiki/projects/                  user/
- user/                        /wiki/user/                      reference/
+```mermaid
+graph TD
+    A[OpenClaw wiki/] -->|OpenClawSyncAdapter| D[Linglong KnowledgeStore]
+    B[Claude Code memory/] -->|ClaudeCodeSyncAdapter| D
+    C[Codex CLI] -->|CodexSyncAdapter| D
 ```
 
 ## 模块间协作规则
@@ -328,8 +369,8 @@ services:
 
 ## 参考
 
-- [模块说明](modules.md)
+- [开发规范](rules.md)
 - [API 文档](api.md)
-- [开发指南](development.md)
-- [迁移指南](migration.md)
-- [v1.0 路线图](00-roadmap/v1.0.md)
+- [版本路线图](roadmap.md)
+- [测试策略](testing.md)
+- [运维与发布](operations.md)

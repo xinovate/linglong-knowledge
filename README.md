@@ -90,11 +90,11 @@ dispatch:
 ## 文档
 
 - [项目总览](docs/PROJECT_OVERVIEW.md) — 版本状态与 Next Actions
-- [架构设计](docs/architecture.md) — 系统架构
-- [模块说明](docs/modules.md) — 各模块详细设计
+- [架构设计](docs/architecture.md) — 系统架构与 Mermaid 流程图
+- [开发规范](docs/rules.md) — 代码风格、Git 工作流、Agent 协作
+- [版本路线图](docs/roadmap.md) — v0.1–v1.0 演进与 ADR
 - [API 文档](docs/api.md) — 公共接口
-- [开发指南](docs/development.md) — 本地开发
-- [v1.0 路线图](docs/00-roadmap/v1.0.md) — 当前版本目标
+- 模块文档：[ingest](docs/ingest/) | [knowledge](docs/knowledge/) | [composer](docs/composer/) | [dispatch](docs/dispatch/)
 
 ## License
 
