@@ -95,11 +95,11 @@ class ConfidenceScore(float):
 class EntityStatus(StrEnum):
     """Status of a knowledge entity."""
 
-    RAW = "raw"  # Just ingested
-    PENDING_REVIEW = "pending_review"  # Needs review
-    CONFIRMED = "confirmed"  # Human confirmed
-    AUTO_CONFIRMED = "auto_confirmed"  # High confidence auto-approved
-    REJECTED = "rejected"  # Rejected after review
+    RAW = "raw"  # 刚采集
+    PENDING_REVIEW = "pending_review"  # 待审核
+    CONFIRMED = "confirmed"  # 人工确认
+    AUTO_CONFIRMED = "auto_confirmed"  # 高置信度自动确认
+    REJECTED = "rejected"  # 审核后拒绝
 
 
 class Relation(BaseModel):
@@ -131,35 +131,35 @@ class Entity(BaseModel):
     content: str = Field(description="Markdown content")
     summary: str | None = Field(default=None, description="AI-generated summary for quick browsing")
 
-    # Authorship
+    # 作者信息
     created_by: AgentID = Field(description="Agent that created this entity")
     confirmed_by: HumanID | None = Field(
         default=None, description="Human who confirmed this entity"
     )
     confirmed_at: datetime | None = None
 
-    # Quality
+    # 质量
     confidence: ConfidenceScore = Field(default=0.5, description="AI confidence score")
     status: EntityStatus = Field(default=EntityStatus.RAW)
 
-    # Source tracking
+    # 来源追踪
     sources: list[Source] = Field(default_factory=list)
 
-    # Relations
+    # 关联关系
     relations: list[Relation] = Field(default_factory=list)
 
-    # Version history
+    # 版本历史
     versions: list[Version] = Field(default_factory=list)
     current_version: int = Field(default=1)
 
-    # Timestamps
+    # 时间戳
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Vector embedding (stored separately in sqlite-vec)
+    # 向量嵌入（单独存储在 sqlite-vec 中）
     embedding_id: str | None = None
 
-    # Additional metadata (e.g. frontmatter, wikilinks)
+    # 附加元数据（如 frontmatter、wikilinks）
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(
@@ -195,16 +195,16 @@ class Task(BaseModel):
     task_type: str  # "rss_fetch", "distill", "publish", etc.
     status: TaskStatus = TaskStatus.PENDING
 
-    # Scheduling
+    # 调度
     scheduled_at: datetime
     executed_at: datetime | None = None
     completed_at: datetime | None = None
 
-    # Context
-    entity_id: str | None = None  # Related entity (if any)
+    # 上下文
+    entity_id: str | None = None  # 关联实体（如有）
     params: dict[str, Any] = Field(default_factory=dict)
 
-    # Result
+    # 结果
     result: dict[str, Any] | None = None
     error: str | None = None
 

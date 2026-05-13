@@ -54,8 +54,11 @@ knowledge = [
 scrape = [
     "playwright>=1.40",
 ]
+oss = [
+    "oss2>=2.18",
+]
 all = [
-    "linglong[dev,ingest,knowledge,scrape]",
+    "linglong[dev,ingest,knowledge,scrape,oss]",
 ]
 
 [tool.hatch.build.targets.wheel]

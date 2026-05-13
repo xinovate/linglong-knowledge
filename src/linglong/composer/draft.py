@@ -89,20 +89,20 @@ class DraftManager:
         draft_dir = self.drafts_dir / draft_id
         draft_dir.mkdir(exist_ok=True)
 
-        # Write Markdown
+        # 写入 Markdown
         md_path = draft_dir / "article.md"
         md_path.write_text(content, encoding="utf-8")
 
-        # Save metadata
+        # 保存元数据
         meta_path = draft_dir / "metadata.json"
         meta_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
 
-        # Generate review summary
+        # 生成审核摘要
         review_content = self._build_review(metadata, fragment_hashes)
         review_path = draft_dir / "review.md"
         review_path.write_text(review_content, encoding="utf-8")
 
-        # Update state
+        # 更新状态
         state = self._load_state()
         entry = DraftEntry(
             id=draft_id,
@@ -243,7 +243,7 @@ class DraftManager:
 
         pub_metadata = metadata or self.read_draft_metadata(draft_id) or {}
 
-        # Update state
+        # 更新状态
         state = self._load_state()
         for d in state.get("drafts", []):
             if d["id"] == draft_id:
@@ -288,7 +288,7 @@ class DraftManager:
                 shutil.rmtree(draft_dir)
             logger.info(f"草稿已删除: {draft_id}")
 
-        # Update state
+        # 更新状态
         state = self._load_state()
         for d in state.get("drafts", []):
             if d["id"] == draft_id:

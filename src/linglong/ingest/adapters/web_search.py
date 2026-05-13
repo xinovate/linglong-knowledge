@@ -10,7 +10,7 @@ class WebSearchAdapter(SourceAdapter):
     adapter_type = "web_search"
 
     async def fetch(self) -> list[Entity]:
-        # Placeholder: actual search implementation requires
+        # 占位符：实际搜索实现需要
         # duckduckgo-search library or Bing CN scraping
         return []
 

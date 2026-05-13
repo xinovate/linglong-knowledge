@@ -12,10 +12,10 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# Pattern for tuchong image URLs
+# 图虫图片 URL 匹配模式
 _TUCHONG_IMAGE_PATTERN = re.compile(r"https://photo\.tuchong\.com/\d+/f/\d+\.jpg")
 
-# Captcha/WAF detection keywords
+# 验证码/WAF 检测关键词
 _CAPTCHA_KEYWORDS = ("captcha", "ttgcaptcha", "verify")
 
 
@@ -82,7 +82,7 @@ class PageImageResolver:
                     seen.add(img_url)
                     results.append(img_url)
 
-                # Random delay between pages
+                # 页面间随机延迟
                 if i < len(urls):
                     delay = random.uniform(*self.delay_range)
                     await asyncio.sleep(delay)
@@ -100,13 +100,13 @@ class PageImageResolver:
 
             html = await page.content()
 
-            # Captcha/WAF detection
+            # 验证码/WAF 检测
             html_lower = html.lower()
             if any(kw in html_lower for kw in _CAPTCHA_KEYWORDS):
                 logger.warning("Captcha/WAF detected, skipping: %s", url)
                 return None
 
-            # Extract image URLs
+            # 提取图片 URL
             images = _TUCHONG_IMAGE_PATTERN.findall(html)
             if not images:
                 logger.warning("No images found on page: %s", url)

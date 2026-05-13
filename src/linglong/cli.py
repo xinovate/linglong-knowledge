@@ -98,7 +98,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
         logger.error("Unknown source: %s", args.source)
         return 1
 
-    # Allow CLI override of path
+    # CLI 参数覆盖路径
     if args.path:
         path = Path(args.path)
     elif path is not None:

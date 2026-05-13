@@ -199,7 +199,7 @@ class Composer:
                     "sources": [s.model_dump() for s in image_cfg.sources],
                     "selection": image_cfg.selection.model_dump(),
                 })
-                # Build resolver for sources that need Playwright
+                # 构建 Playwright 解析器（如果源需要）
                 resolver = self._build_image_resolver(image_cfg.sources)
                 used_urls: list[str] = []
                 for usage in ("background", "article_image"):
@@ -209,16 +209,22 @@ class Composer:
                     source_urls = selector.select(usage, count=1)
                     if not source_urls:
                         continue
-                    # Resolve page URLs to image URLs if needed
+                    # 如果需要，将页面 URL 解析为图片 URL
                     resolved = self._resolve_image_urls(
                         source_urls, image_cfg.sources, resolver
                     )
                     if not resolved:
                         continue
                     fetcher = ImageAssetFetcher(spec)
-                    path = fetcher.fetch(resolved[0])
-                    if path:
-                        metadata[usage] = str(path)
+                    img_result = fetcher.fetch(resolved[0])
+                    if img_result:
+                        # 存储多尺寸路径 dict
+                        metadata[usage] = {
+                            name: str(p) for name, p in img_result.variants.items()
+                        }
+                        # background → background_image 映射（cover_image 用 medium）
+                        if usage == "background" and img_result.medium:
+                            metadata["background_image"] = str(img_result.medium)
                         used_urls.append(source_urls[0])
                 if used_urls:
                     selector.record_used(used_urls)

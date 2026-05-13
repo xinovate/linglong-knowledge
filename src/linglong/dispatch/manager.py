@@ -58,7 +58,29 @@ class DispatchManager:
 
         content = payload.get("content", "")
         metadata = payload.get("metadata", {})
+
+        # OSS upload: upload images and rewrite local paths to CDN URLs
+        if self.config.oss.enabled:
+            content, metadata = self._upload_to_oss(content, metadata)
+
         return publisher.publish(content, metadata)
+
+    def _upload_to_oss(
+        self, content: str, metadata: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
+        """Upload images to OSS and rewrite paths to CDN URLs."""
+        from linglong.dispatch.publishers.oss import OSSUploader
+
+        oss_conf = self.config.oss
+        uploader = OSSUploader({
+            "bucket_name": oss_conf.bucket_name,
+            "endpoint": oss_conf.endpoint,
+            "cdn_domain": oss_conf.cdn_domain,
+            "access_key_id": oss_conf.access_key_id,
+            "access_key_secret": oss_conf.access_key_secret,
+            "prefix": oss_conf.prefix,
+        })
+        return uploader.upload_and_rewrite(content, metadata)
 
     def health_check(self) -> dict[str, bool]:
         """Run health checks on all initialized publishers."""

@@ -10,7 +10,7 @@ from linglong.ingest.package import SourcePackage
 from linglong.ingest.rss import RSSIngestor, RSSSource
 from linglong.ingest.verification import TruthVerificationEngine
 
-# Register all built-in adapters
+# 注册所有内置适配器
 AdapterRegistry.register(RSSAdapter)
 AdapterRegistry.register(WebFetchAdapter)
 AdapterRegistry.register(WebSearchAdapter)

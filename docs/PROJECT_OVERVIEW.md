@@ -37,7 +37,7 @@ Codex ──────┘         ↓
 | v0.7 | composer 产品化 | 🟠 v2.0 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
 | v0.8 | **dispatch 正式化** | ✅ 已完成 | DispatchManager、LocalPublisher、HexoPublisher、集成测试 | 2026-05-12 |
 | v0.9 | 稳定化 | ✅ 已完成 | CLI 入口、全链路集成测试、composer→dispatch 流水线 | 2026-05-12 |
-| **v1.0** | **博客流水线** | 🟡 开发中 | 配图系统（背景图+文章配图）、多网站 URL 列表驱动、随机选择+去重 | — |
+| **v1.0** | **博客流水线** | 🟡 开发中 | 多尺寸响应式图片、OSS CDN 上传、URL 列表驱动、随机选择+去重 | — |
 | **v2.0** | **产品化** | 🔴 未开始 | WebSearchAdapter、发布队列与重试、多模板、AI 封面图、API 冻结 | — |
 
 ---
@@ -78,6 +78,11 @@ Codex ──────┘         ↓
 | Composer 自动发布（auto_publish → DispatchManager） | v0.8+ | ✅ | `be08313` | 2026-05-12 |
 | 全链路集成测试（ingest→knowledge→composer→dispatch） | v0.9 | ✅ | `b6281e6` | 2026-05-12 |
 | CLI 入口（linglong ingest/compose/publish/sync） | v0.9 | ✅ | `4ec1e16` | 2026-05-12 |
+| 多尺寸响应式图片（thumb/medium/large 变体生成） | v1.0 | ✅ | — | 2026-05-13 |
+| BlogTemplate 响应式 `<img srcset>` 输出 | v1.0 | ✅ | — | 2026-05-13 |
+| OSSUploader（阿里云 OSS 图片 CDN 上传） | v1.0 | ✅ | — | 2026-05-13 |
+| DispatchManager OSS 上传集成 | v1.0 | ✅ | — | 2026-05-13 |
+| background/background_image 命名一致性修复 | v1.0 | ✅ | — | 2026-05-13 |
 
 ---
 
@@ -88,8 +93,8 @@ Codex ──────┘         ↓
 | `core/` | ✅ 10 个 | — | — | ✅ |
 | `ingest/` | ✅ 20 个 | ✅ 1 个 | — | ✅ |
 | `knowledge/` | ✅ 36 个 | — | — | ✅ |
-| `composer/` | ✅ 53 个 | ✅ 1 个 | — | ✅ |
-| `dispatch/` | ✅ 8 个 | ✅ 1 个 | — | ✅ |
+| `composer/` | ✅ 63 个 | ✅ 1 个 | — | ✅ |
+| `dispatch/` | ✅ 20 个 | ✅ 1 个 | — | ✅ |
 | `integration/` | — | — | ✅ 1 个 | ✅ |
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
@@ -120,6 +125,8 @@ Codex ──────┘         ↓
 | `b6281e6` | test(integration): add end-to-end ingest→knowledge→composer→dispatch test | 2026-05-12 |
 | `be08313` | feat(composer): auto-publish dispatch-ready articles via DispatchManager | 2026-05-12 |
 
+> 本地未提交变更：多尺寸图片管线、OSS CDN 上传、响应式 HTML 输出、命名一致性修复
+
 ---
 
 ## 下一步（Next Actions）
@@ -127,8 +134,10 @@ Codex ──────┘         ↓
 按优先级排序：
 
 1. ✅ **v1.0 配图系统** — ImageAssetFetcher + ImageAssetSelector + PageImageResolver 已集成
-2. ✅ **v1.0 文档更新** — CLAUDE.md、README.md、docs 重组、tech-debt 等已同步
-3. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish
+2. ✅ **v1.0 多尺寸图片** — thumb/medium/large 变体生成 + 响应式 srcset 输出
+3. ✅ **v1.0 OSS CDN** — OSSUploader 阿里云图片上传 + CDN URL 替换
+4. ✅ **v1.0 文档更新** — CLAUDE.md、README.md、docs 重组、tech-debt 等已同步
+5. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish
 
 **v2.0 延后项**（非阻塞）：
 - WebSearchAdapter 实际搜索

@@ -45,7 +45,7 @@ class LocalPublisher(Publisher):
             try:
                 is_zip = content_path.exists() and content_path.suffix == ".zip"
             except OSError:
-                # Content is too long to be a valid path → treat as article
+                # 内容过长不是有效路径 → 视为文章
                 is_zip = False
             if is_zip:
                 # 图片包模式

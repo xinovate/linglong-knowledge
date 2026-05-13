@@ -46,10 +46,10 @@ class RSSSource:
 
     def _entry_to_entity(self, entry) -> Entity:
         """Convert RSS entry to knowledge entity."""
-        # Generate deterministic ID from URL
+        # 从 URL 生成确定性 ID
         entity_id = hashlib.sha256(entry.link.encode()).hexdigest()[:16]
 
-        # Build content
+        # 构建内容
         content = f"""# {entry.title}
 
 **Source:** [{self.name}]({entry.link})
@@ -58,7 +58,7 @@ class RSSSource:
 {getattr(entry, 'summary', '')}
 """
 
-        # Extract tags if available
+        # 提取标签（如有）
         tags = []
         if hasattr(entry, "tags"):
             tags = [tag.term for tag in entry.tags]
@@ -103,7 +103,7 @@ class RSSIngestor:
             try:
                 entities = await source.fetch()
                 for entity in entities:
-                    # Check if entity already exists
+                    # 检查实体是否已存在
                     existing = self.store.get(entity.id)
                     if existing is None:
                         self.store.create(entity)

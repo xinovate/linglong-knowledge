@@ -26,6 +26,14 @@ class ImageAssetSpecConfig(BaseModel):
     output_dir: str = Field(
         default="~/linglong/images", description="Output directory for processed images"
     )
+    variants: dict[str, int] = Field(
+        default_factory=lambda: {
+            "thumb": 400,
+            "medium": 800,
+            "large": 1200,
+        },
+        description="Image size variants: name → max width in pixels",
+    )
 
 
 class ImageAssetSourceConfig(BaseModel):
@@ -89,7 +97,7 @@ class ComposerConfig(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="LL_COMPOSER_")
 
-    # LLM settings
+    # LLM 设置
     llm_provider: str = Field(default="openai", description="LLM provider")
     llm_model: str = Field(default="gpt-4", description="LLM model name")
     llm_api_key: str | None = Field(default=None, description="LLM API key")
@@ -97,29 +105,29 @@ class ComposerConfig(BaseSettings):
     llm_temperature: float = Field(default=0.7, description="LLM temperature")
     llm_max_tokens: int = Field(default=4096, description="LLM max tokens")
 
-    # Distiller settings
+    # 提炼器设置
     distiller_use_llm: bool = Field(default=False, description="Use LLM distiller")
     distiller_theme_threshold: float = Field(
         default=0.7, description="Theme grouping similarity threshold"
     )
     distiller_max_themes: int = Field(default=5, description="Max themes per aggregation")
 
-    # Asset settings
+    # 资产设置
     assets_excerpt_length: int = Field(default=200, description="Excerpt length")
     assets_cover_enabled: bool = Field(default=False, description="Enable cover generation")
     image_assets: ImageAssetConfig = Field(
         default_factory=ImageAssetConfig, description="Image asset fetching configuration"
     )
 
-    # Template settings
+    # 模板设置
     template_name: str = Field(default="blog", description="Default template")
 
-    # Draft settings
+    # 草稿设置
     drafts_dir: Path = Field(
         default=Path.home() / "linglong" / "data" / "drafts", description="Drafts directory"
     )
 
-    # Dispatch settings
+    # 分发设置
     auto_publish: bool = Field(
         default=False, description="Auto-publish dispatch-ready articles via DispatchManager"
     )
@@ -156,7 +164,7 @@ class KnowledgeConfig(BaseSettings):
         default=True, description="Auto-generate embeddings on entity create/update"
     )
 
-    # Review engine settings
+    # 审核引擎设置
     review_high_confidence_threshold: float = Field(
         default=0.9, description="High confidence threshold for auto-confirm"
     )
@@ -175,12 +183,12 @@ class KnowledgeConfig(BaseSettings):
         description="Sensitive content categories to flag",
     )
 
-    # Sync adapter confidence
+    # 同步适配器置信度
     sync_confidence: float = Field(
         default=0.95, description="Default confidence for synced entities"
     )
 
-    # Sync source paths
+    # 同步源路径
     openclaw_wiki_path: Path | None = Field(
         default=None, description="Path to OpenClaw wiki directory"
     )
@@ -216,7 +224,7 @@ class IngestConfig(BaseSettings):
         description="Default truth verification settings",
     )
 
-    # Verification engine layer weights (must sum to 1.0)
+    # 验证引擎层权重（总和必须为 1.0）
     verification_weights: dict[str, float] = Field(
         default_factory=lambda: {
             "cross_reference": 0.25,
@@ -237,12 +245,12 @@ class IngestConfig(BaseSettings):
         default=500_000, description="Suspicious GitHub star count threshold"
     )
 
-    # Source adapter timeouts (seconds)
+    # 源适配器超时（秒）
     rss_timeout: float = Field(default=30.0, description="RSS fetch timeout")
     web_fetch_timeout: float = Field(default=10.0, description="Web fetch timeout")
     api_timeout: float = Field(default=10.0, description="API request timeout")
 
-    # Default confidence values by source type
+    # 各来源类型默认置信度
     default_confidence: dict[str, float] = Field(
         default_factory=lambda: {
             "rss": 0.7,
@@ -252,6 +260,24 @@ class IngestConfig(BaseSettings):
         },
         description="Default confidence by source type",
     )
+
+
+class OSSConfig(BaseModel):
+    """Alibaba Cloud OSS configuration for image CDN."""
+
+    enabled: bool = Field(default=False, description="Enable OSS image upload")
+    bucket_name: str = Field(default="", description="OSS bucket name")
+    endpoint: str = Field(default="", description="OSS endpoint (e.g. oss-cn-hangzhou.aliyuncs.com)")
+    cdn_domain: str = Field(default="", description="CDN domain for image URLs")
+    access_key_id: str = Field(
+        default="",
+        description="OSS access key ID (prefer LL_OSS_ACCESS_KEY_ID env var)",
+    )
+    access_key_secret: str = Field(
+        default="",
+        description="OSS access key secret (prefer LL_OSS_ACCESS_KEY_SECRET env var)",
+    )
+    prefix: str = Field(default="images/", description="Object key prefix in OSS bucket")
 
 
 class DispatchConfig(BaseSettings):
@@ -288,7 +314,7 @@ class DispatchConfig(BaseSettings):
         description="Publisher configurations",
     )
 
-    # Hexo publisher hardcoded defaults
+    # Hexo 发布器默认值
     hexo_site_url: str = Field(
         default="https://www.linglong.wiki", description="Hexo site base URL"
     )
@@ -296,6 +322,9 @@ class DispatchConfig(BaseSettings):
         default=None,
         description="Custom SSH deploy command (None uses default git workflow)",
     )
+
+    # OSS image CDN
+    oss: OSSConfig = Field(default_factory=OSSConfig, description="OSS image CDN configuration")
 
 
 class LinglongConfig(BaseSettings):
@@ -307,17 +336,17 @@ class LinglongConfig(BaseSettings):
         env_file_encoding="utf-8",
     )
 
-    # General
+    # 通用
     debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
 
-    # Module configs
+    # 模块配置
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
     ingest: IngestConfig = Field(default_factory=IngestConfig)
     composer: ComposerConfig = Field(default_factory=ComposerConfig)
     dispatch: DispatchConfig = Field(default_factory=DispatchConfig)
 
-    # Paths
+    # 路径
     data_dir: Path = Field(
         default=Path.home() / "linglong" / "data", description="Data directory"
     )
@@ -329,13 +358,13 @@ class LinglongConfig(BaseSettings):
         self.knowledge.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.composer.drafts_dir.mkdir(parents=True, exist_ok=True)
         (Path.home() / "linglong" / "state").mkdir(parents=True, exist_ok=True)
-        # Image asset output directories
+        # 图片资产输出目录
         if self.composer.image_assets.enabled:
             for spec in self.composer.image_assets.specs.values():
                 Path(spec.output_dir).expanduser().mkdir(parents=True, exist_ok=True)
 
 
-# Global config instance
+# 全局配置实例
 _config: LinglongConfig | None = None
 
 

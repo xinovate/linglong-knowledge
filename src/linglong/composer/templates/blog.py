@@ -62,12 +62,18 @@ class BlogTemplate(Template):
         if not intro_pattern.search(content):
             warnings.append("缺少引言（> 一句话概括）")
 
-        # 5. 检查图片 alt 文本
+        # 5. 检查图片 alt 文本（markdown 格式 和 HTML img 格式）
         img_pattern = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
         for match in img_pattern.finditer(content):
             alt_text = match.group(1)
             if not alt_text.strip():
                 warnings.append(f"图片缺少 alt 文本: {match.group(2)}")
+
+        html_img_pattern = re.compile(r'<img\s[^>]*?alt="([^"]*?)"')
+        for match in html_img_pattern.finditer(content):
+            alt_text = match.group(1)
+            if not alt_text.strip():
+                warnings.append("HTML img 标签缺少 alt 文本")
 
         return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
 
@@ -78,7 +84,7 @@ class BlogTemplate(Template):
         Args:
             content: 原始 Markdown 内容
             metadata: 必需字段: title, date, tags, categories
-                     可选字段: excerpt, cover_image
+                     可选字段: excerpt, cover_image, article_image
         """
         # 构建 frontmatter
         frontmatter = self._build_frontmatter(metadata)
@@ -86,10 +92,9 @@ class BlogTemplate(Template):
         # 确保有引言
         body = self._ensure_intro(content, metadata.get("excerpt", ""))
 
-        # Insert article image after intro blockquote
+        # 插入文章配图
         if "article_image" in metadata and metadata["article_image"]:
-            img_path = metadata["article_image"]
-            body = self._insert_article_image(body, img_path)
+            body = self._insert_article_image(body, metadata["article_image"])
 
         # 确保有 <!-- more -->
         body = self._ensure_more_tag(body)
@@ -125,11 +130,11 @@ class BlogTemplate(Template):
             frontmatter["excerpt"] = metadata["excerpt"]
 
         if "cover_image" in metadata:
-            frontmatter["cover_image"] = metadata["cover_image"]
+            frontmatter["cover_image"] = self._resolve_image_value(metadata["cover_image"])
 
         # background_image → cover_image (from image asset pipeline)
         if "background_image" in metadata:
-            frontmatter["cover_image"] = metadata["background_image"]
+            frontmatter["cover_image"] = self._resolve_image_value(metadata["background_image"])
 
         yaml_str = yaml.dump(
             frontmatter,
@@ -138,6 +143,15 @@ class BlogTemplate(Template):
             default_flow_style=False,
         )
         return f"---\n{yaml_str}---"
+
+    def _resolve_image_value(self, value: Any) -> str:
+        """Extract a single image path from value (str or dict of variants).
+
+        For dicts, returns the "medium" variant (good balance of quality/size).
+        """
+        if isinstance(value, dict):
+            return value.get("medium", value.get("large", value.get("thumb", "")))
+        return str(value)
 
     def _ensure_intro(self, content: str, excerpt: str) -> str:
         """确保内容有引言"""
@@ -174,21 +188,57 @@ class BlogTemplate(Template):
 
         return content + "\n\n<!-- more -->"
 
-    def _insert_article_image(self, content: str, image_path: str) -> str:
-        """Insert article image after the intro blockquote."""
+    def _insert_article_image(self, content: str, image_data: Any) -> str:
+        """在引言区块后插入文章配图。
+
+        Args:
+            content: Markdown 正文
+            image_data: 字符串（单路径）或 dict（多尺寸变体 {name: path}）
+        """
         lines = content.split("\n")
-        # Find the end of the intro blockquote (lines starting with >)
+        # 找到引言区块结束位置（以 > 开头的行）
         insert_idx = 0
         for i, line in enumerate(lines):
             if line.strip().startswith(">"):
                 insert_idx = i + 1
             elif insert_idx > 0:
-                # First non-blockquote line after blockquote
+                # 引言后的第一个非引言行
                 insert_idx = i
                 break
         else:
             insert_idx = len(lines)
 
-        img_markdown = f"\n![配图]({image_path})\n"
-        lines.insert(insert_idx, img_markdown)
+        # 根据数据类型生成图片标记
+        if isinstance(image_data, dict):
+            # 多尺寸变体 → 响应式 <img srcset>
+            img_html = self._build_responsive_img(image_data)
+        else:
+            # 单路径 → 标准 markdown 图片
+            img_html = f"\n![配图]({image_data})\n"
+
+        lines.insert(insert_idx, img_html)
         return "\n".join(lines)
+
+    def _build_responsive_img(self, variants: dict[str, str]) -> str:
+        """从多尺寸变体构建带 srcset 的响应式 <img> 标签。
+
+        Args:
+            variants: {尺寸名: 文件路径}，如 {"thumb": "/path/400.jpg", ...}
+        """
+        # 构建 srcset 条目："path 400w, path 800w, path 1200w"
+        size_map = {"thumb": 400, "medium": 800, "large": 1200}
+        srcset_parts = []
+        for name, width in size_map.items():
+            if name in variants:
+                srcset_parts.append(f"{variants[name]} {width}w")
+
+        # 默认 src 使用 medium（兜底选最大可用）
+        src = variants.get("medium", variants.get("large", variants.get("thumb", "")))
+
+        srcset = ", ".join(srcset_parts)
+        sizes = "(max-width: 600px) 400px, (max-width: 1000px) 800px, 1200px"
+
+        return (
+            f'\n<img src="{src}" srcset="{srcset}" sizes="{sizes}" '
+            f'loading="lazy" alt="配图" />\n'
+        )

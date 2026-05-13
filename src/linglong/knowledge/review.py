@@ -56,7 +56,7 @@ class ReviewEngine:
         cfg = self._config
         trusted = set(cfg.review_trusted_sources)
 
-        # Rule 1: High confidence + trusted source = auto confirm
+        # 规则 1：高置信度 + 可信来源 → 自动确认
         self.rules.append(
             Rule(
                 name="high_confidence_trusted",
@@ -69,7 +69,7 @@ class ReviewEngine:
             )
         )
 
-        # Rule 2: Low confidence = flag for review
+        # 规则 2：低置信度 → 标记待审核
         self.rules.append(
             Rule(
                 name="low_confidence",
@@ -79,7 +79,7 @@ class ReviewEngine:
             )
         )
 
-        # Rule 3: Sensitive content = require human confirm
+        # 规则 3：敏感内容 → 需要人工确认
         self.rules.append(
             Rule(
                 name="sensitive_content",
@@ -89,7 +89,7 @@ class ReviewEngine:
             )
         )
 
-        # Rule 4: Very short content = flag
+        # 规则 4：内容过短 → 标记待审核
         self.rules.append(
             Rule(
                 name="too_short",
@@ -99,7 +99,7 @@ class ReviewEngine:
             )
         )
 
-        # Sort by priority (highest first)
+        # 按优先级排序（高优先）
         self.rules.sort(key=lambda r: r.priority, reverse=True)
 
     def review(self, entity: Entity) -> Entity:
@@ -110,7 +110,7 @@ class ReviewEngine:
                 entity = self._apply_action(entity, action, rule.name)
                 break
         else:
-            # No rule matched, keep as pending
+            # 无规则匹配，保持待审核
             entity.status = EntityStatus.PENDING_REVIEW
 
         return entity
@@ -123,7 +123,7 @@ class ReviewEngine:
             entity.status = EntityStatus.PENDING_REVIEW
         elif action == Action.REQUIRE_HUMAN_CONFIRM:
             entity.status = EntityStatus.PENDING_REVIEW
-            # Add metadata indicating human confirmation required
+            # 添加元数据标记需要人工确认
             entity.sources.append(
                 type(
                     "Source",
@@ -143,12 +143,12 @@ class ReviewEngine:
         """Check if entity contains sensitive information."""
         content_lower = entity.content.lower()
 
-        # Check for sensitive keywords
+        # 检查敏感关键词
         for category in self._config.review_sensitive_categories:
             if category in content_lower:
                 return True
 
-        # Check for potential passwords/secrets
+        # 检查可能的密码/密钥
         if re.search(r"password\s*[:=]\s*\S+", content_lower):
             return True
         if re.search(r"api[_-]?key\s*[:=]\s*\S+", content_lower):

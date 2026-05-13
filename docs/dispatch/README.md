@@ -2,6 +2,7 @@
 
 ## 职责
 
+- **图片 CDN 上传**：发布前将本地图片上传到阿里云 OSS，替换为 CDN URL
 - **内容路由**：根据内容类型自动分发到不同平台
 - **发布队列**：待发布 / 发布中 / 已发布 / 失败（可重试）
 - **反馈收集**：阅读量、点赞、评论回流到 knowledge
@@ -11,7 +12,10 @@
 ```mermaid
 graph TD
     A[ComposerResult<br/>dispatch_ready=True] --> B[DispatchManager]
-    B --> C{publisher?}
+    B --> O{OSS 启用?}
+    O -->|是| P[OSSUploader<br/>上传图片 + URL 替换]
+    O -->|否| C
+    P --> C{publisher?}
     C -->|hexo| D[HexoPublisher<br/>Git Workflow]
     C -->|local| E[LocalPublisher<br/>文件输出]
     D --> F[hexo generate]
@@ -24,10 +28,63 @@ graph TD
 
 | 组件 | 路径 | 说明 |
 |------|------|------|
-| `DispatchManager` | `dispatch/manager.py` | 分发编排器 |
+| `DispatchManager` | `dispatch/manager.py` | 分发编排器，含 OSS 上传集成 |
 | `BasePublisher` | `dispatch/publishers/base.py` | 发布器基类 |
 | `HexoPublisher` | `dispatch/publishers/hexo.py` | Hexo 博客发布（Git Workflow） |
 | `LocalPublisher` | `dispatch/publishers/local.py` | 本地文件输出 |
+| `OSSUploader` | `dispatch/publishers/oss.py` | 阿里云 OSS 图片上传 + CDN URL 替换 |
+
+## OSS 图片 CDN
+
+发布前自动将文章中的本地图片路径上传到 OSS 并替换为 CDN URL。
+
+### 工作流程
+
+1. 遍历 metadata 中的图片路径（background、article_image 等）
+2. 支持 dict 多尺寸变体和 str 单路径两种格式
+3. 上传每个文件到 OSS bucket
+4. 替换 content 和 metadata 中的本地路径为 CDN URL
+5. 相同路径自动去重，只上传一次
+
+### 依赖
+
+```bash
+pip install oss2
+```
+
+或安装可选依赖组：
+
+```bash
+pip install -e ".[oss]"
+```
+
+### 配置
+
+```yaml
+# .linglong.yaml
+dispatch:
+  oss:
+    enabled: true
+    bucket_name: linglong-blog
+    endpoint: oss-cn-zhangjiakou.aliyuncs.com
+    cdn_domain: linglong-blog.oss-cn-zhangjiakou.aliyuncs.com
+    access_key_id: ""            # 建议用环境变量 LL_OSS_ACCESS_KEY_ID
+    access_key_secret: ""        # 建议用环境变量 LL_OSS_ACCESS_KEY_SECRET
+    prefix: images/              # OSS 对象前缀
+```
+
+密钥推荐通过环境变量注入：
+
+```bash
+export LL_OSS_ACCESS_KEY_ID=xxx
+export LL_OSS_ACCESS_KEY_SECRET=xxx
+```
+
+### 阿里云 OSS Bucket 配置
+
+1. 创建 Bucket（如 `linglong-blog`）
+2. **权限控制 → 阻止公共访问** → 关闭所有开关
+3. **权限控制 → 读写权限** → Bucket ACL 设为「公共读」
 
 ## HexoPublisher 工作流
 
@@ -81,3 +138,4 @@ dispatch:
 ## 相关文档
 
 - [博客写作风格指南](blog-style.md)
+- [图片资产系统](../composer/image-assets.md)

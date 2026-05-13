@@ -49,7 +49,7 @@ class ImageAssetSelector:
             logger.warning("No URLs available for usage: %s", usage)
             return []
 
-        # Dedup: exclude recently used
+        # 去重：排除最近使用过的
         recent = self._recent_urls()
         available = [u for u in all_urls if u not in recent]
         if not available:
@@ -107,7 +107,7 @@ class ImageAssetSelector:
                 if not line:
                     continue
 
-                # Multi-line format: tag line starts with # (but not a URL with #anchor)
+                # 多行格式：标签行以 # 开头（排除 URL 中的 #anchor）
                 if line.startswith("#") and not line.startswith("# http"):
                     tag_line = line.lstrip("#").strip()
                     current_tag, current_usage = self._parse_tag_line(
@@ -120,13 +120,13 @@ class ImageAssetSelector:
                 usage = default_usage
                 tags: list[str] = []
 
-                # Check for inline format: URL # tags [usage]
+                # 检查行内格式：URL # tags [usage]
                 if "#" in url:
                     parts = url.split("#", 1)
                     url = parts[0].strip()
                     if len(parts) > 1:
                         comment = parts[1].strip()
-                        # Check for usage marker at end
+                        # 检查末尾的用途标记
                         if "[" in comment and comment.endswith("]"):
                             bracket_start = comment.rfind("[")
                             usage_tag = comment[bracket_start + 1 : -1].strip().lower()
@@ -139,12 +139,12 @@ class ImageAssetSelector:
                 if not url.startswith("http"):
                     continue
 
-                # Multi-line format: inherit tag and usage from previous tag line
+                # 多行格式：继承上一个标签行的 tag 和 usage
                 if not tags and current_tag:
                     tags = [current_tag]
                     usage = current_usage
 
-                # Filter by target usage
+                # 按目标用途过滤
                 if usage == "both" or usage == target_usage:
                     urls.append(url)
         except Exception as e:

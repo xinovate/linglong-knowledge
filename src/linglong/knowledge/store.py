@@ -36,7 +36,7 @@ class KnowledgeStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(self.db_path) as conn:
-            # Entities table
+            # 实体表
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS entities (
                     id TEXT PRIMARY KEY,
@@ -58,7 +58,7 @@ class KnowledgeStore:
                 )
             """)
 
-            # Vector virtual table (sqlite-vec)
+            # 向量虚拟表（sqlite-vec）
             if self.config.vector_enabled:
                 try:
                     if hasattr(conn, "enable_load_extension"):
@@ -118,10 +118,10 @@ class KnowledgeStore:
         entity.created_at = entity.created_at or datetime.utcnow()
         entity.updated_at = entity.updated_at or entity.created_at
 
-        # Save to filesystem
+        # 保存到文件系统
         self._save_to_filesystem(entity)
 
-        # Save to SQLite
+        # 保存到 SQLite
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """
@@ -152,10 +152,10 @@ class KnowledgeStore:
             )
             conn.commit()
 
-        # Generate embedding after entity is persisted
+        # 实体持久化后生成嵌入向量
         self._generate_and_store_embedding(entity)
 
-        # Update embedding_id if embedding was generated
+        # 如果生成了嵌入，更新 embedding_id
         if entity.embedding_id:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
@@ -237,7 +237,7 @@ class KnowledgeStore:
             sqlite_vec.load(conn)
             conn.row_factory = sqlite3.Row
 
-            # Build base query with optional status filter
+            # 构建带可选状态过滤的基础查询
             conditions = []
             params: list = [json.dumps(query_embedding), limit]
 
@@ -265,10 +265,10 @@ class KnowledgeStore:
         """Update an existing entity."""
         entity.updated_at = datetime.utcnow()
 
-        # Update filesystem
+        # 更新文件系统
         self._save_to_filesystem(entity)
 
-        # Update SQLite
+        # 更新 SQLite
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """
@@ -307,7 +307,7 @@ class KnowledgeStore:
             )
             conn.commit()
 
-        # Regenerate embedding if content changed and vector search is available
+        # 如果内容变更且向量搜索可用，重新生成嵌入
         if self._vector_available and self.config.generate_embeddings:
             old_entity = self.get(entity.id)
             if old_entity is None or old_entity.content != entity.content:
@@ -316,7 +316,7 @@ class KnowledgeStore:
                         self._delete_embedding(conn, entity.embedding_id)
                         conn.commit()
                 self._generate_and_store_embedding(entity)
-                # Re-update embedding_id in entities table
+                # 重新更新 entities 表中的 embedding_id
                 with sqlite3.connect(self.db_path) as conn:
                     conn.execute(
                         "UPDATE entities SET embedding_id = ? WHERE id = ?",
@@ -328,7 +328,7 @@ class KnowledgeStore:
 
     def delete(self, entity_id: str) -> bool:
         """Delete an entity."""
-        # Get embedding_id before deleting
+        # 删除前获取 embedding_id
         embedding_id = None
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
@@ -337,18 +337,18 @@ class KnowledgeStore:
             if row:
                 embedding_id = row[0]
 
-        # Delete from filesystem
+        # 从文件系统删除
         entity_path = self._get_entity_path(entity_id)
         if entity_path.exists():
             entity_path.unlink()
 
-        # Delete from SQLite
+        # 从 SQLite 删除
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
             conn.commit()
             deleted = cursor.rowcount > 0
 
-        # Delete embedding if vector search is available
+        # 删除嵌入向量（如果向量搜索可用）
         if deleted and embedding_id and self._vector_available:
             with sqlite3.connect(self.db_path) as conn:
                 self._delete_embedding(conn, embedding_id)
@@ -361,7 +361,7 @@ class KnowledgeStore:
         entity_path = self._get_entity_path(entity.id)
         entity_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Build frontmatter
+        # 构建 frontmatter
         frontmatter = {
             "id": entity.id,
             "created_by": entity.created_by,
@@ -372,7 +372,7 @@ class KnowledgeStore:
             "updated_at": entity.updated_at.isoformat(),
         }
 
-        # Write markdown with YAML frontmatter
+        # 写入带 YAML frontmatter 的 markdown
         content = f"""---
 {json.dumps(frontmatter, indent=2, ensure_ascii=False)}
 ---
@@ -383,7 +383,7 @@ class KnowledgeStore:
 
     def _get_entity_path(self, entity_id: str) -> Path:
         """Get filesystem path for an entity."""
-        # Use first 2 chars as subdirectory for distribution
+        # 使用前 2 个字符作为子目录以分散存储
         return self.wiki_path / entity_id[:2] / f"{entity_id}.md"
 
     def _row_to_entity(self, row: sqlite3.Row) -> Entity:

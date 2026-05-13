@@ -32,7 +32,7 @@ class VerificationConfig:
     numeric_ranges: dict[str, tuple[float, float]] = field(default_factory=dict)
     custom_validators: list[Callable[[Entity], tuple[bool, str]]] = field(default_factory=list)
 
-    # Layer weights (must sum to 1.0)
+    # 层权重（总和必须为 1.0）
     layer_weights: dict[str, float] = field(
         default_factory=lambda: {
             "cross_reference": 0.25,
@@ -79,7 +79,7 @@ class TruthVerificationEngine:
 
         w = self.config.layer_weights
 
-        # Layer 1: Cross-reference
+        # 第 1 层：交叉验证
         sig = self._content_signature(entity)
         ref_count = len(signature_index.get(sig, []))
         cross_ref_pass = ref_count >= self.config.cross_reference_min
@@ -89,7 +89,7 @@ class TruthVerificationEngine:
         else:
             reasons.append(f"Only {ref_count} source(s) for this event")
 
-        # Layer 2: Numeric reasonableness
+        # 第 2 层：数值合理性
         numeric_pass, numeric_reason = self._check_numeric_sanity(entity)
         checks["numeric_sanity"] = numeric_pass
         if numeric_pass:
@@ -97,7 +97,7 @@ class TruthVerificationEngine:
         elif numeric_reason:
             reasons.append(numeric_reason)
 
-        # Layer 3: Time validity
+        # 第 3 层：时效性
         time_pass, time_reason = self._check_time_validity(entity)
         checks["time_validity"] = time_pass
         if time_pass:
@@ -105,12 +105,12 @@ class TruthVerificationEngine:
         elif time_reason:
             reasons.append(time_reason)
 
-        # Layer 4: Source authority
+        # 第 4 层：来源权威性
         authority_score = self._compute_authority_score(entity)
         checks["source_authority"] = authority_score >= 0.5
         score += authority_score * w.get("source_authority", 0.2)
 
-        # Layer 5: Common sense
+        # 第 5 层：常识判断
         common_pass, common_reason = self._check_common_sense(entity)
         checks["common_sense"] = common_pass
         if common_pass:
@@ -118,7 +118,7 @@ class TruthVerificationEngine:
         elif common_reason:
             reasons.append(common_reason)
 
-        # Custom validators
+        # 自定义验证器
         for validator in self.config.custom_validators:
             ok, reason = validator(entity)
             if not ok and reason:
