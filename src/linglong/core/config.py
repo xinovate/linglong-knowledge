@@ -1,10 +1,87 @@
 """Configuration management for Linglong."""
 
+import logging
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field
+import yaml
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
+
+# YAML 配置文件搜索路径（CWD 优先，home 目录兜底）
+_YAML_SEARCH_PATHS = [
+    Path(".linglong.yaml"),
+    Path.home() / ".linglong" / "config.yaml",
+]
+
+
+class ImageAssetSpecConfig(BaseModel):
+    """Image asset specification (size, quality, output)."""
+
+    min_width: int = Field(default=800, description="Minimum image width in pixels")
+    min_height: int = Field(default=600, description="Minimum image height in pixels")
+    quality: int = Field(default=85, description="JPEG compression quality (1-100)")
+    output_dir: str = Field(
+        default="~/linglong/images", description="Output directory for processed images"
+    )
+
+
+class ImageAssetSourceConfig(BaseModel):
+    """Image source configuration (URL list file)."""
+
+    name: str = Field(description="Source name (e.g. tuchong, unsplash)")
+    url_file: str = Field(description="Path to URL list file")
+    headers: dict[str, str] = Field(
+        default_factory=lambda: {"User-Agent": "Mozilla/5.0", "Referer": "https://tuchong.com/"},
+        description="HTTP headers for downloading",
+    )
+    default_usage: str = Field(
+        default="both",
+        description="Default usage when not marked in URL file: background, article_image, or both",
+    )
+    resolve_via: str = Field(
+        default="direct",
+        description="URL resolution method: direct (image URLs) or playwright (page URLs needing browser)",
+    )
+    headless: bool = Field(default=True, description="Playwright headless mode")
+    delay_range: list[int] = Field(
+        default=[3, 8], description="Random delay range in seconds between page visits"
+    )
+    max_count: int = Field(default=50, description="Max URLs to resolve per run")
+
+
+class ImageAssetSelectionConfig(BaseModel):
+    """Image selection strategy configuration."""
+
+    strategy: str = Field(default="random", description="Selection strategy: random")
+    dedup_days: int = Field(default=30, description="Days to remember used URLs for dedup")
+
+
+class ImageAssetConfig(BaseModel):
+    """Top-level image asset configuration for Composer."""
+
+    enabled: bool = Field(default=False, description="Enable image asset fetching")
+    specs: dict[str, ImageAssetSpecConfig] = Field(
+        default_factory=lambda: {
+            "background": ImageAssetSpecConfig(
+                min_width=1920, min_height=1080, quality=90,
+                output_dir="~/linglong/images/backgrounds",
+            ),
+            "article_image": ImageAssetSpecConfig(
+                min_width=800, min_height=600, quality=85,
+                output_dir="~/linglong/images/articles",
+            ),
+        },
+        description="Image specifications keyed by usage (background, article_image)",
+    )
+    sources: list[ImageAssetSourceConfig] = Field(
+        default_factory=list, description="Image source configurations"
+    )
+    selection: ImageAssetSelectionConfig = Field(
+        default_factory=ImageAssetSelectionConfig, description="Selection strategy"
+    )
 
 
 class ComposerConfig(BaseSettings):
@@ -30,6 +107,9 @@ class ComposerConfig(BaseSettings):
     # Asset settings
     assets_excerpt_length: int = Field(default=200, description="Excerpt length")
     assets_cover_enabled: bool = Field(default=False, description="Enable cover generation")
+    image_assets: ImageAssetConfig = Field(
+        default_factory=ImageAssetConfig, description="Image asset fetching configuration"
+    )
 
     # Template settings
     template_name: str = Field(default="blog", description="Default template")
@@ -249,17 +329,47 @@ class LinglongConfig(BaseSettings):
         self.knowledge.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.composer.drafts_dir.mkdir(parents=True, exist_ok=True)
         (Path.home() / "linglong" / "state").mkdir(parents=True, exist_ok=True)
+        # Image asset output directories
+        if self.composer.image_assets.enabled:
+            for spec in self.composer.image_assets.specs.values():
+                Path(spec.output_dir).expanduser().mkdir(parents=True, exist_ok=True)
 
 
 # Global config instance
 _config: LinglongConfig | None = None
 
 
+def _find_yaml_config() -> Path | None:
+    """搜索 .linglong.yaml 配置文件，返回找到的第一个路径。"""
+    for p in _YAML_SEARCH_PATHS:
+        if p.exists():
+            return p
+    return None
+
+
+def _load_yaml_to_config(yaml_path: Path) -> LinglongConfig:
+    """从 YAML 文件构造 LinglongConfig。
+
+    YAML 值作为 init 参数传入（Pydantic 优先级最高），
+    未在 YAML 中指定的字段回退到环境变量/默认值。
+    """
+    data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+    return LinglongConfig(**data)
+
+
 def get_config() -> LinglongConfig:
-    """Get or create global configuration."""
+    """Get or create global configuration.
+
+    搜索顺序：.linglong.yaml (CWD) → ~/.linglong/config.yaml → 纯 env/默认值
+    """
     global _config
     if _config is None:
-        _config = LinglongConfig()
+        yaml_path = _find_yaml_config()
+        if yaml_path:
+            logger.info("Loading config from: %s", yaml_path)
+            _config = _load_yaml_to_config(yaml_path)
+        else:
+            _config = LinglongConfig()
         _config.ensure_directories()
     return _config
 

@@ -33,11 +33,12 @@ Codex ──────┘         ↓
 | v0.3 | 人工审核层 | ✅ 已完成 | Draft Mode、Git Workflow Publisher、frontmatter YAML list | 2026-05-12 |
 | v0.4 | **知识库统一** | ✅ 已完成 | OpenClaw/Claude Code/Codex 同步、向量搜索落地 | 2026-05-12 |
 | v0.5 | **ingest 通用化** | ✅ 已完成 | SourceAdapter、SourcePackage YAML、TruthVerificationEngine、PackageExecutor | 2026-05-12 |
-| v0.6 | **多 Agent 接入** | 🟡 部分完成 | Codex 已接入，冲突解决与自动同步待完善 | — |
-| v0.7 | composer 产品化 | 🔴 未开始 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
+| v0.6 | **多 Agent 接入** | ✅ 已完成 | OpenClaw/Claude Code/Codex 三种 SyncAdapter 已实现 | 2026-05-12 |
+| v0.7 | composer 产品化 | 🟠 v2.0 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
 | v0.8 | **dispatch 正式化** | ✅ 已完成 | DispatchManager、LocalPublisher、HexoPublisher、集成测试 | 2026-05-12 |
-| v0.9 | 稳定化 | 🟡 部分完成 | CLI 入口、全链路集成测试、API 冻结待执行 | 2026-05-12 |
-| **v1.0** | **跨 Agent 知识中枢** | 🔴 未开始 | 完整闭环：任意 Agent 产出 → 统一知识库 → 智能编译 → 多平台分发 | — |
+| v0.9 | 稳定化 | ✅ 已完成 | CLI 入口、全链路集成测试、composer→dispatch 流水线 | 2026-05-12 |
+| **v1.0** | **博客流水线** | 🟡 开发中 | 配图系统（背景图+文章配图）、多网站 URL 列表驱动、随机选择+去重 | — |
+| **v2.0** | **产品化** | 🔴 未开始 | WebSearchAdapter、发布队列与重试、多模板、AI 封面图、API 冻结 | — |
 
 ---
 
@@ -99,11 +100,11 @@ Codex ──────┘         ↓
 
 | 问题 | 严重度 | 状态 | 计划版本 | 详情 |
 |------|--------|------|----------|------|
-| WebSearchAdapter 未实现实际搜索 | 🟡 中 | 待实现 | v0.5+ | DuckDuckGo/Bing CN 搜索需外部依赖 |
-| 短期→长期记忆转换未实现 | 🟡 中 | 待实现 | v0.4+ | MEMORY.md 规则：任务完成后自动迁移到 wiki |
-| 发布队列与失败重试 | 🟡 中 | 待实现 | v0.8+ | DispatchManager 当前直连发布，无队列和重试 |
-| 向量搜索增强（混合搜索/MMR/时间衰减） | 🟡 低 | 待实现 | v0.7 | 当前仅基础 cosine 相似度 |
-| `datetime.utcnow()` 已弃用 | 🟡 低 | 待修复 | v0.9 | Pydantic 和 store.py 多处使用，需替换为 timezone-aware |
+| WebSearchAdapter 未实现实际搜索 | 🟡 中 | 待实现 | v2.0 | DuckDuckGo/Bing CN 搜索需外部依赖 |
+| 短期→长期记忆转换未实现 | 🟡 中 | 待实现 | v2.0 | MEMORY.md 规则：任务完成后自动迁移到 wiki |
+| 发布队列与失败重试 | 🟡 中 | 待实现 | v2.0 | DispatchManager 当前直连发布，无队列和重试 |
+| 向量搜索增强（混合搜索/MMR/时间衰减） | 🟡 低 | 待实现 | v2.0 | 当前仅基础 cosine 相似度 |
+| `datetime.utcnow()` 已弃用 | 🟡 低 | 待修复 | v2.0 | Pydantic 和 store.py 多处使用，需替换为 timezone-aware |
 
 完整债务清单 → [30-development/tech-debt.md](30-development/tech-debt.md)
 
@@ -123,12 +124,18 @@ Codex ──────┘         ↓
 
 ## 下一步（Next Actions）
 
-按优先级排序，只看最前面 3 条：
+按优先级排序：
 
-1. 🟡 **v0.7 启动：composer 产品化** — 多模板（早报/周报/PPT/视频脚本）、AI 封面图
-2. 🟡 **v0.6 完善** — 跨 Agent 写入冲突解决、自动同步触发机制
-3. 🟡 **WebSearchAdapter 实现** — DuckDuckGo/Bing CN 实际搜索能力（需外部依赖）
-4. 🟡 **发布队列与失败重试** — 为 DispatchManager 增加异步队列和重试机制
-5. 🟡 **v0.9 收尾** — API 冻结、mypy strict、性能优化、替换 datetime.utcnow() 弃用警告
+1. 🟡 **v1.0 配图系统** — ImageAssetFetcher + ImageAssetSelector 集成到 composer 流水线
+2. 🟡 **v1.0 文档更新** — v1.0/v2.0 划分、modules.md、roadmap 更新
+3. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish
 
-详细计划 → [00-roadmap/v0.3.md](00-roadmap/v0.3.md) | [v1.0 路线图](00-roadmap/v1.0.md)
+**v2.0 延后项**（非阻塞）：
+- WebSearchAdapter 实际搜索
+- 发布队列与失败重试
+- 多模板（早报/周报/PPT/视频脚本）
+- AI 封面图生成
+- 跨 Agent 写入冲突解决
+- API 冻结、mypy strict、datetime.utcnow() 修复
+
+详细计划 → [v1.0 路线图](00-roadmap/v1.0.md)

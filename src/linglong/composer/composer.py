@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from linglong.composer.assets.image_asset_fetcher import ImageAssetFetcher
+from linglong.composer.assets.image_asset_selector import ImageAssetSelector
 from linglong.composer.assets.text import TextAssetGenerator
 from linglong.composer.distiller.aggregator import ArticleMaterial, DailyAggregator
 from linglong.composer.distiller.llm_distiller import LLMDistiller
@@ -189,6 +191,40 @@ class Composer:
             "categories": material.categories,
             "excerpt": excerpt,
         }
+        # 3.3 Image assets (background + article image)
+        if self.config.image_assets.enabled:
+            try:
+                image_cfg = self.config.image_assets
+                selector = ImageAssetSelector({
+                    "sources": [s.model_dump() for s in image_cfg.sources],
+                    "selection": image_cfg.selection.model_dump(),
+                })
+                # Build resolver for sources that need Playwright
+                resolver = self._build_image_resolver(image_cfg.sources)
+                used_urls: list[str] = []
+                for usage in ("background", "article_image"):
+                    if usage not in image_cfg.specs:
+                        continue
+                    spec = image_cfg.specs[usage]
+                    source_urls = selector.select(usage, count=1)
+                    if not source_urls:
+                        continue
+                    # Resolve page URLs to image URLs if needed
+                    resolved = self._resolve_image_urls(
+                        source_urls, image_cfg.sources, resolver
+                    )
+                    if not resolved:
+                        continue
+                    fetcher = ImageAssetFetcher(spec)
+                    path = fetcher.fetch(resolved[0])
+                    if path:
+                        metadata[usage] = str(path)
+                        used_urls.append(source_urls[0])
+                if used_urls:
+                    selector.record_used(used_urls)
+            except Exception as e:
+                logger.warning("Image asset processing failed: %s", e)
+
         formatted = template.apply(content_with_intro, metadata)
 
         # 草稿模式：保存到草稿目录
@@ -243,3 +279,42 @@ class Composer:
                 article_result["publish_error"] = str(e)
 
         return article_result
+
+    def _build_image_resolver(self, sources) -> "PageImageResolver | None":
+        """Build a Playwright resolver if any source needs it."""
+        from linglong.composer.assets.page_image_resolver import PageImageResolver
+
+        for src in sources:
+            if src.resolve_via == "playwright":
+                delay = tuple(src.delay_range) if len(src.delay_range) == 2 else (3, 8)
+                return PageImageResolver(
+                    headless=src.headless,
+                    delay_range=delay,
+                    max_count=src.max_count,
+                )
+        return None
+
+    def _resolve_image_urls(
+        self, urls: list[str], sources, resolver
+    ) -> list[str]:
+        """Resolve page URLs to image URLs using Playwright if needed.
+
+        Returns the original URLs if no resolver is needed or available.
+        """
+        if resolver is None:
+            return urls
+
+        needs_resolve = any(s.resolve_via == "playwright" for s in sources)
+        if not needs_resolve:
+            return urls
+
+        if not resolver.health_check():
+            logger.warning("Playwright not available, using URLs as-is")
+            return urls
+
+        try:
+            resolved = resolver.resolve_sync(urls)
+            return resolved if resolved else urls
+        except Exception as e:
+            logger.warning("Playwright resolution failed: %s, using URLs as-is", e)
+            return urls

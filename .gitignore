@@ -46,6 +46,7 @@ wiki/
 # Environment
 .env
 .env.local
+.linglong.yaml
 
 # macOS
 .DS_Store

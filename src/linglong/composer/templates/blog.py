@@ -86,6 +86,11 @@ class BlogTemplate(Template):
         # 确保有引言
         body = self._ensure_intro(content, metadata.get("excerpt", ""))
 
+        # Insert article image after intro blockquote
+        if "article_image" in metadata and metadata["article_image"]:
+            img_path = metadata["article_image"]
+            body = self._insert_article_image(body, img_path)
+
         # 确保有 <!-- more -->
         body = self._ensure_more_tag(body)
 
@@ -121,6 +126,10 @@ class BlogTemplate(Template):
 
         if "cover_image" in metadata:
             frontmatter["cover_image"] = metadata["cover_image"]
+
+        # background_image → cover_image (from image asset pipeline)
+        if "background_image" in metadata:
+            frontmatter["cover_image"] = metadata["background_image"]
 
         yaml_str = yaml.dump(
             frontmatter,
@@ -164,3 +173,22 @@ class BlogTemplate(Template):
             return "\n\n".join(paragraphs)
 
         return content + "\n\n<!-- more -->"
+
+    def _insert_article_image(self, content: str, image_path: str) -> str:
+        """Insert article image after the intro blockquote."""
+        lines = content.split("\n")
+        # Find the end of the intro blockquote (lines starting with >)
+        insert_idx = 0
+        for i, line in enumerate(lines):
+            if line.strip().startswith(">"):
+                insert_idx = i + 1
+            elif insert_idx > 0:
+                # First non-blockquote line after blockquote
+                insert_idx = i
+                break
+        else:
+            insert_idx = len(lines)
+
+        img_markdown = f"\n![配图]({image_path})\n"
+        lines.insert(insert_idx, img_markdown)
+        return "\n".join(lines)

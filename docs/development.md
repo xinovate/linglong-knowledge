@@ -76,22 +76,28 @@ ruff check src/ tests/
 mypy src/
 ```
 
-### 配置环境变量
+### 配置
 
-创建 `.env` 文件：
+项目使用 `.linglong.yaml` 作为主配置文件。首次使用复制示例并按需修改：
 
-```env
-# 通用配置
-LL_DEBUG=true
-LL_LOG_LEVEL=DEBUG
-
-# 知识库配置
-LL_KNOWLEDGE_WIKI_PATH=./wiki
-LL_KNOWLEDGE_DB_PATH=./knowledge.db
-
-# 获取配置
-LL_INGEST_FETCH_INTERVAL_MINUTES=30
+```bash
+cp .linglong.yaml.example .linglong.yaml
 ```
+
+```yaml
+# .linglong.yaml 示例
+debug: true
+log_level: DEBUG
+
+knowledge:
+  wiki_path: ./wiki
+  db_path: ./knowledge.db
+
+ingest:
+  fetch_interval_minutes: 30
+```
+
+完整配置项参考 `.linglong.yaml.example`。也支持环境变量（前缀 `LL_`），但 `.linglong.yaml` 优先级更高。
 
 ## 添加新模块
 

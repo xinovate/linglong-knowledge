@@ -25,6 +25,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "requests>=2.31",
     "pyyaml>=6.0",
+    "Pillow>=10.0",
 ]
 
 [project.scripts]
@@ -50,8 +51,11 @@ knowledge = [
     "markdown>=3.5",
     "python-frontmatter>=1.0",
 ]
+scrape = [
+    "playwright>=1.40",
+]
 all = [
-    "linglong[dev,ingest,knowledge]",
+    "linglong[dev,ingest,knowledge,scrape]",
 ]
 
 [tool.hatch.build.targets.wheel]
