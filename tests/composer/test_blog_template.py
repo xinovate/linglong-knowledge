@@ -157,7 +157,7 @@ class TestFrontmatterRoundTrip:
             "excerpt": "摘要",
         }
         built = template._build_frontmatter(original)
-        # Simulate full article content
+        # 模拟完整文章内容
         content = f"{built}\n\n正文内容"
         extracted = template._extract_frontmatter(content)
 
@@ -260,7 +260,7 @@ categories:
 """
         result = template.validate(content)
 
-        # Should be valid but with a warning about tags type
+        # 应有效但有 tags 类型警告
         assert any("tags" in w and "列表" in w for w in result.warnings)
 
     def test_validate_categories_not_list(self, template):

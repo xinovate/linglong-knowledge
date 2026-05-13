@@ -59,7 +59,7 @@ class TestIngestAdapter:
         )
         h = frag.content_hash
         assert len(h) == 32
-        # Same content should give same hash
+        # 相同内容应产生相同哈希
         frag2 = MemoryFragment(
             source="test",
             content="hello",

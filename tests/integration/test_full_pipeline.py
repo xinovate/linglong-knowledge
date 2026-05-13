@@ -51,7 +51,7 @@ def pipeline_setup(tmp_path):
     )
     set_config(config)
 
-    # Clear global composer state to avoid cross-test pollution
+    # 清除全局 composer 状态，避免测试间污染
     from linglong.composer.state import _default_state_file
 
     state_file = _default_state_file()
@@ -76,7 +76,7 @@ def _create_entity(content: str, date: datetime) -> Entity:
 def test_full_pipeline_ingest_to_dispatch(pipeline_setup):
     """Full pipeline: simulate ingest → store → composer → dispatch → file."""
     store = KnowledgeStore()
-    # Simulate ingest step: create entities directly in store
+    # 模拟采集步骤：直接在 store 中创建实体
     store.create(
         _create_entity("AI news today: new model released", datetime(2026, 5, 11, 10, 0))
     )
@@ -84,7 +84,7 @@ def test_full_pipeline_ingest_to_dispatch(pipeline_setup):
         _create_entity("Tech update: open source tooling improves", datetime(2026, 5, 11, 11, 0))
     )
 
-    # Composer step
+    # Composer 步骤
     composer = Composer()
     result = composer.run()
 
@@ -95,7 +95,7 @@ def test_full_pipeline_ingest_to_dispatch(pipeline_setup):
     assert "publish_result" in article
     assert article["publish_result"].success is True
 
-    # Verify dispatch output file exists
+    # 验证 dispatch 输出文件存在
     output_dir = pipeline_setup["output_dir"]
     files = list(output_dir.iterdir())
     assert len(files) == 1

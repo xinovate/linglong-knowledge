@@ -19,7 +19,7 @@ def mock_store():
 async def test_end_to_end_package_execution(mock_store):
     """Full flow: package YAML → executor → store calls."""
     package = SourcePackage.from_yaml("examples/packages/ai-morning-brief.yaml")
-    # Disable web_fetch and api to avoid network calls
+    # 禁用 web_fetch 和 api 避免网络调用
     for source in package.sources:
         if source.type != "rss":
             source.enabled = False

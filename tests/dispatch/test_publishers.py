@@ -46,7 +46,7 @@ def test_hexo_publisher_git_publish_mock():
     }
     publisher = HexoPublisher(config)
 
-    # Mock hexo_path exists
+    # mock hexo_path 存在
     with patch("pathlib.Path.exists", return_value=True):
         with patch(
             "subprocess.run",

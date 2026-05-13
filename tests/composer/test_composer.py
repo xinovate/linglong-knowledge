@@ -86,7 +86,7 @@ class TestComposerRun:
         assert article["status"] == "dry_run"
         assert article["dispatch_ready"] is False
 
-        # Running again should still find the entity (not marked as processed)
+        # 再次运行应仍能找到该实体（未标记为已处理）
         result2 = composer.run(dry_run=True)
         assert len(result2.articles) == 1
 
@@ -120,7 +120,7 @@ class TestComposerRun:
         assert article["status"] == "draft_saved"
         assert "draft_id" in article
 
-        # Verify draft exists
+        # 验证草稿存在
         draft_id = article["draft_id"]
         from linglong.composer.draft import DraftManager
 
@@ -138,7 +138,7 @@ class TestComposerRun:
 
         assert result.success is True
         assert len(result.articles) == 1
-        # Only the newer entity should be processed
+        # 只有较新的实体应被处理
         assert result.articles[0]["fragments_count"] == 1
 
 

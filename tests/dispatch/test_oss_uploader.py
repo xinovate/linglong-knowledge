@@ -90,7 +90,7 @@ class TestUploadAndRewrite:
         mock_bucket = MagicMock()
         uploader._bucket = mock_bucket
 
-        # Point metadata to real temp files
+        # 指向真实临时文件路径
         variants = {name.split(".")[1]: str(path) for name, path in sample_images.items()}
 
         content = f"![配图]({list(sample_images.values())[1]})"
@@ -98,7 +98,7 @@ class TestUploadAndRewrite:
 
         new_content, new_metadata = uploader.upload_and_rewrite(content, metadata)
 
-        # Metadata variants should be rewritten to CDN URLs
+        # metadata 变体应被替换为 CDN URL
         for name, url in new_metadata["article_image"].items():
             assert url.startswith("https://img.test.com/images/")
 
@@ -141,7 +141,7 @@ class TestUploadAndRewrite:
 
         uploader.upload_and_rewrite(content, metadata)
 
-        # Should only upload once, not twice
+        # 应只上传一次，不重复
         assert mock_bucket.put_object.call_count == 1
 
     def test_rewrites_background_and_cover(self, uploader, sample_images):
@@ -158,7 +158,7 @@ class TestUploadAndRewrite:
 
         _, new_metadata = uploader.upload_and_rewrite("", metadata)
 
-        # All should be rewritten
+        # 全部应被替换
         assert new_metadata["background"]["thumb"].startswith("https://")
         assert new_metadata["background"]["medium"].startswith("https://")
         assert new_metadata["background_image"].startswith("https://")

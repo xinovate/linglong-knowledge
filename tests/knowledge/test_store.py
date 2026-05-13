@@ -146,9 +146,9 @@ def test_search_similar_returns_results():
         set_config(config)
         store = KnowledgeStore()
 
-        # Mock embeddings so we can control similarity
+        # mock 嵌入以控制相似度
         def _fake_generate(text):
-            # Return deterministic vectors based on text content
+            # 基于文本内容返回确定性向量
             if "python" in text.lower():
                 return [1.0, 0.0, 0.0]
             if "javascript" in text.lower():
@@ -163,7 +163,7 @@ def test_search_similar_returns_results():
             store.create(Entity(content="javascript guide", created_by="agent:test"))
             store.create(Entity(content="cooking recipes", created_by="agent:test"))
 
-        # Search for python-like content
+        # 搜索类似 python 的内容
         with patch(
             "linglong.knowledge.embeddings.EmbeddingGenerator.generate",
             return_value=[1.0, 0.0, 0.0],

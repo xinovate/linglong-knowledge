@@ -167,7 +167,7 @@ async def test_rss_ingestor_skips_existing():
     source = RSSSource(name="feed1", url="https://example.com/1.xml")
 
     mock_store = MagicMock()
-    mock_store.get = MagicMock(return_value=MagicMock())  # Existing entity
+    mock_store.get = MagicMock(return_value=MagicMock())  # 已存在的实体
 
     ingestor = RSSIngestor(store=mock_store)
     ingestor.add_source(source)

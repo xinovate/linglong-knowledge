@@ -51,7 +51,7 @@ def test_custom_rule():
     """Test adding custom rules."""
     engine = ReviewEngine()
 
-    # Add custom rule: reject empty content
+    # 添加自定义规则：拒绝空内容
     engine.add_rule(
         Rule(
             name="no_empty",

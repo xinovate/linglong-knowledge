@@ -51,7 +51,7 @@ def auto_publish_setup(tmp_path):
     )
     set_config(config)
 
-    # Clear global composer state to avoid cross-test pollution
+    # 清除全局 composer 状态，避免测试间污染
     from linglong.composer.state import _default_state_file
 
     state_file = _default_state_file()
@@ -86,11 +86,11 @@ def test_composer_auto_publish(auto_publish_setup):
     article = result.articles[0]
     assert article["dispatch_ready"] is True
 
-    # Verify publish_result exists
+    # 验证 publish_result 存在
     assert "publish_result" in article
     assert article["publish_result"].success is True
 
-    # Verify file was written by LocalPublisher
+    # 验证文件由 LocalPublisher 写入
     output_dir = auto_publish_setup["output_dir"]
     files = list(output_dir.iterdir())
     assert len(files) == 1

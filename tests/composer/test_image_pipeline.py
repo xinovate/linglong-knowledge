@@ -84,8 +84,8 @@ class TestImageAssetFetcherMultiSize:
 
     def test_fetch_generates_variants(self, spec, large_image):
         """fetch() should generate all configured size variants."""
-        # We need to serve the file via a local URL or mock requests
-        # Instead, test _process directly with a local file
+        # 需要通过本地 URL 或 mock 请求来提供文件
+        # 改为直接用本地文件测试 _process
         fetcher = ImageAssetFetcher(spec)
         fetcher.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -142,7 +142,7 @@ class TestImageAssetFetcherMultiSize:
         result = fetcher._process(large_image, "https://example.com/test.jpg")
         assert result is not None
 
-        # Check file sizes are reasonable for quality=50
+        # 检查 quality=50 时文件大小合理
         # (lower quality = smaller files)
         for name, path in result.variants.items():
             assert path.stat().st_size > 0, f"Variant {name} should not be empty"
@@ -156,7 +156,7 @@ class TestImageAssetFetcherMultiSize:
             output_dir=str(tmp_path / "images"),
             variants={"thumb": 50, "huge": 2000},  # huge > original 300
         )
-        # Create a 300x200 image
+        # 创建 300x200 测试图片
         img = Image.new("RGB", (300, 200), color="green")
         img_path = tmp_path / "medium.jpg"
         img.save(img_path, "JPEG")
@@ -178,10 +178,10 @@ class TestImageAssetFetcherMultiSize:
         fetcher = ImageAssetFetcher(spec)
         fetcher.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Directly test _process since fetch() needs HTTP
+        # 直接测试 _process，因为 fetch() 需要 HTTP
         result = fetcher._process(large_image, "https://example.com/test.jpg")
 
         assert result is not None
         assert isinstance(result, ImageResult)
-        # Should NOT be a Path (old behavior)
+        # 不应是 Path（旧行为）
         assert not isinstance(result, Path)
