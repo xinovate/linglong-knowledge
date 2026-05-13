@@ -103,15 +103,18 @@ assert entity.status == EntityStatus.AUTO_CONFIRMED
 ### 提交格式
 
 ```
-<type>(<scope>): <subject>
+<type>(<scope>): <中文 subject>
 ```
+
+- `type` 和 `scope` 用英文（兼容 conventional commits 工具链）
+- `subject` 用中文描述
 
 | Type | 含义 | 示例 |
 |------|------|------|
 | `feat` | 新功能 | `feat(distiller): 接入 LLM 智能提炼` |
-| `fix` | 缺陷修复 | `fix(composer): 状态隔离 bug` |
-| `docs` | 文档更新 | `docs: 更新架构文档` |
-| `refactor` | 重构 | `refactor(template): 提取 frontmatter 逻辑` |
+| `fix` | 缺陷修复 | `fix(composer): 修复状态隔离问题` |
+| `docs` | 文档更新 | `docs: 重组文档结构为模块化目录` |
+| `refactor` | 重构 | `refactor(template): 提取 frontmatter 构建逻辑` |
 | `test` | 测试 | `test(distiller): 增加回退路径测试` |
 | `chore` | 构建/工具 | `chore(deps): 增加 watchdog 依赖` |
 
