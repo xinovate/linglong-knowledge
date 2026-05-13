@@ -49,6 +49,44 @@ from linglong.knowledge.store import KnowledgeStore
 - 外部依赖调用必须包裹 `try/except`
 - 关键路径中单组失败不应阻断整批处理，应收集错误后继续
 
+### 测试规范
+
+**文件命名**：`tests/{module}/test_{component}.py`
+
+**类命名**：`Test{ClassName}`（如 `TestComposer`、`TestKnowledgeStore`）
+
+**方法命名**：`test_{行为描述}`（如 `test_create_entity`、`test_search_by_status`）
+
+**Fixture**：
+- 使用 `@pytest.fixture` 管理依赖
+- 使用 `tmp_path` 隔离文件系统
+- 使用 `set_config()` 注入临时配置，测试结束 `set_config(None)` 重置
+
+```python
+@pytest.fixture
+def store(tmp_path):
+    config = LinglongConfig(data_dir=tmp_path / "data")
+    set_config(config)
+    yield KnowledgeStore()
+    set_config(None)
+```
+
+**Mock 原则**：
+- 文件系统 → `tmp_path`（不用 mock）
+- LLM API → `unittest.mock.patch`
+- 网络请求 → `responses` 或 `httpx.MockTransport`
+- 禁止在自动化测试中调用真实外部服务
+
+**断言风格**：使用 `assert`，错误信息要清晰
+
+```python
+# 好
+assert entity.status == EntityStatus.AUTO_CONFIRMED, f"Expected AUTO_CONFIRMED, got {entity.status}"
+
+# 差
+assert entity.status == EntityStatus.AUTO_CONFIRMED
+```
+
 ---
 
 ## Git 工作流
