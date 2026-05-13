@@ -114,11 +114,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
+| `715d3c6` | feat(composer): add image asset pipeline and .linglong.yaml config support | 2026-05-13 |
+| `7ce12fc` | docs: sync PROJECT_OVERVIEW, modules.md, v1.0 roadmap for pipeline completion | 2026-05-12 |
 | `4ec1e16` | feat(cli): add linglong CLI with ingest/compose/publish/sync commands | 2026-05-12 |
 | `b6281e6` | test(integration): add end-to-end ingest→knowledge→composer→dispatch test | 2026-05-12 |
 | `be08313` | feat(composer): auto-publish dispatch-ready articles via DispatchManager | 2026-05-12 |
-| `e54c4d2` | feat(config): extract P0/P1 hardcoded values to config and add AI HOT RSS source | 2026-05-12 |
-| `289f33e` | docs(ingest): update modules.md and roadmap for v0.5 generalization | 2026-05-12 |
 
 ---
 
@@ -126,8 +126,8 @@ Codex ──────┘         ↓
 
 按优先级排序：
 
-1. 🟡 **v1.0 配图系统** — ImageAssetFetcher + ImageAssetSelector 集成到 composer 流水线
-2. 🟡 **v1.0 文档更新** — v1.0/v2.0 划分、modules.md、roadmap 更新
+1. ✅ **v1.0 配图系统** — ImageAssetFetcher + ImageAssetSelector + PageImageResolver 已集成
+2. ✅ **v1.0 文档更新** — CLAUDE.md、README.md、modules.md、tech-debt 等已同步
 3. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish
 
 **v2.0 延后项**（非阻塞）：

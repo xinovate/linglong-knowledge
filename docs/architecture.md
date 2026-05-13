@@ -315,24 +315,16 @@ services:
 
 ## 演进路线
 
-### Phase 1（当前：v0.1-v0.3）
-- core：共享模型、配置
-- ingest：RSS 获取（基础）
-- knowledge：文件 + SQLite 存储
-- composer：从旧项目迁移，Draft Mode，Git Publisher
+### Phase 1–3（v0.1–v0.8：已完成）
+- core：共享模型、配置中心（`.linglong.yaml`）
+- ingest：RSS/API/Web 数据获取、真实性验证引擎
+- knowledge：SQLite + sqlite-vec、Review 引擎、OpenClaw/Claude/Codex 同步
+- composer：LLM/规则提炼、博客模板、草稿审核、图片资产管线
+- dispatch：Hexo 发布（git workflow）、本地文件输出、发布队列
 
-### Phase 2（v0.4-v0.6：知识中枢建设）
-- **v0.4 knowledge**：向量索引、语义搜索、OpenClaw wiki 同步、跨 Agent Schema
-- **v0.5 ingest**：Web Search、Web Fetch、API 调用、通用化引擎（继承 ai-morning-brief）
-- **v0.6 多 Agent 接入**：Claude Code memory 同步、Codex 接入、Agent 命名空间
-
-### Phase 3（v0.7-v0.8：产品化）
-- **v0.7 composer**：多模板（早报/周报/PPT/视频脚本）、AI 封面图、内容验证
-- **v0.8 dispatch**：发布队列、多平台路由、失败重试、反馈回流
-
-### Phase 4（v0.9-v1.0：稳定与发布）
-- v0.9：API 冻结、全链路测试、mypy strict、性能优化
-- **v1.0**：完整闭环，跨 Agent 知识中枢建成
+### Phase 4（v0.9–v1.0：当前）
+- v0.9 ✅：CLI 入口、集成测试、auto-publish、配置外部化
+- **v1.0 进行中**：博客流水线端到端验证、image assets 集成、Playwright 解析
 
 ## 参考
 

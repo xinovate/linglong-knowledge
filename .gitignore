@@ -37,6 +37,10 @@ ENV/
 .coverage
 htmlcov/
 
+# Lint/Type check
+.mypy_cache/
+.ruff_cache/
+
 # Data
 data/
 wiki/

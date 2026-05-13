@@ -304,6 +304,9 @@ adapter.sync_to_linglong()
 | `LLMDistiller` | `composer/distiller/llm_distiller.py` | LLM 智能提炼与主题合并 |
 | `BlogTemplate` | `composer/templates/blog.py` | Hexo 博客模板（frontmatter + 正文格式化） |
 | `TextAssetGenerator` | `composer/assets/text.py` | 摘要、标签、字数统计等文本资产生成 |
+| `ImageAssetFetcher` | `composer/assets/image_asset_fetcher.py` | 图片下载、尺寸检查、压缩、EXIF 清理 |
+| `ImageAssetSelector` | `composer/assets/image_asset_selector.py` | URL 文件解析（行内/多行格式）、随机选择、去重 |
+| `PageImageResolver` | `composer/assets/page_image_resolver.py` | Playwright 页面 → 图片 URL 解析（懒加载） |
 
 ### 设计要点
 

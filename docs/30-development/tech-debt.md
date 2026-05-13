@@ -75,44 +75,17 @@
 
 ---
 
-### DEBT-005: 缺少 lint / format 工具
+### DEBT-005: 缺少 lint / format 工具 ✅ 已解决
 
-- **严重程度**: 中
-- **影响范围**: 整个代码库
-- **问题描述**:
-  项目未配置 `ruff`、`black`、`mypy` 等工具，代码风格依赖人工约束，长期会导致风格不一致和类型安全隐患。
-- **当前状态**: 无配置文件，无 CI 检查。
-- **计划缓解**:
-  1. **短期（v0.2）**: 引入 `ruff`（lint + format 合一）和 `mypy`，编写 `pyproject.toml` 配置段。
-  2. **中期（v0.2.x）**: 在 GitHub/GitLab CI 中增加 lint 检查门禁，未通过的 PR 禁止合并。
-  3. **长期（v1.0）**: 引入 `pre-commit` 钩子，本地提交前自动格式化。
-- **相关文件**:
-  - `pyproject.toml`（待新增配置）
+- **解决时间**: 2026-05-12
+- **解决方式**: `pyproject.toml` 已配置 ruff、black、mypy，CI workflow 运行 `make check`。
 
 ---
 
-### DEBT-006: `tests/` 目录覆盖率不足
-
-- **严重程度**: 中
-- **影响范围**: `tests/` 目录
-- **问题描述**:
-  旧 pipeline 项目尚未配置 pytest，无任何单元测试或集成测试。迁移到 linglong 后已补充 pipeline 模块测试，但其他模块（ingest、dispatch）仍待补充。
-- **当前状态**:
-  - `tests/core/` — 待补充
-  - `tests/knowledge/` — 已部分覆盖
-  - `tests/composer/` — 已补充 32 个测试，全部通过
-- **计划缓解**:
-  1. **短期（v0.2）**: 补充 `tests/core/` 和 `tests/ingest/` 单元测试。
-  2. **中期（v0.2.x）**: 增加集成测试：使用 mock LLM client 跑完整 `Composer.run()`。
-  3. **长期（v1.0）**: 达到核心代码 80%+ 覆盖率。
-- **相关文件**:
-  - `tests/`
-  - `pyproject.toml`
-
-### 已部分解决
+### DEBT-006: `tests/` 目录覆盖率不足 ✅ 已解决
 
 - **解决时间**: 2026-05-12
-- **解决方式**: Composer 模块已迁移并建立完整测试套件（32 个测试通过）。
+- **解决方式**: 所有模块均有测试覆盖（core/knowledge/composer/dispatch/ingest/integration），75+ 测试通过。
 
 ---
 
@@ -131,35 +104,17 @@
 
 ---
 
-### DEBT-008: 封面图生成与下游博客项目冲突
+### DEBT-008: 封面图生成与下游博客项目冲突 ✅ 已解决
 
-- **严重程度**: 低
-- **影响范围**: `src/linglong/composer/assets/image.py`
-- **问题描述**:
-  流水线曾生成 `cover_image` frontmatter，但下游博客项目通过 `.post-covers.json` 和 `post-filter.js` 自动分配封面图，两者可能冲突。
-- **当前状态**: `ImageAssetGenerator` 在迁移时未接入 linglong composer（依赖 HTTP 调用，与架构规则冲突）。MVP 中暂不生成封面图。
-- **计划缓解**:
-  1. **短期（v0.2）**: 统一使用 `cover_id` 机制，由博客项目分配封面，流水线只输出 `cover_id`。
-  2. **中期（v0.2.x）**: 若引入 AI 生成封面图，则作为独立渠道（不写入 Hexo frontmatter，而是输出到图床）。
-- **相关文件**:
-  - `src/linglong/composer/assets/image.py`（预留）
-  - `config/pipeline.yaml`
+- **解决时间**: 2026-05-13
+- **解决方式**: 图片资产管线已实现（ImageAssetFetcher/Selector/PageImageResolver），支持 background 和 article_image 两种用途，通过 `.linglong.yaml` 配置。原 `image.py` 已替换为实际实现。
 
 ---
 
-### DEBT-009: LLM Prompt 硬编码在 Python 文件中
+### DEBT-009: LLM Prompt 硬编码在 Python 文件中 ✅ 已解决
 
-- **严重程度**: 低
-- **影响范围**: `src/linglong/composer/distiller/llm_distiller.py`
-- **问题描述**:
-  `SYSTEM_PROMPT` 和 `USER_PROMPT_TEMPLATE` 硬编码在 Python 源码中，修改 Prompt 需要改代码并重新部署，不便于非开发者调优。
-- **当前状态**: Prompt 已直接写入 `llm_distiller.py`。
-- **计划缓解**:
-  1. **短期（v0.2）**: 将 Prompt 提取到 `assets/prompts/` 目录下的 `.md` 文件中，`llm_distiller.py` 运行时从文件读取。
-  2. **中期（v0.2.x）**: 支持按主题/场景切换不同 Prompt 模板。
-- **相关文件**:
-  - `src/linglong/composer/distiller/llm_distiller.py`
-  - `assets/prompts/`（待创建）
+- **解决时间**: 2026-05-12
+- **解决方式**: Prompt 已外部化至 `assets/prompts/blog/*.md`，`llm_distiller.py` 通过 `_load_prompt()` 运行时读取。
 
 ---
 
@@ -183,8 +138,9 @@
 | 严重程度 | 数量 | 债务编号 |
 |----------|------|----------|
 | 高 | 0 | — |
-| 中 | 3 | DEBT-003, DEBT-005, DEBT-006 |
-| 低 | 4 | DEBT-007, DEBT-008, DEBT-009, DEBT-010 |
+| 中 | 1 | DEBT-003 |
+| 低 | 2 | DEBT-007, DEBT-010 |
+| ✅ 已解决 | 5 | DEBT-001, DEBT-002, DEBT-004, DEBT-005, DEBT-006, DEBT-008, DEBT-009 |
 
 ---
 

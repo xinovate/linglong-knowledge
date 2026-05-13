@@ -118,14 +118,20 @@ publishers:
     path: /path/to/blog
 ```
 
-**新配置**（环境变量）：
-```env
-# composer 不再需要 source 配置，从 knowledge 读取
-LL_KNOWLEDGE_WIKI_PATH=./wiki
+**新配置**（`.linglong.yaml`）：
+```yaml
+knowledge:
+  wiki_path: ./wiki
 
-# dispatch 配置（未来）
-LL_DISPATCH_BLOG_PATH=./blog
+dispatch:
+  default_publisher: hexo
+  publishers:
+    - name: hexo
+      config:
+        hexo_path: ./blog
 ```
+
+也支持环境变量（前缀 `LL_`），但 `.linglong.yaml` 优先级更高。
 
 ## 测试迁移
 

@@ -27,25 +27,36 @@ pip install -e ".[dev]"
 
 ```
 linglong/
-├── src/linglong/          # 源代码
-│   ├── __init__.py
-│   ├── core/              # 共享基础设施
-│   │   ├── __init__.py
-│   │   ├── models.py      # 数据模型
-│   │   └── config.py      # 配置管理
-│   ├── ingest/            # 数据获取
-│   │   ├── __init__.py
-│   │   └── rss.py         # RSS源
-│   └── knowledge/         # 知识库
-│       ├── __init__.py
-│       ├── store.py       # 存储层
-│       └── review.py      # Review引擎
-├── tests/                 # 测试
-│   ├── core/
-│   ├── ingest/
-│   └── knowledge/
-├── docs/                  # 文档
-└── pyproject.toml         # 项目配置
+├── src/linglong/
+│   ├── cli.py                 # CLI 入口（ingest/compose/publish/sync）
+│   ├── core/                  # 共享基础设施
+│   │   ├── models.py          # 数据模型（Entity, Task, Source）
+│   │   └── config.py          # 配置管理（.linglong.yaml）
+│   ├── ingest/                # 数据获取
+│   │   ├── rss.py             # RSS 源
+│   │   ├── adapters/          # API/WebFetch 适配器
+│   │   ├── executor.py        # 执行引擎
+│   │   ├── package.py         # 源包管理
+│   │   └── verification.py    # 真实性验证
+│   ├── knowledge/             # 知识库
+│   │   ├── store.py           # SQLite + sqlite-vec 存储
+│   │   ├── review.py          # Review 引擎
+│   │   ├── embeddings.py      # 向量嵌入
+│   │   └── sync/              # 跨 Agent 同步（openclaw/claude/codex）
+│   ├── composer/              # 内容生产
+│   │   ├── composer.py        # 流水线编排
+│   │   ├── distiller/         # LLM/规则提炼
+│   │   ├── templates/         # 博客模板
+│   │   ├── assets/            # 文本/图片资产
+│   │   ├── state.py           # 去重状态
+│   │   └── draft.py           # 草稿管理
+│   └── dispatch/              # 多平台分发
+│       ├── manager.py         # 分发编排
+│       └── publishers/        # 发布器（hexo/local）
+├── tests/                     # 测试
+├── docs/                      # 文档
+├── .linglong.yaml.example     # 配置模板
+└── pyproject.toml             # 项目配置
 ```
 
 ## 开发工作流

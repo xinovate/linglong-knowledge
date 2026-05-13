@@ -13,13 +13,11 @@ Linglong 是一个**跨 Agent 知识中枢**。
 **解决方案**：Linglong 作为所有 AI Agent 的统一知识底座，串联信息获取、知识沉淀、内容生产和多平台分发的完整闭环。
 
 **当前状态**：
-- v0.2 已完成：core + ingest + knowledge + composer 四模块骨架，composer 从旧项目迁移并入
-- v0.3 进行中：人工审核层、Git Workflow Publisher、frontmatter 复杂 YAML 支持
-- v0.4 即将启动：知识库统一（OpenClaw wiki 接入、向量搜索、跨 Agent 同步协议）
-- dispatch 模块已启动（`_pending_publishers/` 暂存发布器逻辑）
+- v0.1–v0.9 已完成：core + ingest + knowledge + composer + dispatch 五模块完整流水线，CLI 入口，图片资产管线
+- v1.0 进行中：博客流水线端到端跑通（image assets 集成、Playwright 解析、YAML 配置）
 
 **你的任务**：
-1. 阅读本文档和 `docs/` 目录（尤其是 `PROJECT_OVERVIEW.md`、`architecture.md`、`modules.md`、`00-roadmap/v1.0.md`）
+1. 阅读本文档和 `docs/` 目录（尤其是 `PROJECT_OVERVIEW.md`、`modules.md`、`00-roadmap/v1.0.md`）
 2. 按 `docs/` 流程执行工作（roadmap → ADR → development → testing）
 3. 优先处理 `PROJECT_OVERVIEW.md` Next Actions 列表
 4. 确保测试通过
@@ -62,11 +60,14 @@ ingest → knowledge → composer → dispatch
 KnowledgeStore 提供统一接口：
 
 ```python
+from linglong.knowledge.store import KnowledgeStore
+from linglong.core.models import EntityStatus
+
 store = KnowledgeStore()
 
 # 读取
 entity = store.get(entity_id)
-entities = store.search(status=EntityStatus.AUTO_CONFIRMED)
+entities = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
 
 # 写入（composer 不需要，但需了解）
 store.create(entity)
@@ -75,13 +76,20 @@ store.update(entity)
 
 ### 4. 配置管理
 
-使用 `core/config.py`，环境变量前缀 `LL_`：
+使用 `.linglong.yaml` 作为主配置文件（搜索路径：CWD → home）：
+
+```bash
+cp .linglong.yaml.example .linglong.yaml  # 首次使用
+```
+
+也支持环境变量（前缀 `LL_`），但 `.linglong.yaml` 优先级更高。
 
 ```python
 from linglong.core.config import get_config
 
 config = get_config()
 config.knowledge.wiki_path  # Wiki 目录
+config.composer.image_assets.enabled  # 图片资产开关
 ```
 
 ---
@@ -91,15 +99,22 @@ config.knowledge.wiki_path  # Wiki 目录
 ### `src/linglong/composer/`（内容生产编排）
 
 - `distiller/` — LLM 智能提炼（Prompt 已外部化至 `assets/prompts/blog/*.md`）
-- `templates/` — 博客模板引擎
-- `assets/` — 文本资产生成器
+- `templates/` — 博客模板引擎（`base.py` + `blog.py`）
+- `assets/` — 资产生成器
+  - `text.py` — 文本资产（摘要、标签、引言）
+  - `image_asset_fetcher.py` — 图片下载/压缩/EXIF 清理
+  - `image_asset_selector.py` — URL 文件解析 + 随机选择 + 去重
+  - `page_image_resolver.py` — Playwright 页面 → 图片 URL 解析
 - `state.py` — 内容哈希去重状态管理
 - `draft.py` — 草稿审核模式
 
-### `src/linglong/dispatch/_pending_publishers/`（待正式化）
+### `src/linglong/dispatch/`（多平台分发）
 
-- `git_workflow.py` — Git Workflow Publisher（v0.3 已完成）
-- 待 dispatch 模块正式接入后移入 `src/linglong/dispatch/`
+- `manager.py` — DispatchManager 编排
+- `publishers/` — 发布器
+  - `base.py` — 发布器基类
+  - `hexo.py` — Hexo 博客发布（支持 git workflow）
+  - `local.py` — 本地文件输出
 
 ---
 
@@ -149,14 +164,10 @@ except StorageError as e:
 ### 运行测试
 
 ```bash
-# 激活虚拟环境
 source venv/bin/activate
-
-# 运行全部测试
-pytest
-
-# 运行 composer 测试
-pytest tests/composer/ -v
+pytest                    # 全部测试
+pytest tests/composer/ -v # composer 模块
+pytest tests/core/ -v     # core 模块
 ```
 
 ### 新增测试
@@ -165,23 +176,6 @@ pytest tests/composer/ -v
 - `tests/{module}/test_{component}.py`
 - 使用 `pytest` 框架
 - 使用 fixtures 管理依赖
-
-### 测试示例
-
-```python
-import pytest
-from linglong.knowledge.store import KnowledgeStore
-
-@pytest.fixture
-def store():
-    # 创建临时存储
-    pass
-
-def test_create_entity(store):
-    entity = Entity(content="test", created_by="agent:test")
-    created = store.create(entity)
-    assert created.id is not None
-```
 
 ---
 
@@ -199,32 +193,31 @@ entities = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
 
 ### Q: composer 如何输出到 dispatch？
 
-当前返回结果并标记 `dispatch_ready=True`，dispatch 模块消费：
-
 ```python
-result = composer.process(entities)
-# result.dispatch_ready == True 时，dispatch 负责实际发布
+from linglong.composer.composer import Composer
+
+composer = Composer()
+result = composer.run(dry_run=False, draft=False)
+# result.success == True 时，result.articles 中每项含 dispatch_ready=True
+# 若 config.auto_publish=True，composer 会自动调用 DispatchManager 发布
 ```
 
-### Q: 如何添加新的内容格式？
+### Q: 如何添加新的内容模板？
 
-在 `composer/formatter/` 中添加：
+在 `composer/templates/` 中添加，继承 `BaseTemplate`：
 
 ```python
-class PPTFormatter:
-    def format(self, entity: Entity) -> bytes:
-        # 生成 PPT
+from linglong.composer.templates.base import BaseTemplate
+
+class NewsletterTemplate(BaseTemplate):
+    def apply(self, content: str, metadata: dict) -> str:
+        # 生成 newsletter 格式
         pass
 ```
 
 ### Q: 当前优先工作是什么？
 
-查看 `docs/PROJECT_OVERVIEW.md` 的 **Next Actions** 列表，按优先级执行：
-1. frontmatter 复杂 YAML 支持（tags/categories 的 list 格式完善，v0.3 收尾）
-2. 启动 v0.4：知识库统一 —— 设计 OpenClaw wiki 与 Linglong knowledge 的同步协议，定义跨 Agent 知识存储 schema
-3. 启动 v0.5：ingest 通用化 —— 把 ai-morning-brief 抽象为可配置通用引擎，支持 Web Search / 爬虫 / API
-4. AI 封面图生成（依赖外部 API，需考虑成本和超时）
-5. dispatch 模块启动（将 `_pending_publishers/` 中的发布器正式接入 dispatch）
+查看 `docs/PROJECT_OVERVIEW.md` 的 **Next Actions** 列表。当前重点是 v1.0 博客流水线端到端验证。
 
 ---
 
@@ -235,7 +228,6 @@ class PPTFormatter:
 - [模块说明](docs/modules.md)
 - [API 文档](docs/api.md)
 - [开发指南](docs/development.md)
-- [迁移指南](docs/migration.md)
 
 ---
 
