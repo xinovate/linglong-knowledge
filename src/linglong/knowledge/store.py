@@ -42,6 +42,7 @@ class KnowledgeStore:
                     id TEXT PRIMARY KEY,
                     content TEXT NOT NULL,
                     summary TEXT,
+                    facet TEXT NOT NULL DEFAULT 'concept',
                     created_by TEXT NOT NULL,
                     confirmed_by TEXT,
                     confirmed_at TIMESTAMP,
@@ -53,9 +54,44 @@ class KnowledgeStore:
                     current_version INTEGER DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    archived_at TIMESTAMP,
                     embedding_id TEXT,
                     metadata TEXT  -- JSON
                 )
+            """)
+
+            # FTS5 全文搜索虚拟表
+            conn.execute("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS entity_fts USING fts5(
+                    id,
+                    content,
+                    facet,
+                    status,
+                    content='entities',
+                    content_rowid='rowid'
+                )
+            """)
+
+            # FTS5 同步触发器
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS entities_ai AFTER INSERT ON entities BEGIN
+                    INSERT INTO entity_fts(rowid, id, content, facet, status)
+                    VALUES (new.rowid, new.id, new.content, new.facet, new.status);
+                END
+            """)
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS entities_ad AFTER DELETE ON entities BEGIN
+                    INSERT INTO entity_fts(entity_fts, rowid, id, content, facet, status)
+                    VALUES ('delete', old.rowid, old.id, old.content, old.facet, old.status);
+                END
+            """)
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS entities_au AFTER UPDATE ON entities BEGIN
+                    INSERT INTO entity_fts(entity_fts, rowid, id, content, facet, status)
+                    VALUES ('delete', old.rowid, old.id, old.content, old.facet, old.status);
+                    INSERT INTO entity_fts(rowid, id, content, facet, status)
+                    VALUES (new.rowid, new.id, new.content, new.facet, new.status);
+                END
             """)
 
             # 向量虚拟表（sqlite-vec）
@@ -126,15 +162,16 @@ class KnowledgeStore:
             conn.execute(
                 """
                 INSERT INTO entities
-                (id, content, summary, created_by, confirmed_by, confirmed_at,
+                (id, content, summary, facet, created_by, confirmed_by, confirmed_at,
                  confidence, status, sources, relations, versions, current_version,
-                 created_at, updated_at, embedding_id, metadata)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 created_at, updated_at, archived_at, embedding_id, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     entity.id,
                     entity.content,
                     entity.summary,
+                    entity.facet.value,
                     entity.created_by,
                     entity.confirmed_by,
                     entity.confirmed_at.isoformat() if entity.confirmed_at else None,
@@ -146,6 +183,7 @@ class KnowledgeStore:
                     entity.current_version,
                     entity.created_at.isoformat(),
                     entity.updated_at.isoformat(),
+                    None,  # archived_at
                     entity.embedding_id,
                     json.dumps(entity.metadata),
                 ),
@@ -180,26 +218,65 @@ class KnowledgeStore:
     def search(
         self,
         query: str | None = None,
+        facet: EntityFacet | None = None,
         status: EntityStatus | None = None,
         created_by: str | None = None,
         limit: int = 50,
     ) -> list[Entity]:
-        """Search entities with filters."""
-        conditions = []
-        params = []
-
-        if status:
-            conditions.append("status = ?")
-            params.append(status.value)
-
-        if created_by:
-            conditions.append("created_by = ?")
-            params.append(created_by)
-
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
-
+        """Search entities with filters. Uses FTS5 when query is provided."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
+
+            if query:
+                # FTS5 全文搜索 — 对查询词逐段加引号，避免连字符等被误解析为列过滤
+                # 将查询按空格拆分后用 OR 连接，支持多词宽松匹配
+                tokens = query.split()
+                if len(tokens) > 1:
+                    escaped_query = " OR ".join(
+                        '"' + t.replace('"', '""') + '"' for t in tokens
+                    )
+                else:
+                    escaped_query = '"' + query.replace('"', '""') + '"'
+                params: list = [escaped_query]
+                fts_conditions = []
+
+                if facet:
+                    fts_conditions.append("entity_fts.facet = ?")
+                    params.append(facet.value)
+                if status:
+                    fts_conditions.append("entity_fts.status = ?")
+                    params.append(status.value)
+
+                fts_where = " AND ".join(fts_conditions) if fts_conditions else "1=1"
+
+                rows = conn.execute(
+                    f"""
+                    SELECT e.* FROM entity_fts
+                    JOIN entities AS e ON e.id = entity_fts.id
+                    WHERE entity_fts MATCH ? AND {fts_where}
+                    ORDER BY rank
+                    LIMIT ?
+                    """,
+                    (*params, limit),
+                ).fetchall()
+                return [self._row_to_entity(row) for row in rows]
+
+            # 非 FTS 过滤
+            conditions = []
+            params = []
+
+            if facet:
+                conditions.append("facet = ?")
+                params.append(facet.value)
+            if status:
+                conditions.append("status = ?")
+                params.append(status.value)
+            if created_by:
+                conditions.append("created_by = ?")
+                params.append(created_by)
+
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+
             rows = conn.execute(
                 f"""
                 SELECT * FROM entities
@@ -275,6 +352,7 @@ class KnowledgeStore:
                 UPDATE entities SET
                     content = ?,
                     summary = ?,
+                    facet = ?,
                     confirmed_by = ?,
                     confirmed_at = ?,
                     confidence = ?,
@@ -284,6 +362,7 @@ class KnowledgeStore:
                     versions = ?,
                     current_version = ?,
                     updated_at = ?,
+                    archived_at = ?,
                     embedding_id = ?,
                     metadata = ?
                 WHERE id = ?
@@ -291,6 +370,7 @@ class KnowledgeStore:
                 (
                     entity.content,
                     entity.summary,
+                    entity.facet.value,
                     entity.confirmed_by,
                     entity.confirmed_at.isoformat() if entity.confirmed_at else None,
                     float(entity.confidence),
@@ -300,6 +380,7 @@ class KnowledgeStore:
                     json.dumps([v.model_dump() for v in entity.versions]),
                     entity.current_version,
                     entity.updated_at.isoformat(),
+                    entity.archived_at.isoformat() if entity.archived_at else None,
                     entity.embedding_id,
                     json.dumps(entity.metadata),
                     entity.id,
@@ -392,6 +473,9 @@ class KnowledgeStore:
         facet_str = row["facet"] if "facet" in row.keys() else None
         facet = EntityFacet(facet_str) if facet_str else EntityFacet.SOURCE
 
+        # archived_at 列可能尚不存在于旧 schema 中
+        archived_at_raw = row["archived_at"] if "archived_at" in row.keys() else None
+
         return Entity(
             id=row["id"],
             content=row["content"],
@@ -410,6 +494,9 @@ class KnowledgeStore:
             current_version=row["current_version"],
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
+            archived_at=(
+                datetime.fromisoformat(archived_at_raw) if archived_at_raw else None
+            ),
             embedding_id=row["embedding_id"],
             metadata=json.loads(row["metadata"]) if row["metadata"] else {},
         )

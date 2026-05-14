@@ -225,3 +225,51 @@ def test_search_similar_with_status_filter():
 
         assert len(results) == 1
         assert results[0].status == EntityStatus.AUTO_CONFIRMED
+
+
+def test_create_entity_stores_facet(temp_store):
+    """创建 Entity 时 facet 正确存入 SQLite。"""
+    entity = Entity(
+        content="微服务架构设计",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    )
+    created = temp_store.create(entity)
+    retrieved = temp_store.get(created.id)
+    assert retrieved.facet == EntityFacet.CONCEPT
+
+
+def test_search_by_facet(temp_store):
+    """按 facet 过滤搜索。"""
+    temp_store.create(Entity(
+        content="概念文章", facet=EntityFacet.CONCEPT, created_by="agent:claude"
+    ))
+    temp_store.create(Entity(
+        content="踩坑记录", facet=EntityFacet.EXPERIENCE, created_by="agent:claude"
+    ))
+
+    concepts = temp_store.search(facet=EntityFacet.CONCEPT)
+    assert len(concepts) == 1
+    assert concepts[0].facet == EntityFacet.CONCEPT
+
+
+def test_fts5_fulltext_search(temp_store):
+    """FTS5 全文搜索能匹配内容关键词。"""
+    temp_store.create(Entity(
+        content="SQLite 向量搜索使用 sqlite-vec 扩展",
+        facet=EntityFacet.EXPERIENCE,
+        created_by="agent:claude",
+    ))
+    temp_store.create(Entity(
+        content="Python 类型提示的最佳实践",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    results = temp_store.search(query="sqlite-vec")
+    assert len(results) == 1
+    assert "sqlite-vec" in results[0].content
+
+    results2 = temp_store.search(query="Python 类型")
+    assert len(results2) == 1
+    assert "Python" in results2[0].content
