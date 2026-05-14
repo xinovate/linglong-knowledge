@@ -51,7 +51,7 @@ def test_draft_to_publish_pipeline(integrated_setup):
         title="Integration Test",
         date="2026-05-12",
         content="---\ntitle: Integration Test\ndate: 2026-05-12\n---\n\n# Hello",
-        metadata={"title": "Integration Test"},
+        metadata={"title": "Integration Test", "date": "2026-05-12"},
         fragment_hashes=["abc123"],
     )
 

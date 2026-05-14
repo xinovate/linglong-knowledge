@@ -11,9 +11,9 @@ def test_load_ai_morning_brief_package():
     package = SourcePackage.from_yaml("examples/packages/ai-morning-brief.yaml")
     assert package.name == "AI Morning Brief"
     assert package.topic == "artificial-intelligence"
-    assert len(package.sources) == 3
+    assert len(package.sources) == 4
     assert package.sources[0].type == "rss"
-    assert package.sources[1].type == "web_fetch"
+    assert package.sources[2].type == "web_fetch"
     assert package.verification.cross_reference_min == 2
 
 
