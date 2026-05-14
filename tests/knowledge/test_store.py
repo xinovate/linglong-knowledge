@@ -273,3 +273,35 @@ def test_fts5_fulltext_search(temp_store):
     results2 = temp_store.search(query="Python 类型")
     assert len(results2) == 1
     assert "Python" in results2[0].content
+
+
+def test_create_entity_saves_to_facet_directory(temp_store):
+    """创建 Entity 时文件存入 wiki/{facet}/ 目录。"""
+    entity = Entity(
+        content="测试内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    )
+    created = temp_store.create(entity)
+
+    # 文件应在 wiki/concept/ 目录下
+    wiki_path = temp_store.wiki_path
+    facet_files = list((wiki_path / "concept").glob("*.md"))
+    assert len(facet_files) == 1
+    assert created.id in facet_files[0].name
+
+
+def test_entity_file_has_frontmatter(temp_store):
+    """Entity 文件包含正确的 YAML frontmatter。"""
+    entity = Entity(
+        content="测试内容",
+        facet=EntityFacet.EXPERIENCE,
+        created_by="agent:claude",
+    )
+    created = temp_store.create(entity)
+
+    path = temp_store.wiki_path / "experience" / f"{created.id}.md"
+    assert path.exists()
+    content = path.read_text()
+    assert '"type": "experience"' in content
+    assert '"created_by": "agent:claude"' in content

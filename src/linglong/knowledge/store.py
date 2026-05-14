@@ -409,17 +409,18 @@ class KnowledgeStore:
 
     def delete(self, entity_id: str) -> bool:
         """Delete an entity."""
-        # 删除前获取 embedding_id
+        # 删除前获取 embedding_id 和 facet
         embedding_id = None
+        facet = "concept"
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
-                "SELECT embedding_id FROM entities WHERE id = ?", (entity_id,)
+                "SELECT embedding_id, facet FROM entities WHERE id = ?", (entity_id,)
             ).fetchone()
             if row:
-                embedding_id = row[0]
+                embedding_id, facet = row[0], row[1] or "concept"
 
         # 从文件系统删除
-        entity_path = self._get_entity_path(entity_id)
+        entity_path = self._get_entity_path(entity_id, facet)
         if entity_path.exists():
             entity_path.unlink()
 
@@ -439,12 +440,13 @@ class KnowledgeStore:
 
     def _save_to_filesystem(self, entity: Entity) -> None:
         """Save entity as Markdown file."""
-        entity_path = self._get_entity_path(entity.id)
+        entity_path = self._get_entity_path(entity.id, entity.facet.value)
         entity_path.parent.mkdir(parents=True, exist_ok=True)
 
         # 构建 frontmatter
         frontmatter = {
             "id": entity.id,
+            "type": entity.facet.value,
             "created_by": entity.created_by,
             "confirmed_by": entity.confirmed_by,
             "confidence": float(entity.confidence),
@@ -452,6 +454,10 @@ class KnowledgeStore:
             "created_at": entity.created_at.isoformat(),
             "updated_at": entity.updated_at.isoformat(),
         }
+        if entity.summary:
+            frontmatter["summary"] = entity.summary
+        if entity.archived_at:
+            frontmatter["archived_at"] = entity.archived_at.isoformat()
 
         # 写入带 YAML frontmatter 的 markdown
         content = f"""---
@@ -462,10 +468,9 @@ class KnowledgeStore:
 """
         entity_path.write_text(content, encoding="utf-8")
 
-    def _get_entity_path(self, entity_id: str) -> Path:
-        """Get filesystem path for an entity."""
-        # 使用前 2 个字符作为子目录以分散存储
-        return self.wiki_path / entity_id[:2] / f"{entity_id}.md"
+    def _get_entity_path(self, entity_id: str, facet: str = "concept") -> Path:
+        """Get filesystem path for an entity, organized by facet."""
+        return self.wiki_path / facet / f"{entity_id}.md"
 
     def _row_to_entity(self, row: sqlite3.Row) -> Entity:
         """Convert database row to Entity."""
