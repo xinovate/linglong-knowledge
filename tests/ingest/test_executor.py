@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from linglong.core.models import Entity
+from linglong.core.models import Entity, EntityFacet
 from linglong.ingest.adapter import AdapterRegistry, SourceAdapter
 from linglong.ingest.executor import PackageExecutor
 from linglong.ingest.package import SourceDefinition, SourcePackage
@@ -18,6 +18,7 @@ class MockAdapter(SourceAdapter):
             Entity(
                 id=f"{self.source_id}-1",
                 content=f"Content from {self.source_id}",
+                facet=EntityFacet.CONCEPT,
                 created_by="test",
                 confidence=0.7,
             )

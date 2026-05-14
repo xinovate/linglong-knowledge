@@ -3,7 +3,7 @@
 import httpx
 
 from linglong.core.config import get_config
-from linglong.core.models import Entity, Source, SourceType
+from linglong.core.models import Entity, EntityFacet, Source, SourceType
 from linglong.ingest.adapter import SourceAdapter
 
 
@@ -52,6 +52,7 @@ class APIAdapter(SourceAdapter):
     def _item_to_entity(self, item: dict) -> Entity:
         return Entity(
             content=f"```json\n{item}\n```",
+            facet=EntityFacet.SOURCE,
             created_by="agent:ingest",
             confidence=get_config().ingest.default_confidence.get("api", 0.75),
             sources=[

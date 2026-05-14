@@ -6,7 +6,7 @@ import feedparser
 import httpx
 
 from linglong.core.config import get_config
-from linglong.core.models import Entity, Source, SourceType
+from linglong.core.models import Entity, EntityFacet, Source, SourceType
 from linglong.knowledge.review import ReviewEngine
 from linglong.knowledge.store import KnowledgeStore
 
@@ -66,6 +66,7 @@ class RSSSource:
         return Entity(
             id=entity_id,
             content=content,
+            facet=EntityFacet.SOURCE,
             summary=getattr(entry, "summary", None),
             created_by="agent:ingest",
             confidence=get_config().ingest.default_confidence.get("rss", 0.7),  # RSS content has moderate confidence

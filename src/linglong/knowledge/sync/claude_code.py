@@ -11,7 +11,7 @@ from pathlib import Path
 import frontmatter
 
 from linglong.core.config import get_config
-from linglong.core.models import Entity, EntityStatus, Source, SourceType
+from linglong.core.models import Entity, EntityFacet, EntityStatus, Source, SourceType
 from linglong.knowledge.store import KnowledgeStore
 
 logger = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
     return Entity(
         id=entity_id,
         content=raw_content,
+        facet=EntityFacet.EXPERIENCE,
         created_by="agent:claude",
         status=EntityStatus.AUTO_CONFIRMED,
         sources=[source],

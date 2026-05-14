@@ -5,7 +5,7 @@ import asyncio
 import httpx
 
 from linglong.core.config import get_config
-from linglong.core.models import Entity, Source, SourceType
+from linglong.core.models import Entity, EntityFacet, Source, SourceType
 from linglong.ingest.adapter import SourceAdapter
 
 
@@ -43,6 +43,7 @@ class WebFetchAdapter(SourceAdapter):
     def _content_to_entity(self, content: str, url: str) -> Entity:
         return Entity(
             content=f"# Fetched Content\n\n{content}\n\n[Source]({url})",
+            facet=EntityFacet.SOURCE,
             created_by="agent:ingest",
             confidence=get_config().ingest.default_confidence.get("web_fetch", 0.65),
             sources=[

@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from linglong.core.config import LinglongConfig, set_config
-from linglong.core.models import Entity, EntityStatus
+from linglong.core.models import Entity, EntityFacet, EntityStatus
 from linglong.knowledge.store import KnowledgeStore
 
 
@@ -34,6 +34,7 @@ def test_create_and_get(temp_store):
     """Test creating and retrieving an entity."""
     entity = Entity(
         content="# Test Entity\n\nThis is a test.",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:violet",
         confidence=0.85,
     )
@@ -51,11 +52,13 @@ def test_search_by_status(temp_store):
     """Test searching entities by status."""
     entity1 = Entity(
         content="Entity 1",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:violet",
         status=EntityStatus.CONFIRMED,
     )
     entity2 = Entity(
         content="Entity 2",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:claude",
         status=EntityStatus.RAW,
     )
@@ -72,6 +75,7 @@ def test_update_entity(temp_store):
     """Test updating an entity."""
     entity = Entity(
         content="Original content",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:violet",
     )
 
@@ -91,6 +95,7 @@ def test_delete_entity(temp_store):
     """Test deleting an entity."""
     entity = Entity(
         content="To be deleted",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:violet",
     )
 
@@ -120,7 +125,7 @@ def test_create_entity_with_embedding():
             "linglong.knowledge.embeddings.EmbeddingGenerator.generate",
             return_value=[0.1] * 768,
         ):
-            entity = Entity(content="hello world", created_by="agent:test")
+            entity = Entity(content="hello world", facet=EntityFacet.CONCEPT, created_by="agent:test")
             created = store.create(entity)
 
         assert created.embedding_id is not None
@@ -159,9 +164,9 @@ def test_search_similar_returns_results():
             "linglong.knowledge.embeddings.EmbeddingGenerator.generate",
             side_effect=_fake_generate,
         ):
-            store.create(Entity(content="python tutorial", created_by="agent:test"))
-            store.create(Entity(content="javascript guide", created_by="agent:test"))
-            store.create(Entity(content="cooking recipes", created_by="agent:test"))
+            store.create(Entity(content="python tutorial", facet=EntityFacet.CONCEPT, created_by="agent:test"))
+            store.create(Entity(content="javascript guide", facet=EntityFacet.CONCEPT, created_by="agent:test"))
+            store.create(Entity(content="cooking recipes", facet=EntityFacet.CONCEPT, created_by="agent:test"))
 
         # 搜索类似 python 的内容
         with patch(
@@ -198,6 +203,7 @@ def test_search_similar_with_status_filter():
             store.create(
                 Entity(
                     content="python tutorial",
+                    facet=EntityFacet.CONCEPT,
                     created_by="agent:test",
                     status=EntityStatus.AUTO_CONFIRMED,
                 )
@@ -205,6 +211,7 @@ def test_search_similar_with_status_filter():
             store.create(
                 Entity(
                     content="python advanced",
+                    facet=EntityFacet.CONCEPT,
                     created_by="agent:test",
                     status=EntityStatus.RAW,
                 )

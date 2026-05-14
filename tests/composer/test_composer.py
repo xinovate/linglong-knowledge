@@ -12,7 +12,7 @@ import pytest
 
 from linglong.composer.composer import Composer, ComposerResult
 from linglong.core.config import LinglongConfig, set_config
-from linglong.core.models import Entity, EntityStatus, Source, SourceType
+from linglong.core.models import Entity, EntityFacet, EntityStatus, Source, SourceType
 from linglong.knowledge.store import KnowledgeStore
 
 
@@ -47,6 +47,7 @@ def _create_entity(content: str, date: datetime, source_name: str = "openclaw") 
     return Entity(
         id=str(uuid.uuid4()),
         content=content,
+        facet=EntityFacet.CONCEPT,
         created_by="agent:test",
         confidence=0.92,
         status=EntityStatus.AUTO_CONFIRMED,

@@ -1,6 +1,6 @@
 """Tests for review engine."""
 
-from linglong.core.models import Entity, EntityStatus, Source, SourceType
+from linglong.core.models import Entity, EntityFacet, EntityStatus, Source, SourceType
 from linglong.knowledge.review import Action, ReviewEngine, Rule
 
 
@@ -10,6 +10,7 @@ def test_high_confidence_auto_confirm():
 
     entity = Entity(
         content="High quality content about Python",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:violet",
         confidence=0.95,
         sources=[Source(type=SourceType.RSS, name="openclaw")],
@@ -25,6 +26,7 @@ def test_low_confidence_flagged():
 
     entity = Entity(
         content="Low confidence content",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:violet",
         confidence=0.5,
     )
@@ -39,6 +41,7 @@ def test_sensitive_content_requires_human():
 
     entity = Entity(
         content="My password is secret123",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:violet",
         confidence=0.9,
     )
@@ -63,6 +66,7 @@ def test_custom_rule():
 
     entity = Entity(
         content="",
+        facet=EntityFacet.CONCEPT,
         created_by="agent:violet",
         confidence=0.95,
     )

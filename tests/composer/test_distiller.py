@@ -4,7 +4,7 @@ from datetime import datetime
 
 from linglong.composer.distiller.aggregator import ArticleMaterial, DailyAggregator
 from linglong.composer.ingest_adapter import IngestAdapter, MemoryFragment
-from linglong.core.models import Entity, EntityStatus, Source, SourceType
+from linglong.core.models import Entity, EntityFacet, EntityStatus, Source, SourceType
 
 
 class TestIngestAdapter:
@@ -13,6 +13,7 @@ class TestIngestAdapter:
         entity = Entity(
             id="test-123",
             content="# Test\n\nContent",
+            facet=EntityFacet.CONCEPT,
             created_by="agent:violet",
             confidence=0.92,
             status=EntityStatus.AUTO_CONFIRMED,
@@ -32,6 +33,7 @@ class TestIngestAdapter:
         entity = Entity(
             id="test-456",
             content="Content",
+            facet=EntityFacet.CONCEPT,
             created_by="agent:test",
         )
 
@@ -41,8 +43,8 @@ class TestIngestAdapter:
     def test_adapt_many(self):
         """Multiple entities should be adapted correctly"""
         entities = [
-            Entity(id="1", content="A", created_by="agent:a"),
-            Entity(id="2", content="B", created_by="agent:b"),
+            Entity(id="1", content="A", facet=EntityFacet.CONCEPT, created_by="agent:a"),
+            Entity(id="2", content="B", facet=EntityFacet.CONCEPT, created_by="agent:b"),
         ]
         frags = IngestAdapter.adapt_many(entities)
         assert len(frags) == 2

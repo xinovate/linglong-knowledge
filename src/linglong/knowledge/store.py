@@ -14,7 +14,7 @@ from pathlib import Path
 import sqlite_vec
 
 from linglong.core.config import get_config
-from linglong.core.models import Entity, EntityStatus
+from linglong.core.models import Entity, EntityFacet, EntityStatus
 from linglong.knowledge.embeddings import EmbeddingGenerator
 
 logger = logging.getLogger(__name__)
@@ -388,9 +388,14 @@ class KnowledgeStore:
 
     def _row_to_entity(self, row: sqlite3.Row) -> Entity:
         """Convert database row to Entity."""
+        # facet 列可能尚不存在于旧 schema 中，使用 SOURCE 作为默认值
+        facet_str = row["facet"] if "facet" in row.keys() else None
+        facet = EntityFacet(facet_str) if facet_str else EntityFacet.SOURCE
+
         return Entity(
             id=row["id"],
             content=row["content"],
+            facet=facet,
             summary=row["summary"],
             created_by=row["created_by"],
             confirmed_by=row["confirmed_by"],

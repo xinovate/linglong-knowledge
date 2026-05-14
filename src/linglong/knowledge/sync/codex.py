@@ -16,7 +16,7 @@ import sqlite3
 from pathlib import Path
 
 from linglong.core.config import get_config
-from linglong.core.models import Entity, EntityStatus, Source, SourceType
+from linglong.core.models import Entity, EntityFacet, EntityStatus, Source, SourceType
 from linglong.knowledge.store import KnowledgeStore
 
 logger = logging.getLogger(__name__)
@@ -110,6 +110,7 @@ def _sync_agents_md(codex_path: Path, store: KnowledgeStore, stats: dict) -> Non
         entity = Entity(
             id=entity_id,
             content=raw_content,
+            facet=EntityFacet.SOURCE,
             created_by="agent:codex",
             status=EntityStatus.AUTO_CONFIRMED,
             sources=[source],
@@ -191,6 +192,7 @@ def _sync_state_sqlite(codex_path: Path, store: KnowledgeStore, stats: dict) -> 
             entity = Entity(
                 id=entity_id,
                 content=content,
+                facet=EntityFacet.SOURCE,
                 created_by="agent:codex",
                 status=EntityStatus.AUTO_CONFIRMED,
                 sources=[source],
@@ -271,6 +273,7 @@ def _sync_history_jsonl(codex_path: Path, store: KnowledgeStore, stats: dict) ->
             entity = Entity(
                 id=entity_id,
                 content=content,
+                facet=EntityFacet.SOURCE,
                 created_by="agent:codex",
                 status=EntityStatus.AUTO_CONFIRMED,
                 sources=[source],
