@@ -16,6 +16,7 @@ import sqlite_vec
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityFacet, EntityStatus
 from linglong.knowledge.embeddings import EmbeddingGenerator
+from linglong.knowledge.lock import KnowledgeLock
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,15 @@ class KnowledgeStore:
         self._vector_available = False
         self._embedding_generator = EmbeddingGenerator()
         self._init_database()
+
+        # 文件锁
+        lock_path = self.config.db_path.parent / ".knowledge.lock"
+        self._lock = KnowledgeLock(lock_path, timeout=self.config.lock_timeout)
+
+        # SQLite WAL 模式
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(f"PRAGMA journal_mode={self.config.db_mode}")
+            conn.execute("PRAGMA busy_timeout=5000")
 
     def _log_operation(self, action: str, entity_id: str, details: str = "") -> None:
         """Append operation to log file."""
@@ -123,6 +133,7 @@ class KnowledgeStore:
                     # sqlite-vec extension not available; disable vector features
                     self._vector_available = False
 
+            conn.execute(f"PRAGMA journal_mode={self.config.db_mode}")
             conn.commit()
 
     def _write_embedding(
@@ -162,60 +173,61 @@ class KnowledgeStore:
 
     def create(self, entity: Entity) -> Entity:
         """Create a new entity."""
-        entity.id = entity.id or str(uuid.uuid4())
-        entity.created_at = entity.created_at or datetime.utcnow()
-        entity.updated_at = entity.updated_at or entity.created_at
+        with self._lock:
+            entity.id = entity.id or str(uuid.uuid4())
+            entity.created_at = entity.created_at or datetime.utcnow()
+            entity.updated_at = entity.updated_at or entity.created_at
 
-        # 保存到文件系统
-        self._save_to_filesystem(entity)
+            # 保存到文件系统
+            self._save_to_filesystem(entity)
 
-        # 保存到 SQLite
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                INSERT INTO entities
-                (id, content, summary, facet, created_by, confirmed_by, confirmed_at,
-                 confidence, status, sources, relations, versions, current_version,
-                 created_at, updated_at, archived_at, embedding_id, metadata)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    entity.id,
-                    entity.content,
-                    entity.summary,
-                    entity.facet.value,
-                    entity.created_by,
-                    entity.confirmed_by,
-                    entity.confirmed_at.isoformat() if entity.confirmed_at else None,
-                    float(entity.confidence),
-                    entity.status.value,
-                    json.dumps([s.model_dump() for s in entity.sources]),
-                    json.dumps([r.model_dump() for r in entity.relations]),
-                    json.dumps([v.model_dump() for v in entity.versions]),
-                    entity.current_version,
-                    entity.created_at.isoformat(),
-                    entity.updated_at.isoformat(),
-                    None,  # archived_at
-                    entity.embedding_id,
-                    json.dumps(entity.metadata),
-                ),
-            )
-            conn.commit()
-
-        # 实体持久化后生成嵌入向量
-        self._generate_and_store_embedding(entity)
-
-        # 如果生成了嵌入，更新 embedding_id
-        if entity.embedding_id:
+            # 保存到 SQLite
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
-                    "UPDATE entities SET embedding_id = ? WHERE id = ?",
-                    (entity.embedding_id, entity.id),
+                    """
+                    INSERT INTO entities
+                    (id, content, summary, facet, created_by, confirmed_by, confirmed_at,
+                     confidence, status, sources, relations, versions, current_version,
+                     created_at, updated_at, archived_at, embedding_id, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        entity.id,
+                        entity.content,
+                        entity.summary,
+                        entity.facet.value,
+                        entity.created_by,
+                        entity.confirmed_by,
+                        entity.confirmed_at.isoformat() if entity.confirmed_at else None,
+                        float(entity.confidence),
+                        entity.status.value,
+                        json.dumps([s.model_dump() for s in entity.sources]),
+                        json.dumps([r.model_dump() for r in entity.relations]),
+                        json.dumps([v.model_dump() for v in entity.versions]),
+                        entity.current_version,
+                        entity.created_at.isoformat(),
+                        entity.updated_at.isoformat(),
+                        None,  # archived_at
+                        entity.embedding_id,
+                        json.dumps(entity.metadata),
+                    ),
                 )
                 conn.commit()
 
-        self._log_operation("create", entity.id, f"facet={entity.facet.value}")
-        return entity
+            # 实体持久化后生成嵌入向量
+            self._generate_and_store_embedding(entity)
+
+            # 如果生成了嵌入，更新 embedding_id
+            if entity.embedding_id:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute(
+                        "UPDATE entities SET embedding_id = ? WHERE id = ?",
+                        (entity.embedding_id, entity.id),
+                    )
+                    conn.commit()
+
+            self._log_operation("create", entity.id, f"facet={entity.facet.value}")
+            return entity
 
     def get(self, entity_id: str) -> Entity | None:
         """Get entity by ID."""
@@ -364,186 +376,189 @@ class KnowledgeStore:
         - Append mode (metadata['update_mode'] = 'append'): no version bump.
         - Versions beyond max_versions are auto-compacted.
         """
-        # 获取当前版本用于版本管理
-        current = self.get(entity.id)
-        if current is None:
-            raise ValueError(f"Entity {entity.id} not found")
+        with self._lock:
+            # 获取当前版本用于版本管理
+            current = self.get(entity.id)
+            if current is None:
+                raise ValueError(f"Entity {entity.id} not found")
 
-        # 判断是否需要产生新版本
-        update_mode = entity.metadata.pop("update_mode", None)
-        content_changed = current.content != entity.content
+            # 判断是否需要产生新版本
+            update_mode = entity.metadata.pop("update_mode", None)
+            content_changed = current.content != entity.content
 
-        if content_changed and update_mode != "append":
-            # 替换模式：产生新版本
-            # current.versions 中的元素可能是 dict（来自 json.loads）
-            # 或 Version 对象（Pydantic 自动转换），统一序列化为 dict
-            existing_versions = []
-            for v in current.versions:
-                if isinstance(v, dict):
-                    existing_versions.append(v)
-                else:
-                    d = v.model_dump()
-                    # 将 datetime 对象转为 ISO 字符串以便 JSON 序列化
-                    if isinstance(d.get("modified_at"), datetime):
-                        d["modified_at"] = d["modified_at"].isoformat()
-                    existing_versions.append(d)
-            version_entry = {
-                "version": current.current_version,
-                "content": current.content,
-                "modified_by": current.created_by,
-                "modified_at": current.updated_at.isoformat(),
-            }
-            entity.versions = existing_versions + [version_entry]
-            entity.current_version = current.current_version + 1
-
-            # 版本压缩
-            max_versions = self.config.max_versions
-            if len(entity.versions) > max_versions:
-                first = entity.versions[0]
-                recent = entity.versions[-(max_versions - 1):]
-                first_compact = {
-                    "version": first["version"],
-                    "content": "(compressed)",
-                    "modified_by": first["modified_by"],
-                    "modified_at": first["modified_at"],
+            if content_changed and update_mode != "append":
+                # 替换模式：产生新版本
+                # current.versions 中的元素可能是 dict（来自 json.loads）
+                # 或 Version 对象（Pydantic 自动转换），统一序列化为 dict
+                existing_versions = []
+                for v in current.versions:
+                    if isinstance(v, dict):
+                        existing_versions.append(v)
+                    else:
+                        d = v.model_dump()
+                        # 将 datetime 对象转为 ISO 字符串以便 JSON 序列化
+                        if isinstance(d.get("modified_at"), datetime):
+                            d["modified_at"] = d["modified_at"].isoformat()
+                        existing_versions.append(d)
+                version_entry = {
+                    "version": current.current_version,
+                    "content": current.content,
+                    "modified_by": current.created_by,
+                    "modified_at": current.updated_at.isoformat(),
                 }
-                entity.versions = [first_compact] + recent
+                entity.versions = existing_versions + [version_entry]
+                entity.current_version = current.current_version + 1
 
-        entity.updated_at = datetime.utcnow()
+                # 版本压缩
+                max_versions = self.config.max_versions
+                if len(entity.versions) > max_versions:
+                    first = entity.versions[0]
+                    recent = entity.versions[-(max_versions - 1):]
+                    first_compact = {
+                        "version": first["version"],
+                        "content": "(compressed)",
+                        "modified_by": first["modified_by"],
+                        "modified_at": first["modified_at"],
+                    }
+                    entity.versions = [first_compact] + recent
 
-        # 更新文件系统
-        self._save_to_filesystem(entity)
+            entity.updated_at = datetime.utcnow()
 
-        # 更新 SQLite
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                UPDATE entities SET
-                    content = ?,
-                    summary = ?,
-                    facet = ?,
-                    confirmed_by = ?,
-                    confirmed_at = ?,
-                    confidence = ?,
-                    status = ?,
-                    sources = ?,
-                    relations = ?,
-                    versions = ?,
-                    current_version = ?,
-                    updated_at = ?,
-                    archived_at = ?,
-                    embedding_id = ?,
-                    metadata = ?
-                WHERE id = ?
-                """,
-                (
-                    entity.content,
-                    entity.summary,
-                    entity.facet.value,
-                    entity.confirmed_by,
-                    entity.confirmed_at.isoformat() if entity.confirmed_at else None,
-                    float(entity.confidence),
-                    entity.status.value,
-                    json.dumps([s.model_dump() for s in entity.sources]),
-                    json.dumps([r.model_dump() for r in entity.relations]),
-                    json.dumps([
-                        v if isinstance(v, dict) else v.model_dump()
-                        for v in entity.versions
-                    ]),
-                    entity.current_version,
-                    entity.updated_at.isoformat(),
-                    entity.archived_at.isoformat() if entity.archived_at else None,
-                    entity.embedding_id,
-                    json.dumps(entity.metadata),
-                    entity.id,
-                ),
-            )
-            conn.commit()
+            # 更新文件系统
+            self._save_to_filesystem(entity)
 
-        # 如果内容变更且向量搜索可用，重新生成嵌入
-        if self._vector_available and self.config.generate_embeddings:
-            old_entity = self.get(entity.id)
-            if old_entity is None or old_entity.content != entity.content:
-                if entity.embedding_id:
+            # 更新 SQLite
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    """
+                    UPDATE entities SET
+                        content = ?,
+                        summary = ?,
+                        facet = ?,
+                        confirmed_by = ?,
+                        confirmed_at = ?,
+                        confidence = ?,
+                        status = ?,
+                        sources = ?,
+                        relations = ?,
+                        versions = ?,
+                        current_version = ?,
+                        updated_at = ?,
+                        archived_at = ?,
+                        embedding_id = ?,
+                        metadata = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        entity.content,
+                        entity.summary,
+                        entity.facet.value,
+                        entity.confirmed_by,
+                        entity.confirmed_at.isoformat() if entity.confirmed_at else None,
+                        float(entity.confidence),
+                        entity.status.value,
+                        json.dumps([s.model_dump() for s in entity.sources]),
+                        json.dumps([r.model_dump() for r in entity.relations]),
+                        json.dumps([
+                            v if isinstance(v, dict) else v.model_dump()
+                            for v in entity.versions
+                        ]),
+                        entity.current_version,
+                        entity.updated_at.isoformat(),
+                        entity.archived_at.isoformat() if entity.archived_at else None,
+                        entity.embedding_id,
+                        json.dumps(entity.metadata),
+                        entity.id,
+                    ),
+                )
+                conn.commit()
+
+            # 如果内容变更且向量搜索可用，重新生成嵌入
+            if self._vector_available and self.config.generate_embeddings:
+                old_entity = self.get(entity.id)
+                if old_entity is None or old_entity.content != entity.content:
+                    if entity.embedding_id:
+                        with sqlite3.connect(self.db_path) as conn:
+                            self._delete_embedding(conn, entity.embedding_id)
+                            conn.commit()
+                    self._generate_and_store_embedding(entity)
+                    # 重新更新 entities 表中的 embedding_id
                     with sqlite3.connect(self.db_path) as conn:
-                        self._delete_embedding(conn, entity.embedding_id)
+                        conn.execute(
+                            "UPDATE entities SET embedding_id = ? WHERE id = ?",
+                            (entity.embedding_id, entity.id),
+                        )
                         conn.commit()
-                self._generate_and_store_embedding(entity)
-                # 重新更新 entities 表中的 embedding_id
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.execute(
-                        "UPDATE entities SET embedding_id = ? WHERE id = ?",
-                        (entity.embedding_id, entity.id),
-                    )
-                    conn.commit()
 
-        self._log_operation("update", entity.id, f"v{entity.current_version}")
-        return entity
+            self._log_operation("update", entity.id, f"v{entity.current_version}")
+            return entity
 
     def archive(self, entity_id: str) -> Entity:
         """Archive an entity: mark archived_at and move file to archive/."""
-        entity = self.get(entity_id)
-        if entity is None:
-            raise ValueError(f"Entity {entity_id} not found")
+        with self._lock:
+            entity = self.get(entity_id)
+            if entity is None:
+                raise ValueError(f"Entity {entity_id} not found")
 
-        entity.archived_at = datetime.utcnow()
-        entity.updated_at = datetime.utcnow()
+            entity.archived_at = datetime.utcnow()
+            entity.updated_at = datetime.utcnow()
 
-        # 从原 facet 目录删除
-        old_path = self._get_entity_path(entity.id, entity.facet.value)
-        if old_path.exists():
-            old_path.unlink()
+            # 从原 facet 目录删除
+            old_path = self._get_entity_path(entity.id, entity.facet.value)
+            if old_path.exists():
+                old_path.unlink()
 
-        # 写入 archive 目录
-        archive_dir = self.wiki_path / "archive"
-        archive_dir.mkdir(parents=True, exist_ok=True)
-        archive_path = archive_dir / f"{entity.id}.md"
-        archive_path.write_text(
-            f"---\nid: {entity.id}\ntype: {entity.facet.value}\narchived_at: {entity.archived_at.isoformat()}\n---\n\n{entity.content}",
-            encoding="utf-8",
-        )
-
-        # 更新 SQLite
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "UPDATE entities SET archived_at = ?, updated_at = ? WHERE id = ?",
-                (entity.archived_at.isoformat(), entity.updated_at.isoformat(), entity.id),
+            # 写入 archive 目录
+            archive_dir = self.wiki_path / "archive"
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            archive_path = archive_dir / f"{entity.id}.md"
+            archive_path.write_text(
+                f"---\nid: {entity.id}\ntype: {entity.facet.value}\narchived_at: {entity.archived_at.isoformat()}\n---\n\n{entity.content}",
+                encoding="utf-8",
             )
-            conn.commit()
 
-        self._log_operation("archive", entity.id)
-        return entity
+            # 更新 SQLite
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    "UPDATE entities SET archived_at = ?, updated_at = ? WHERE id = ?",
+                    (entity.archived_at.isoformat(), entity.updated_at.isoformat(), entity.id),
+                )
+                conn.commit()
+
+            self._log_operation("archive", entity.id)
+            return entity
 
     def delete(self, entity_id: str) -> bool:
         """Delete an entity."""
-        # 删除前获取 embedding_id 和 facet
-        embedding_id = None
-        facet = "concept"
-        with sqlite3.connect(self.db_path) as conn:
-            row = conn.execute(
-                "SELECT embedding_id, facet FROM entities WHERE id = ?", (entity_id,)
-            ).fetchone()
-            if row:
-                embedding_id, facet = row[0], row[1] or "concept"
-
-        # 从文件系统删除
-        entity_path = self._get_entity_path(entity_id, facet)
-        if entity_path.exists():
-            entity_path.unlink()
-
-        # 从 SQLite 删除
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
-            conn.commit()
-            deleted = cursor.rowcount > 0
-
-        # 删除嵌入向量（如果向量搜索可用）
-        if deleted and embedding_id and self._vector_available:
+        with self._lock:
+            # 删除前获取 embedding_id 和 facet
+            embedding_id = None
+            facet = "concept"
             with sqlite3.connect(self.db_path) as conn:
-                self._delete_embedding(conn, embedding_id)
-                conn.commit()
+                row = conn.execute(
+                    "SELECT embedding_id, facet FROM entities WHERE id = ?", (entity_id,)
+                ).fetchone()
+                if row:
+                    embedding_id, facet = row[0], row[1] or "concept"
 
-        return deleted
+            # 从文件系统删除
+            entity_path = self._get_entity_path(entity_id, facet)
+            if entity_path.exists():
+                entity_path.unlink()
+
+            # 从 SQLite 删除
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
+                conn.commit()
+                deleted = cursor.rowcount > 0
+
+            # 删除嵌入向量（如果向量搜索可用）
+            if deleted and embedding_id and self._vector_available:
+                with sqlite3.connect(self.db_path) as conn:
+                    self._delete_embedding(conn, embedding_id)
+                    conn.commit()
+
+            return deleted
 
     def _save_to_filesystem(self, entity: Entity) -> None:
         """Save entity as Markdown file."""
