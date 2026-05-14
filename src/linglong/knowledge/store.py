@@ -31,6 +31,18 @@ class KnowledgeStore:
         self._embedding_generator = EmbeddingGenerator()
         self._init_database()
 
+    def _log_operation(self, action: str, entity_id: str, details: str = "") -> None:
+        """Append operation to log file."""
+        log_path = self.wiki_path / "log.md"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        entry = f"- **{timestamp}** [{action}] {entity_id}"
+        if details:
+            entry += f" — {details}"
+        entry += "\n"
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(entry)
+
     def _init_database(self) -> None:
         """Initialize SQLite database with required tables."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -202,6 +214,7 @@ class KnowledgeStore:
                 )
                 conn.commit()
 
+        self._log_operation("create", entity.id, f"facet={entity.facet.value}")
         return entity
 
     def get(self, entity_id: str) -> Entity | None:
@@ -464,6 +477,7 @@ class KnowledgeStore:
                     )
                     conn.commit()
 
+        self._log_operation("update", entity.id, f"v{entity.current_version}")
         return entity
 
     def archive(self, entity_id: str) -> Entity:
@@ -497,6 +511,7 @@ class KnowledgeStore:
             )
             conn.commit()
 
+        self._log_operation("archive", entity.id)
         return entity
 
     def delete(self, entity_id: str) -> bool:

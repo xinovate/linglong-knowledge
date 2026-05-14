@@ -15,6 +15,8 @@ from linglong.dispatch.manager import DispatchManager
 from linglong.ingest.executor import PackageExecutor
 from linglong.ingest.package import SourcePackage
 from linglong.knowledge.store import KnowledgeStore
+from linglong.knowledge.lint import LintEngine
+from linglong.knowledge.indexer import IndexGenerator
 from linglong.knowledge.sync.claude_code import ClaudeCodeSyncAdapter
 from linglong.knowledge.sync.codex import CodexSyncAdapter
 from linglong.knowledge.sync.openclaw import OpenClawSyncAdapter
@@ -342,6 +344,106 @@ def cmd_archive(args: argparse.Namespace) -> int:
     return 1
 
 
+def cmd_lint(args: argparse.Namespace) -> int:
+    """Run lint checks on knowledge base."""
+    store = KnowledgeStore()
+    engine = LintEngine(store)
+
+    if args.rule:
+        if args.rule == "index_consistency":
+            results = engine.check_index_consistency()
+        elif args.rule == "wikilinks":
+            results = engine.check_wikilinks()
+        elif args.rule == "content_conflict":
+            results = engine.check_content_conflicts()
+        elif args.rule == "stale_content":
+            results = engine.check_stale_content(args.stale_days)
+        else:
+            results = engine.run_all(args.stale_days)
+    else:
+        results = engine.run_all(args.stale_days)
+
+    if not results:
+        print("✅ 知识库健康，无问题")
+        return 0
+
+    # 按严重度分组
+    by_severity: dict[str, list] = {"error": [], "warning": [], "info": []}
+    for r in results:
+        by_severity[r.severity.value].append(r)
+
+    print(f"巡检结果：{len(results)} 个问题\n")
+
+    for severity in ["error", "warning", "info"]:
+        items = by_severity[severity]
+        if not items:
+            continue
+        icon = {"error": "❌", "warning": "⚠️", "info": "ℹ️"}[severity]
+        print(f"{icon} {severity.upper()} ({len(items)})")
+        for r in items:
+            eid = r.entity_id[:8] if r.entity_id else "N/A"
+            print(f"  [{r.rule}] {eid}... {r.message}")
+        print()
+
+    return 1 if by_severity["error"] else 0
+
+
+def cmd_index(args: argparse.Namespace) -> int:
+    """Generate knowledge base index."""
+    store = KnowledgeStore()
+    gen = IndexGenerator(store.wiki_path)
+
+    if args.facet:
+        facet = EntityFacet(args.facet)
+        count = gen.generate_facet(facet)
+        print(f"✅ 已生成 index-{facet.value}.md ({count} 条)")
+    elif args.rebuild:
+        stats = gen.generate_all()
+        for name, count in stats.items():
+            print(f"  {name}: {count} 条")
+        print(f"✅ 已重建全部索引 ({len(stats)} 个文件)")
+    else:
+        stats = gen.generate_all()
+        for name, count in stats.items():
+            print(f"  {name}: {count} 条")
+        print("✅ 已生成索引")
+    return 0
+
+
+def cmd_stats(args: argparse.Namespace) -> int:
+    """Show knowledge base statistics."""
+    store = KnowledgeStore()
+
+    # 总数
+    all_entities = store.search(limit=10000)
+    total = len(all_entities)
+
+    # 按 facet 统计
+    facet_counts: dict[str, int] = {}
+    for facet in EntityFacet:
+        results = store.search(facet=facet, limit=10000)
+        facet_counts[facet.value] = len(results)
+
+    # 最近更新
+    recent = store.search(limit=5)
+
+    print("知识库统计")
+    print("==========")
+    print(f"总条目：{total}")
+    print()
+    print("按分类：")
+    for facet, count in facet_counts.items():
+        bar = "█" * min(count, 20)
+        print(f"  {facet:12s} {count:4d} {bar}")
+    print()
+    if recent:
+        print("最近更新：")
+        for e in recent:
+            preview = e.content[:40].replace("\n", " ")
+            print(f"  {e.id[:8]}... [{e.facet.value}] {preview}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="linglong", description="Linglong cross-agent knowledge hub")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
@@ -426,6 +528,23 @@ def main(argv: list[str] | None = None) -> int:
     archive_parser.add_argument("entity_id", nargs="?", default=None, help="Entity ID")
     archive_parser.add_argument("--older-than", default=None, help="归档超过 N 天的条目 (如 90d)")
     archive_parser.set_defaults(func=cmd_archive)
+
+    # lint
+    lint_parser = sub.add_parser("lint", help="巡检知识库")
+    lint_parser.add_argument("--stale-days", type=int, default=90, help="过期天数阈值")
+    lint_parser.add_argument("--rule", default=None,
+        choices=["index_consistency", "wikilinks", "content_conflict", "stale_content"])
+    lint_parser.set_defaults(func=cmd_lint)
+
+    # index
+    index_parser = sub.add_parser("index", help="生成知识库索引")
+    index_parser.add_argument("--rebuild", action="store_true", help="重建所有索引")
+    index_parser.add_argument("--facet", default=None, help="只生成指定分面的索引")
+    index_parser.set_defaults(func=cmd_index)
+
+    # stats
+    stats_parser = sub.add_parser("stats", help="知识库统计")
+    stats_parser.set_defaults(func=cmd_stats)
 
     args = parser.parse_args(argv)
     return args.func(args)

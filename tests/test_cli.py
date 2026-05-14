@@ -263,3 +263,47 @@ def test_archive_no_args(tmp_path):
 
     code = main(["archive"])
     assert code == 1
+
+
+# ---------------------------------------------------------------------------
+# lint / index / stats 子命令测试
+# ---------------------------------------------------------------------------
+
+
+def test_lint_clean_kb(tmp_path):
+    """空知识库 lint 无问题。"""
+    _make_config(tmp_path)
+    result = main(["lint"])
+    assert result == 0
+
+
+def test_index_generates_files(tmp_path):
+    """index 命令生成索引文件。"""
+    from linglong.core.models import Entity, EntityFacet
+    from linglong.knowledge.store import KnowledgeStore
+
+    _make_config(tmp_path)
+    store = KnowledgeStore()
+    store.create(Entity(
+        content="# 测试\n\n内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:test",
+    ))
+    result = main(["index"])
+    assert result == 0
+
+
+def test_stats_shows_count(tmp_path):
+    """stats 命令输出统计。"""
+    from linglong.core.models import Entity, EntityFacet
+    from linglong.knowledge.store import KnowledgeStore
+
+    _make_config(tmp_path)
+    store = KnowledgeStore()
+    store.create(Entity(
+        content="# 测试\n\n内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:test",
+    ))
+    result = main(["stats"])
+    assert result == 0
