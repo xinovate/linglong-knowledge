@@ -314,3 +314,46 @@ def test_init_bare(tmp_path):
     _make_config(tmp_path)
     result = main(["init"])
     assert result == 0
+
+
+def test_migrate_dry_run(tmp_path):
+    """migrate --dry-run 预览模式。"""
+    _make_config(tmp_path)
+
+    # 创建源目录和测试文件
+    src = tmp_path / "source_wiki"
+    src.mkdir()
+    (src / "test.md").write_text("# 测试迁移\n\n内容")
+    (src / "sub").mkdir()
+    (src / "sub" / "nested.md").write_text("# 嵌套文件\n\n更多内容")
+
+    result = main(["migrate", "--from", str(src), "--dry-run"])
+    assert result == 0
+
+
+def test_migrate_creates_entities(tmp_path):
+    """migrate 实际迁移文件。"""
+    _make_config(tmp_path)
+    from linglong.core.config import get_config
+    config = get_config()
+
+    src = tmp_path / "source_wiki"
+    src.mkdir()
+    (src / "article.md").write_text("# 迁移文章\n\n内容")
+
+    result = main(["migrate", "--from", str(src)])
+    assert result == 0
+
+    # 验证已创建
+    from linglong.knowledge.store import KnowledgeStore
+    store = KnowledgeStore()
+    results = store.search(query="迁移文章")
+    assert len(results) == 1
+
+
+def test_migrate_nonexistent_source(tmp_path):
+    """migrate 不存在的源目录报错。"""
+    _make_config(tmp_path)
+
+    result = main(["migrate", "--from", "/nonexistent/path"])
+    assert result == 1

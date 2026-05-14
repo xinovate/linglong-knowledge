@@ -428,14 +428,46 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 
 def cmd_migrate(args: argparse.Namespace) -> int:
-    """Migrate from OpenClaw wiki."""
-    try:
-        wiki_path = init_from_openclaw()
-        print(f"迁移完成：{wiki_path}")
-        return 0
-    except FileNotFoundError as e:
-        print(f"错误：{e}")
+    """Migrate from external wiki directory."""
+    source = Path(args.source_dir)
+    if not source.exists():
+        print(f"错误：源目录不存在：{source}")
         return 1
+
+    store = KnowledgeStore()
+
+    if args.dry_run:
+        # 预览：列出待迁移文件
+        md_files = list(source.rglob("*.md"))
+        print(f"将迁移 {len(md_files)} 个文件：")
+        for f in md_files[:20]:
+            print(f"  {f.relative_to(source)}")
+        if len(md_files) > 20:
+            print(f"  ... 还有 {len(md_files) - 20} 个")
+        return 0
+
+    # 迁移：逐个读取 md 文件并创建 Entity
+    md_files = list(source.rglob("*.md"))
+    count = 0
+    for md_file in md_files:
+        content = md_file.read_text(encoding="utf-8")
+        entity = Entity(
+            content=content,
+            facet=EntityFacet.SOURCE,
+            created_by="migrate:cli",
+            confidence=0.5,
+        )
+        store.create(entity)
+        count += 1
+
+    print(f"迁移完成：{count} 个文件")
+
+    # 重建索引
+    gen = IndexGenerator(store.wiki_path)
+    gen.generate_all()
+    print("索引已重建")
+
+    return 0
 
 
 def cmd_stats(args: argparse.Namespace) -> int:
@@ -580,8 +612,11 @@ def main(argv: list[str] | None = None) -> int:
     init_parser.add_argument("--from-openclaw", action="store_true", help="从 OpenClaw wiki 导入")
     init_parser.set_defaults(func=cmd_init)
 
-    # migrate (alias for --from-openclaw)
-    migrate_parser = sub.add_parser("migrate", help="从 OpenClaw 迁移")
+    # migrate
+    migrate_parser = sub.add_parser("migrate", help="从外部 wiki 迁移")
+    migrate_parser.add_argument("--from", required=True, metavar="DIR", dest="source_dir",
+                                help="源 wiki 目录")
+    migrate_parser.add_argument("--dry-run", action="store_true", help="预览不执行")
     migrate_parser.set_defaults(func=cmd_migrate)
 
     args = parser.parse_args(argv)
