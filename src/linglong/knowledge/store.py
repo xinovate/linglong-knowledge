@@ -339,7 +339,58 @@ class KnowledgeStore:
             return [self._row_to_entity(row) for row in rows]
 
     def update(self, entity: Entity) -> Entity:
-        """Update an existing entity."""
+        """Update an existing entity.
+
+        Version management:
+        - Content replacement (default): creates a new version entry.
+        - Append mode (metadata['update_mode'] = 'append'): no version bump.
+        - Versions beyond max_versions are auto-compacted.
+        """
+        # 获取当前版本用于版本管理
+        current = self.get(entity.id)
+        if current is None:
+            raise ValueError(f"Entity {entity.id} not found")
+
+        # 判断是否需要产生新版本
+        update_mode = entity.metadata.pop("update_mode", None)
+        content_changed = current.content != entity.content
+
+        if content_changed and update_mode != "append":
+            # 替换模式：产生新版本
+            # current.versions 中的元素可能是 dict（来自 json.loads）
+            # 或 Version 对象（Pydantic 自动转换），统一序列化为 dict
+            existing_versions = []
+            for v in current.versions:
+                if isinstance(v, dict):
+                    existing_versions.append(v)
+                else:
+                    d = v.model_dump()
+                    # 将 datetime 对象转为 ISO 字符串以便 JSON 序列化
+                    if isinstance(d.get("modified_at"), datetime):
+                        d["modified_at"] = d["modified_at"].isoformat()
+                    existing_versions.append(d)
+            version_entry = {
+                "version": current.current_version,
+                "content": current.content,
+                "modified_by": current.created_by,
+                "modified_at": current.updated_at.isoformat(),
+            }
+            entity.versions = existing_versions + [version_entry]
+            entity.current_version = current.current_version + 1
+
+            # 版本压缩
+            max_versions = self.config.max_versions
+            if len(entity.versions) > max_versions:
+                first = entity.versions[0]
+                recent = entity.versions[-(max_versions - 1):]
+                first_compact = {
+                    "version": first["version"],
+                    "content": "(compressed)",
+                    "modified_by": first["modified_by"],
+                    "modified_at": first["modified_at"],
+                }
+                entity.versions = [first_compact] + recent
+
         entity.updated_at = datetime.utcnow()
 
         # 更新文件系统
@@ -377,7 +428,10 @@ class KnowledgeStore:
                     entity.status.value,
                     json.dumps([s.model_dump() for s in entity.sources]),
                     json.dumps([r.model_dump() for r in entity.relations]),
-                    json.dumps([v.model_dump() for v in entity.versions]),
+                    json.dumps([
+                        v if isinstance(v, dict) else v.model_dump()
+                        for v in entity.versions
+                    ]),
                     entity.current_version,
                     entity.updated_at.isoformat(),
                     entity.archived_at.isoformat() if entity.archived_at else None,

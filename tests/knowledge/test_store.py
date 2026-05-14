@@ -305,3 +305,63 @@ def test_entity_file_has_frontmatter(temp_store):
     content = path.read_text()
     assert '"type": "experience"' in content
     assert '"created_by": "agent:claude"' in content
+
+
+def test_update_content_creates_version(temp_store):
+    """替换内容时产生新版本。"""
+    entity = temp_store.create(Entity(
+        content="v1 内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    assert entity.current_version == 1
+    assert len(entity.versions) == 0
+
+    # 更新内容
+    entity.content = "v2 内容"
+    updated = temp_store.update(entity)
+
+    assert updated.current_version == 2
+    assert len(updated.versions) == 1
+    assert updated.versions[0]["version"] == 1
+    assert updated.versions[0]["content"] == "v1 内容"
+
+
+def test_update_appends_no_new_version(temp_store):
+    """追加内容不产生新版本。"""
+    entity = temp_store.create(Entity(
+        content="原始内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    # 追加（通过 metadata 标记）
+    entity.metadata["update_mode"] = "append"
+    entity.content = "原始内容\n\n追加内容"
+    updated = temp_store.update(entity)
+
+    assert updated.current_version == 1
+    assert len(updated.versions) == 0
+    assert "追加内容" in updated.content
+
+
+def test_version_compaction(temp_store):
+    """版本超过上限时自动压缩。"""
+    # 设置低版本上限
+    temp_store.config.max_versions = 3
+
+    entity = temp_store.create(Entity(
+        content="v1",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    for i in range(2, 6):
+        entity.content = f"v{i}"
+        entity = temp_store.update(entity)
+
+    # 应保留首版摘要 + 最近版本，总版本数不超过 max_versions
+    assert entity.current_version == 5
+    assert len(entity.versions) <= 4  # max_versions + 1（首版压缩占一个位置）
+    # 首个版本条目应被压缩
+    assert entity.versions[0]["content"] == "(compressed)"
