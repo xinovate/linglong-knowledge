@@ -222,6 +222,7 @@ class KnowledgeStore:
         status: EntityStatus | None = None,
         created_by: str | None = None,
         limit: int = 50,
+        include_archived: bool = False,
     ) -> list[Entity]:
         """Search entities with filters. Uses FTS5 when query is provided."""
         with sqlite3.connect(self.db_path) as conn:
@@ -246,6 +247,8 @@ class KnowledgeStore:
                 if status:
                     fts_conditions.append("entity_fts.status = ?")
                     params.append(status.value)
+                if not include_archived:
+                    fts_conditions.append("e.archived_at IS NULL")
 
                 fts_where = " AND ".join(fts_conditions) if fts_conditions else "1=1"
 
@@ -274,6 +277,8 @@ class KnowledgeStore:
             if created_by:
                 conditions.append("created_by = ?")
                 params.append(created_by)
+            if not include_archived:
+                conditions.append("archived_at IS NULL")
 
             where_clause = " AND ".join(conditions) if conditions else "1=1"
 
@@ -458,6 +463,39 @@ class KnowledgeStore:
                         (entity.embedding_id, entity.id),
                     )
                     conn.commit()
+
+        return entity
+
+    def archive(self, entity_id: str) -> Entity:
+        """Archive an entity: mark archived_at and move file to archive/."""
+        entity = self.get(entity_id)
+        if entity is None:
+            raise ValueError(f"Entity {entity_id} not found")
+
+        entity.archived_at = datetime.utcnow()
+        entity.updated_at = datetime.utcnow()
+
+        # 从原 facet 目录删除
+        old_path = self._get_entity_path(entity.id, entity.facet.value)
+        if old_path.exists():
+            old_path.unlink()
+
+        # 写入 archive 目录
+        archive_dir = self.wiki_path / "archive"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        archive_path = archive_dir / f"{entity.id}.md"
+        archive_path.write_text(
+            f"---\nid: {entity.id}\ntype: {entity.facet.value}\narchived_at: {entity.archived_at.isoformat()}\n---\n\n{entity.content}",
+            encoding="utf-8",
+        )
+
+        # 更新 SQLite
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "UPDATE entities SET archived_at = ?, updated_at = ? WHERE id = ?",
+                (entity.archived_at.isoformat(), entity.updated_at.isoformat(), entity.id),
+            )
+            conn.commit()
 
         return entity
 

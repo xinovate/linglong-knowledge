@@ -365,3 +365,42 @@ def test_version_compaction(temp_store):
     assert len(entity.versions) <= 4  # max_versions + 1（首版压缩占一个位置）
     # 首个版本条目应被压缩
     assert entity.versions[0]["content"] == "(compressed)"
+
+
+def test_archive_entity(temp_store):
+    """归档 Entity 设置 archived_at 并移入 archive 目录。"""
+    entity = temp_store.create(Entity(
+        content="待归档内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    archived = temp_store.archive(entity.id)
+
+    assert archived.archived_at is not None
+
+    # 原 facet 目录文件应不存在
+    original_path = temp_store._get_entity_path(entity.id, "concept")
+    assert not original_path.exists()
+
+    # archive 目录应有文件
+    archive_files = list((temp_store.wiki_path / "archive").rglob("*.md"))
+    assert len(archive_files) == 1
+
+
+def test_archived_entity_not_in_search(temp_store):
+    """归档的 Entity 不出现在默认搜索结果中。"""
+    entity = temp_store.create(Entity(
+        content="将被归档",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    temp_store.archive(entity.id)
+
+    # 默认搜索不包含已归档
+    results = temp_store.search(query="将被归档")
+    assert len(results) == 0
+
+    # include_archived=True 可搜到
+    results = temp_store.search(query="将被归档", include_archived=True)
+    assert len(results) == 1
