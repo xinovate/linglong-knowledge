@@ -15,6 +15,7 @@ Linglong 是一个**跨 Agent 知识中枢**。
 **当前状态**：
 - v0.1–v0.9 已完成：core + ingest + knowledge + composer + dispatch 五模块完整流水线，CLI 入口，图片资产管线
 - v1.0 进行中：博客流水线端到端跑通（image assets 集成、Playwright 解析、YAML 配置）
+- 知识库模块已完成（M1-M4）：7 Facet 分类、FTS5 全文搜索、版本管理、归档、CLI 命令、索引+巡检、文件锁+WAL
 
 **你的任务**：
 1. 阅读本文档和 `docs/` 目录（尤其是 `PROJECT_OVERVIEW.md`、`roadmap.md`、`rules.md`）
@@ -61,25 +62,57 @@ KnowledgeStore 提供统一接口：
 
 ```python
 from linglong.knowledge.store import KnowledgeStore
-from linglong.core.models import EntityStatus
+from linglong.core.models import Entity, EntityFacet, EntityStatus
 
 store = KnowledgeStore()
 
+# 写入
+entity = store.create(Entity(
+    content="# 标题\n\n内容",
+    facet=EntityFacet.CONCEPT,
+    created_by="agent:claude",
+))
+
 # 读取
 entity = store.get(entity_id)
-entities = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
 
-# 写入（composer 不需要，但需了解）
-store.create(entity)
-store.update(entity)
+# 搜索（FTS5 全文 + facet 过滤）
+results = store.search(query="关键词", facet=EntityFacet.CONCEPT)
+results = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
+
+# 更新（替换产生新版本，追加不产生）
+entity.content = "新内容"
+store.update(entity)  # 版本 +1
+
+# 归档
+store.archive(entity_id)
 ```
 
-### 4. 配置管理
+### 4. 知识库 CLI
+
+知识库提供完整的 CLI 命令集：
+
+```bash
+linglong init                              # 初始化知识库
+linglong write --facet concept --title "标题" --content "内容" --yes
+linglong read <entity_id>
+linglong search "关键词" --facet concept --deep
+linglong update <entity_id> --append "补充内容"
+linglong update <entity_id> --history      # 查看版本历史
+linglong review --list-pending             # 审核管理
+linglong archive <entity_id>
+linglong lint                              # 巡检健康检查
+linglong index --rebuild                   # 生成索引
+linglong stats                             # 统计信息
+linglong migrate --from /path/to/wiki      # 从外部 wiki 迁移
+```
+
+### 5. 配置管理
 
 使用 `.linglong.yaml` 作为主配置文件（搜索路径：CWD → home）：
 
 ```bash
-cp .linglong.yaml.example .linglong.yaml  # 首次使用
+linglong init  # 自动生成 .linglong.yaml 模板
 ```
 
 也支持环境变量（前缀 `LL_`），但 `.linglong.yaml` 优先级更高。
@@ -89,6 +122,8 @@ from linglong.core.config import get_config
 
 config = get_config()
 config.knowledge.wiki_path  # Wiki 目录
+config.knowledge.max_versions  # 版本上限（默认 10）
+config.knowledge.db_mode  # SQLite 模式（默认 wal）
 config.composer.image_assets.enabled  # 图片资产开关
 ```
 
