@@ -73,7 +73,7 @@ def test_init_from_backup(init_dir):
     (backup / "test.md").write_text("# 测试\n内容", encoding="utf-8")
 
     _make_init_config(init_dir)
-    wiki_path = init_from_backup(init_dir / "backup")
+    wiki_path = init_from_backup(init_dir / "backup", target_dir=init_dir)
 
     assert (wiki_path / "concept" / "test.md").exists()
     assert (wiki_path / "concept" / "test.md").read_text(encoding="utf-8") == "# 测试\n内容"
@@ -86,7 +86,7 @@ def test_init_from_backup_creates_config(init_dir):
     (backup / "test.md").write_text("# 测试", encoding="utf-8")
 
     _make_init_config(init_dir)
-    init_from_backup(init_dir / "backup")
+    init_from_backup(init_dir / "backup", target_dir=init_dir)
 
     assert (init_dir / ".linglong.yaml").exists()
 
@@ -107,7 +107,7 @@ def test_init_from_backup_merges(init_dir):
     (backup / "new.md").write_text("新文件", encoding="utf-8")
     (backup / "test.md").write_text("新内容", encoding="utf-8")
 
-    init_from_backup(init_dir / "backup")
+    init_from_backup(init_dir / "backup", target_dir=init_dir)
 
     # 新文件已复制
     assert (wiki / "new.md").exists()
@@ -124,4 +124,4 @@ def test_init_from_backup_missing_wiki(init_dir):
     bad_backup.mkdir()
 
     with pytest.raises(FileNotFoundError, match="备份目录无 wiki/"):
-        init_from_backup(bad_backup)
+        init_from_backup(bad_backup, target_dir=init_dir)

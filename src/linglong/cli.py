@@ -20,6 +20,7 @@ from linglong.knowledge.indexer import IndexGenerator
 from linglong.knowledge.sync.claude_code import ClaudeCodeSyncAdapter
 from linglong.knowledge.sync.codex import CodexSyncAdapter
 from linglong.knowledge.sync.openclaw import OpenClawSyncAdapter
+from linglong.knowledge.init import init_bare, init_from_backup, init_from_openclaw
 
 logger = logging.getLogger(__name__)
 
@@ -410,6 +411,33 @@ def cmd_index(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_init(args: argparse.Namespace) -> int:
+    """Initialize knowledge base."""
+    try:
+        if args.from_backup:
+            wiki_path = init_from_backup(Path(args.from_backup))
+        elif args.from_openclaw:
+            wiki_path = init_from_openclaw()
+        else:
+            wiki_path = init_bare()
+        print(f"知识库已初始化：{wiki_path}")
+        return 0
+    except FileNotFoundError as e:
+        print(f"错误：{e}")
+        return 1
+
+
+def cmd_migrate(args: argparse.Namespace) -> int:
+    """Migrate from OpenClaw wiki."""
+    try:
+        wiki_path = init_from_openclaw()
+        print(f"迁移完成：{wiki_path}")
+        return 0
+    except FileNotFoundError as e:
+        print(f"错误：{e}")
+        return 1
+
+
 def cmd_stats(args: argparse.Namespace) -> int:
     """Show knowledge base statistics."""
     store = KnowledgeStore()
@@ -545,6 +573,16 @@ def main(argv: list[str] | None = None) -> int:
     # stats
     stats_parser = sub.add_parser("stats", help="知识库统计")
     stats_parser.set_defaults(func=cmd_stats)
+
+    # init
+    init_parser = sub.add_parser("init", help="初始化知识库")
+    init_parser.add_argument("--from-backup", default=None, help="从备份目录恢复")
+    init_parser.add_argument("--from-openclaw", action="store_true", help="从 OpenClaw wiki 导入")
+    init_parser.set_defaults(func=cmd_init)
+
+    # migrate (alias for --from-openclaw)
+    migrate_parser = sub.add_parser("migrate", help="从 OpenClaw 迁移")
+    migrate_parser.set_defaults(func=cmd_migrate)
 
     args = parser.parse_args(argv)
     return args.func(args)

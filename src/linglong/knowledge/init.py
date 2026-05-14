@@ -63,7 +63,7 @@ def init_bare(target_dir: Path | None = None) -> Path:
     return wiki_path
 
 
-def init_from_backup(backup_dir: Path) -> Path:
+def init_from_backup(backup_dir: Path, target_dir: Path | None = None) -> Path:
     """Initialize from a backup directory.
 
     Copies wiki/ directory from backup. If target wiki/ already exists,
@@ -73,7 +73,7 @@ def init_from_backup(backup_dir: Path) -> Path:
     if not backup_wiki.exists():
         raise FileNotFoundError(f"备份目录无 wiki/：{backup_dir}")
 
-    target_dir = Path.cwd()
+    target_dir = target_dir or Path.cwd()
     target_wiki = target_dir / "wiki"
 
     if target_wiki.exists():
@@ -97,7 +97,7 @@ def init_from_backup(backup_dir: Path) -> Path:
     return target_wiki
 
 
-def init_from_openclaw(openclaw_path: Path | None = None) -> Path:
+def init_from_openclaw(openclaw_path: Path | None = None, target_dir: Path | None = None) -> Path:
     """Initialize from OpenClaw wiki directory.
 
     Imports wiki markdown files as SOURCE entities.
@@ -106,7 +106,7 @@ def init_from_openclaw(openclaw_path: Path | None = None) -> Path:
     from linglong.knowledge.store import KnowledgeStore
 
     # 先初始化空知识库
-    wiki_path = init_bare()
+    wiki_path = init_bare(target_dir)
 
     # 定位 OpenClaw wiki
     if openclaw_path is None:

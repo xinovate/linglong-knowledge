@@ -307,3 +307,10 @@ def test_stats_shows_count(tmp_path):
     ))
     result = main(["stats"])
     assert result == 0
+
+
+def test_init_bare(tmp_path):
+    """init 命令创建基本目录结构。"""
+    _make_config(tmp_path)
+    result = main(["init"])
+    assert result == 0
