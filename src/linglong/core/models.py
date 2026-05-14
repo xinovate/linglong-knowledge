@@ -102,6 +102,18 @@ class EntityStatus(StrEnum):
     REJECTED = "rejected"  # 审核后拒绝
 
 
+class EntityFacet(StrEnum):
+    """Knowledge entity classification."""
+
+    SOURCE = "source"            # 原始资料汇编
+    ENTITY = "entity"            # 专有名词
+    CONCEPT = "concept"          # 抽象知识
+    SYNTHESIS = "synthesis"      # 跨源综合
+    EXPERIENCE = "experience"    # 实战经验
+    METHODOLOGY = "methodology"  # 方法论
+    PERSONAL = "personal"        # 个人数据
+
+
 class Relation(BaseModel):
     """Relation between entities."""
 
@@ -129,6 +141,8 @@ class Entity(BaseModel):
 
     id: str | None = Field(default=None, description="Unique identifier (UUID)")
     content: str = Field(description="Markdown content")
+    facet: EntityFacet = Field(description="Knowledge classification facet")
+    archived_at: datetime | None = Field(default=None, description="Archive timestamp")
     summary: str | None = Field(default=None, description="AI-generated summary for quick browsing")
 
     # 作者信息
@@ -167,6 +181,8 @@ class Entity(BaseModel):
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
                 "content": "# Python Type Hints\n\nPython 3.11 introduced...",
+                "facet": "concept",
+                "archived_at": None,
                 "summary": "Overview of Python type hints in 3.11",
                 "created_by": "agent:violet",
                 "confidence": 0.92,
