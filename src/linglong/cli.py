@@ -14,7 +14,7 @@ from linglong.core.models import Entity, EntityFacet, EntityStatus
 from linglong.dispatch.manager import DispatchManager
 from linglong.ingest.executor import PackageExecutor
 from linglong.ingest.package import SourcePackage
-from linglong.knowledge.store import KnowledgeStore
+from linglong.knowledge.store import ConcurrentModificationError, KnowledgeStore
 from linglong.knowledge.lint import LintEngine
 from linglong.knowledge.indexer import IndexGenerator
 from linglong.knowledge.sync.claude_code import ClaudeCodeSyncAdapter
@@ -207,6 +207,7 @@ def cmd_search(args: argparse.Namespace) -> int:
             status=status,
             created_by=args.created_by,
             limit=args.limit,
+            since=args.since,
         )
 
     if not results:
@@ -272,7 +273,11 @@ def cmd_update(args: argparse.Namespace) -> int:
         print("错误：必须指定 --content / --append / --metadata 之一")
         return 1
 
-    updated = store.update(entity)
+    try:
+        updated = store.update(entity)
+    except ConcurrentModificationError as e:
+        print(f"冲突：{e}")
+        return 1
     mode = "替换" if args.content else "追加" if args.append else "元数据更新"
     print(f"✅ 已更新 ({mode})：{updated.id} v{updated.current_version}")
     return 0

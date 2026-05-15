@@ -1,6 +1,7 @@
 """Tests for knowledge store."""
 
 import tempfile
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -404,3 +405,72 @@ def test_archived_entity_not_in_search(temp_store):
     # include_archived=True 可搜到
     results = temp_store.search(query="将被归档", include_archived=True)
     assert len(results) == 1
+
+
+def test_search_since_filter(temp_store):
+    """按日期过滤搜索结果。"""
+    e1 = temp_store.create(Entity(
+        content="旧条目",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    # 手动修改 updated_at 为 10 天前
+    try:
+        import sqlean.dbapi2 as _sqlite3
+    except ImportError:
+        import sqlite3 as _sqlite3
+    with _sqlite3.connect(str(temp_store.db_path)) as conn:
+        old_time = (datetime.utcnow() - timedelta(days=10)).isoformat()
+        conn.execute("UPDATE entities SET updated_at = ? WHERE id = ?", (old_time, e1.id))
+        conn.commit()
+
+    e2 = temp_store.create(Entity(
+        content="新条目",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    cutoff = (datetime.utcnow() - timedelta(days=5)).strftime("%Y-%m-%d")
+    results = temp_store.search(since=cutoff)
+    assert len(results) == 1
+    assert results[0].content == "新条目"
+
+
+def test_optimistic_lock(temp_store):
+    """乐观锁检测并发修改冲突。"""
+    from linglong.knowledge.store import ConcurrentModificationError
+
+    entity = temp_store.create(Entity(
+        content="v1",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    # 模拟另一个进程先修改
+    current = temp_store.get(entity.id)
+    current.content = "v2 by other"
+    temp_store.update(current)
+
+    # 原进程用过时对象更新 → 应抛异常
+    entity.content = "v2 by me"
+    with pytest.raises(ConcurrentModificationError):
+        temp_store.update(entity)
+
+
+def test_wikilinks_auto_relations(temp_store):
+    """创建带 [[link]] 的 Entity 时自动填充 relations。"""
+    target = temp_store.create(Entity(
+        content="# 概念A\n\n描述",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    entity = temp_store.create(Entity(
+        content="# 引用方\n\n参考 [[概念A]]",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    assert len(entity.relations) == 1
+    assert entity.relations[0].target_id == target.id
+    assert entity.relations[0].relation_type == "wikilink"

@@ -14,11 +14,16 @@ from pathlib import Path
 import sqlite_vec
 
 from linglong.core.config import get_config
-from linglong.core.models import Entity, EntityFacet, EntityStatus
+from linglong.core.models import Entity, EntityFacet, EntityStatus, Relation
 from linglong.knowledge.embeddings import EmbeddingGenerator
 from linglong.knowledge.lock import KnowledgeLock
 
 logger = logging.getLogger(__name__)
+
+
+class ConcurrentModificationError(Exception):
+    """Raised when an entity was modified by another process after being read."""
+    pass
 
 
 class KnowledgeStore:
@@ -178,6 +183,9 @@ class KnowledgeStore:
             entity.created_at = entity.created_at or datetime.utcnow()
             entity.updated_at = entity.updated_at or entity.created_at
 
+            # 解析 [[wikilinks]] 并自动填充 relations
+            self._resolve_wikilinks(entity)
+
             # 保存到文件系统
             self._save_to_filesystem(entity)
 
@@ -248,6 +256,7 @@ class KnowledgeStore:
         created_by: str | None = None,
         limit: int = 50,
         include_archived: bool = False,
+        since: str | None = None,
     ) -> list[Entity]:
         """Search entities with filters. Uses FTS5 when query is provided."""
         with sqlite3.connect(self.db_path) as conn:
@@ -274,6 +283,9 @@ class KnowledgeStore:
                     params.append(status.value)
                 if not include_archived:
                     fts_conditions.append("e.archived_at IS NULL")
+                if since:
+                    fts_conditions.append("e.updated_at >= ?")
+                    params.append(since)
 
                 fts_where = " AND ".join(fts_conditions) if fts_conditions else "1=1"
 
@@ -304,6 +316,9 @@ class KnowledgeStore:
                 params.append(created_by)
             if not include_archived:
                 conditions.append("archived_at IS NULL")
+            if since:
+                conditions.append("updated_at >= ?")
+                params.append(since)
 
             where_clause = " AND ".join(conditions) if conditions else "1=1"
 
@@ -382,6 +397,14 @@ class KnowledgeStore:
             if current is None:
                 raise ValueError(f"Entity {entity.id} not found")
 
+            # 乐观锁：检查 entity 是否在读取后被修改
+            if entity.updated_at and current.updated_at != entity.updated_at:
+                raise ConcurrentModificationError(
+                    f"Entity {entity.id} was modified at {current.updated_at}, "
+                    f"but you have version from {entity.updated_at}. "
+                    f"Please re-read and retry."
+                )
+
             # 判断是否需要产生新版本
             update_mode = entity.metadata.pop("update_mode", None)
             content_changed = current.content != entity.content
@@ -421,6 +444,9 @@ class KnowledgeStore:
                         "modified_at": first["modified_at"],
                     }
                     entity.versions = [first_compact] + recent
+
+            # 解析 [[wikilinks]] 并自动填充 relations
+            self._resolve_wikilinks(entity)
 
             entity.updated_at = datetime.utcnow()
 
@@ -559,6 +585,36 @@ class KnowledgeStore:
                     conn.commit()
 
             return deleted
+
+    def _resolve_wikilinks(self, entity: Entity) -> None:
+        """Parse [[links]] and auto-fill entity.relations."""
+        from linglong.knowledge.wikilinks import WikiLinksParser
+        parser = WikiLinksParser()
+        links = parser.parse(entity.content)
+        if not links:
+            return
+
+        # 构建标题→ID 映射
+        all_entities = self.search(limit=10000, include_archived=False)
+        title_to_id: dict[str, str] = {}
+        for e in all_entities:
+            for line in e.content.split("\n"):
+                if line.startswith("# "):
+                    title_to_id[line[2:].strip()] = e.id
+                    break
+            title_to_id[e.id] = e.id
+
+        existing_targets = {r.target_id for r in entity.relations}
+
+        for link in links:
+            target_id = title_to_id.get(link.target)
+            if target_id and target_id not in existing_targets:
+                entity.relations.append(Relation(
+                    target_id=target_id,
+                    relation_type="wikilink",
+                    strength=1.0,
+                ))
+                existing_targets.add(target_id)
 
     def _save_to_filesystem(self, entity: Entity) -> None:
         """Save entity as Markdown file."""
