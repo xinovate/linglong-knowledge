@@ -66,9 +66,9 @@ from linglong.core.models import Entity, EntityFacet, EntityStatus
 
 store = KnowledgeStore()
 
-# 写入
+# 写入（WikiLinks [[目标]] 自动填充 relations）
 entity = store.create(Entity(
-    content="# 标题\n\n内容",
+    content="# 标题\n\n参考 [[已有概念]]",
     facet=EntityFacet.CONCEPT,
     created_by="agent:claude",
 ))
@@ -76,13 +76,17 @@ entity = store.create(Entity(
 # 读取
 entity = store.get(entity_id)
 
-# 搜索（FTS5 全文 + facet 过滤）
+# 搜索（FTS5 全文 + facet/status/since 过滤）
 results = store.search(query="关键词", facet=EntityFacet.CONCEPT)
 results = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
+results = store.search(query="更新", since="2026-05-01")
 
-# 更新（替换产生新版本，追加不产生）
+# 向量搜索（支持 facet 过滤）
+results = store.search_similar(query="语义搜索", facet=EntityFacet.CONCEPT)
+
+# 更新（乐观锁防并发覆盖，替换产生新版本，追加不产生）
 entity.content = "新内容"
-store.update(entity)  # 版本 +1
+store.update(entity)  # 版本 +1，并发冲突抛 ConcurrentModificationError
 
 # 归档
 store.archive(entity_id)
@@ -94,14 +98,18 @@ store.archive(entity_id)
 
 ```bash
 linglong init                              # 初始化知识库
+linglong init --interactive                # 交互式配置向导
+linglong init --from-git URL               # 从 Git 仓库初始化
 linglong write --facet concept --title "标题" --content "内容" --yes
 linglong read <entity_id>
-linglong search "关键词" --facet concept --deep
+linglong search "关键词" --facet concept --deep --format json
+linglong search "更新" --since 2026-05-01 --created-by agent:claude
 linglong update <entity_id> --append "补充内容"
 linglong update <entity_id> --history      # 查看版本历史
 linglong review --list-pending             # 审核管理
 linglong archive <entity_id>
 linglong lint                              # 巡检健康检查
+linglong lint --fix                        # 自动修复
 linglong index --rebuild                   # 生成索引
 linglong stats                             # 统计信息
 linglong migrate --from /path/to/wiki      # 从外部 wiki 迁移
@@ -112,7 +120,8 @@ linglong migrate --from /path/to/wiki      # 从外部 wiki 迁移
 使用 `.linglong.yaml` 作为主配置文件（搜索路径：CWD → home）：
 
 ```bash
-linglong init  # 自动生成 .linglong.yaml 模板
+linglong init              # 自动生成模板
+linglong init -i           # 交互式配置向导
 ```
 
 也支持环境变量（前缀 `LL_`），但 `.linglong.yaml` 优先级更高。
@@ -124,6 +133,8 @@ config = get_config()
 config.knowledge.wiki_path  # Wiki 目录
 config.knowledge.max_versions  # 版本上限（默认 10）
 config.knowledge.db_mode  # SQLite 模式（默认 wal）
+config.knowledge.write_mode  # 写入模式：confirm/auto
+config.knowledge.auto_lint  # 写入后自动巡检（默认 False）
 config.composer.image_assets.enabled  # 图片资产开关
 ```
 
