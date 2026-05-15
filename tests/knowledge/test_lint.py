@@ -113,3 +113,20 @@ def test_stale_content(lint_setup):
     assert len(results) == 1
     assert results[0].rule == "stale_content"
     assert results[0].severity == LintSeverity.INFO
+
+
+def test_lint_fix_removes_orphan(lint_setup):
+    """lint --fix 删除孤立文件。"""
+    store, engine = lint_setup
+    # 创建一个不在数据库中的文件
+    orphan_path = store.wiki_path / "concept" / "orphan-file.md"
+    orphan_path.parent.mkdir(parents=True, exist_ok=True)
+    orphan_path.write_text("# 孤立文件\n\n不在数据库中")
+
+    results = engine.check_index_consistency()
+    assert len(results) == 1
+    assert results[0].rule == "index_consistency"
+
+    fixed = engine.fix_all(results)
+    assert fixed[0].fixed is True
+    assert not orphan_path.exists()

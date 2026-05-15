@@ -28,6 +28,7 @@ class LintResult:
     entity_id: str | None = None
     facet: str | None = None
     details: dict = field(default_factory=dict)
+    fixed: bool = False
 
 
 class LintEngine:
@@ -44,6 +45,24 @@ class LintEngine:
         results.extend(self.check_wikilinks())
         results.extend(self.check_content_conflicts())
         results.extend(self.check_stale_content(stale_days))
+        return results
+
+    def fix_all(self, results: list[LintResult] | None = None, stale_days: int = 90) -> list[LintResult]:
+        """Auto-fix issues where possible. Returns updated results."""
+        if results is None:
+            results = self.run_all(stale_days=stale_days)
+
+        for r in results:
+            if r.fixed:
+                continue
+            if r.rule == "index_consistency" and r.entity_id:
+                # 删除孤立文件
+                if r.facet:
+                    orphan = self.store.wiki_path / r.facet / f"{r.entity_id}.md"
+                    if orphan.exists():
+                        orphan.unlink()
+                        r.fixed = True
+                        r.message += " (已修复：删除孤立文件)"
         return results
 
     def check_index_consistency(self) -> list[LintResult]:

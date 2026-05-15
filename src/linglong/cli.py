@@ -214,10 +214,24 @@ def cmd_search(args: argparse.Namespace) -> int:
         print("无搜索结果")
         return 0
 
+    if args.format == "json":
+        summaries = [{
+            "id": e.id,
+            "facet": e.facet.value,
+            "status": e.status.value,
+            "confidence": e.confidence,
+            "version": e.current_version,
+            "updated_at": e.updated_at.isoformat() if e.updated_at else None,
+            "preview": e.content[:100].replace("\n", " "),
+        } for e in results]
+        print(json.dumps(summaries, indent=2, ensure_ascii=False))
+        return 0
+
     for e in results:
         preview = e.content[:60].replace("\n", " ")
         updated = e.updated_at.strftime("%Y-%m-%d") if e.updated_at else "?"
-        print(f"  {e.id[:8]}...  [{e.facet.value}]  {e.status.value}  {updated}  {preview}")
+        print(f"  {e.id[:8]}...  [{e.facet.value}]  {e.status.value}  "
+              f"conf={e.confidence:.1f}  v{e.current_version}  {updated}  {preview}")
 
     if args.deep and results:
         print(f"\n--- Top {min(3, len(results))} 完整内容 ---\n")
@@ -368,6 +382,12 @@ def cmd_lint(args: argparse.Namespace) -> int:
             results = engine.run_all(args.stale_days)
     else:
         results = engine.run_all(args.stale_days)
+
+    if args.fix:
+        results = engine.fix_all(results, stale_days=args.stale_days)
+        fixed_count = sum(1 for r in results if r.fixed)
+        if fixed_count:
+            print(f"\n🔧 已自动修复 {fixed_count} 个问题")
 
     if not results:
         print("✅ 知识库健康，无问题")
@@ -567,6 +587,7 @@ def main(argv: list[str] | None = None) -> int:
     search_parser.add_argument("--status", default=None, help="按状态过滤")
     search_parser.add_argument("--created-by", default=None, help="按创建者过滤")
     search_parser.add_argument("--since", default=None, help="起始日期 (YYYY-MM-DD)")
+    search_parser.add_argument("--format", choices=["table", "json"], default="table", help="输出格式")
     search_parser.set_defaults(func=cmd_search)
 
     # update
@@ -599,6 +620,7 @@ def main(argv: list[str] | None = None) -> int:
     lint_parser.add_argument("--stale-days", type=int, default=90, help="过期天数阈值")
     lint_parser.add_argument("--rule", default=None,
         choices=["index_consistency", "wikilinks", "content_conflict", "stale_content"])
+    lint_parser.add_argument("--fix", action="store_true", help="自动修复可修复的问题")
     lint_parser.set_defaults(func=cmd_lint)
 
     # index

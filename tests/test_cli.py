@@ -357,3 +357,19 @@ def test_migrate_nonexistent_source(tmp_path):
 
     result = main(["migrate", "--from", "/nonexistent/path"])
     assert result == 1
+
+
+def test_search_json_format(tmp_path):
+    """search --format json 输出 JSON 数组。"""
+    from linglong.core.models import Entity, EntityFacet
+    from linglong.knowledge.store import KnowledgeStore
+
+    _make_config(tmp_path)
+    store = KnowledgeStore()
+    store.create(Entity(
+        content="# 测试JSON\n\n内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:test",
+    ))
+    result = main(["search", "--format", "json"])
+    assert result == 0
