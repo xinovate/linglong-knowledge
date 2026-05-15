@@ -474,3 +474,48 @@ def test_wikilinks_auto_relations(temp_store):
     assert len(entity.relations) == 1
     assert entity.relations[0].target_id == target.id
     assert entity.relations[0].relation_type == "wikilink"
+
+
+def test_search_similar_with_facet():
+    """向量搜索支持 facet 过滤。"""
+    import tempfile
+    from linglong.core.config import LinglongConfig, set_config
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config = LinglongConfig(
+            data_dir=Path(tmpdir) / "data",
+            knowledge=LinglongConfig().knowledge.model_copy(update={
+                "wiki_path": Path(tmpdir) / "wiki",
+                "db_path": Path(tmpdir) / "knowledge.db",
+                "generate_embeddings": True,
+                "vector_dimensions": 4,
+            }),
+        )
+        set_config(config)
+
+        store = KnowledgeStore()
+
+        # Mock embedding generator
+        from unittest.mock import patch
+
+        def fake_generate(text):
+            if "概念" in text:
+                return [0.1, 0.2, 0.3, 0.4]
+            return [0.9, 0.8, 0.7, 0.6]
+
+        with patch.object(store._embedding_generator, 'generate', side_effect=fake_generate):
+            store.create(Entity(
+                content="# 概念文章",
+                facet=EntityFacet.CONCEPT,
+                created_by="agent:claude",
+            ))
+            store.create(Entity(
+                content="# 经验记录",
+                facet=EntityFacet.EXPERIENCE,
+                created_by="agent:claude",
+            ))
+
+            results = store.search_similar(
+                query="概念", facet=EntityFacet.CONCEPT, limit=10
+            )
+            assert all(e.facet == EntityFacet.CONCEPT for e in results)

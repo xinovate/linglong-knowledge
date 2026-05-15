@@ -199,7 +199,7 @@ def cmd_search(args: argparse.Namespace) -> int:
     status = EntityStatus(args.status) if args.status else None
 
     if args.mode in ("vector", "hybrid") and args.query:
-        results = store.search_similar(query=args.query, limit=args.limit, status=status)
+        results = store.search_similar(query=args.query, limit=args.limit, status=status, facet=facet)
     else:
         results = store.search(
             query=args.query,

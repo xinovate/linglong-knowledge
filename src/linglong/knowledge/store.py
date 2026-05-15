@@ -339,6 +339,7 @@ class KnowledgeStore:
         query: str,
         limit: int = 10,
         status: EntityStatus | None = None,
+        facet: EntityFacet | None = None,
     ) -> list[Entity]:
         """Search entities by vector similarity to the query text.
 
@@ -366,6 +367,10 @@ class KnowledgeStore:
             if status:
                 conditions.append("e.status = ?")
                 params.insert(1, status.value)
+
+            if facet:
+                conditions.append("e.facet = ?")
+                params.insert(-1, facet.value)
 
             where_clause = " AND ".join(conditions) if conditions else "1=1"
 
