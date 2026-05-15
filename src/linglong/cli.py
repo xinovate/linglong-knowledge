@@ -20,7 +20,7 @@ from linglong.knowledge.indexer import IndexGenerator
 from linglong.knowledge.sync.claude_code import ClaudeCodeSyncAdapter
 from linglong.knowledge.sync.codex import CodexSyncAdapter
 from linglong.knowledge.sync.openclaw import OpenClawSyncAdapter
-from linglong.knowledge.init import init_bare, init_from_backup, init_from_openclaw
+from linglong.knowledge.init import init_bare, init_from_backup, init_from_git, init_from_openclaw
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +135,8 @@ def cmd_write(args: argparse.Namespace) -> int:
         return 1
 
     facet = EntityFacet(args.facet)
+    config = get_config()
+    auto_mode = config.knowledge.write_mode == "auto"
 
     # 去重检查
     store = KnowledgeStore()
@@ -144,11 +146,11 @@ def cmd_write(args: argparse.Namespace) -> int:
             if args.title.lower() in e.content.lower():
                 print(f"⚠️ 已存在相似条目：{e.id} ({e.facet.value})")
                 print(f"  建议：linglong update {e.id} --append \"补充内容\"")
-                if not args.yes:
+                if not args.yes and not auto_mode:
                     return 1
 
     # 确认
-    if not args.yes:
+    if not args.yes and not auto_mode:
         print(f"分类：{facet.value}")
         print(f"标题：{args.title}")
         print(f"内容：{content[:100]}{'...' if len(content) > 100 else ''}")
@@ -439,7 +441,11 @@ def cmd_index(args: argparse.Namespace) -> int:
 def cmd_init(args: argparse.Namespace) -> int:
     """Initialize knowledge base."""
     try:
-        if args.from_backup:
+        if getattr(args, 'interactive', False):
+            from linglong.knowledge.init import init_interactive
+            init_interactive()
+            return 0
+        elif args.from_backup:
             wiki_path = init_from_backup(Path(args.from_backup))
         elif args.from_openclaw:
             wiki_path = init_from_openclaw()
@@ -637,6 +643,7 @@ def main(argv: list[str] | None = None) -> int:
     init_parser = sub.add_parser("init", help="初始化知识库")
     init_parser.add_argument("--from-backup", default=None, help="从备份目录恢复")
     init_parser.add_argument("--from-openclaw", action="store_true", help="从 OpenClaw wiki 导入")
+    init_parser.add_argument("--interactive", "-i", action="store_true", help="交互式配置向导")
     init_parser.set_defaults(func=cmd_init)
 
     # migrate

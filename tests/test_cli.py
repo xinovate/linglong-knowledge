@@ -373,3 +373,32 @@ def test_search_json_format(tmp_path):
     ))
     result = main(["search", "--format", "json"])
     assert result == 0
+
+
+def test_write_auto_mode(tmp_path):
+    """write_mode=auto 时跳过确认。"""
+    from linglong.core.config import set_config
+
+    config = _make_config(tmp_path)
+    config.knowledge.write_mode = "auto"
+    set_config(config)
+
+    result = main([
+        "write",
+        "--facet", "concept",
+        "--title", "自动写入",
+        "--content", "内容",
+    ])
+    assert result == 0
+
+
+def test_init_interactive(tmp_path):
+    """init --interactive 生成配置文件。"""
+    import tempfile
+    from unittest.mock import patch
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Mock input() 返回默认值
+        with patch('builtins.input', side_effect=['', '', 'n', '', 'n']):
+            result = main(["init", "--interactive"])
+        assert result == 0

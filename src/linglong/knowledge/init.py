@@ -136,3 +136,111 @@ def init_from_openclaw(openclaw_path: Path | None = None, target_dir: Path | Non
 
     logger.info("从 OpenClaw 导入 %d 条知识", count)
     return wiki_path
+
+
+def init_from_git(repo_url: str, target_dir: Path | None = None) -> Path:
+    """Initialize from a Git repository containing wiki files.
+
+    Args:
+        repo_url: Git repository URL
+        target_dir: Target directory (default: cwd)
+
+    Returns:
+        Path to wiki directory
+    """
+    import subprocess
+
+    base = target_dir or Path.cwd()
+    wiki_path = base / "wiki"
+
+    # clone 到临时目录
+    tmp_dir = base / ".tmp_clone"
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
+
+    try:
+        subprocess.run(
+            ["git", "clone", "--depth", "1", repo_url, str(tmp_dir)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        logger.error("Git clone failed: %s", e.stderr)
+        raise RuntimeError(f"Failed to clone {repo_url}: {e.stderr}")
+    except FileNotFoundError:
+        raise RuntimeError("git command not found. Please install git.")
+
+    # 初始化目录结构
+    init_bare(target_dir=base)
+
+    # 复制 md 文件到 source 分面
+    source_dir = wiki_path / "source"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+    for md_file in tmp_dir.rglob("*.md"):
+        dest = source_dir / md_file.name
+        if not dest.exists():
+            shutil.copy2(md_file, dest)
+            count += 1
+
+    # 清理临时目录
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    logger.info("已从 Git 初始化知识库：%s → %s (%d files)", repo_url, wiki_path, count)
+    return wiki_path
+
+
+def init_interactive(target_dir: Path | None = None) -> Path:
+    """Interactive initialization with configuration wizard.
+
+    Prompts user for key settings and generates customized .linglong.yaml.
+    """
+    base = target_dir or Path.cwd()
+
+    print("=== Linglong 知识库初始化向导 ===\n")
+
+    # Wiki 路径
+    default_wiki = base / "wiki"
+    wiki_input = input(f"Wiki 目录 [{default_wiki}]: ").strip()
+    wiki_path = Path(wiki_input) if wiki_input else default_wiki
+
+    # DB 路径
+    default_db = base / "db" / "knowledge.db"
+    db_input = input(f"数据库路径 [{default_db}]: ").strip()
+    db_path = Path(db_input) if db_input else default_db
+
+    # 向量搜索
+    vector_input = input("启用向量搜索？[y/N]: ").strip().lower()
+    vector_enabled = vector_input in ("y", "yes")
+
+    # 写入模式
+    write_input = input("写入模式 (confirm/auto) [confirm]: ").strip()
+    write_mode = write_input if write_input in ("confirm", "auto") else "confirm"
+
+    # 自动 lint
+    lint_input = input("写入后自动巡检？[y/N]: ").strip().lower()
+    auto_lint = lint_input in ("y", "yes")
+
+    # 初始化目录
+    init_bare(target_dir=base)
+
+    # 生成配置
+    config_content = f"""# Linglong 知识库配置
+# 由 linglong init --interactive 生成
+
+knowledge:
+  wiki_path: {wiki_path}
+  db_path: {db_path}
+  generate_embeddings: {str(vector_enabled).lower()}
+  write_mode: {write_mode}
+  auto_lint: {str(auto_lint).lower()}
+  max_versions: 10
+  db_mode: wal
+"""
+    config_path = base / ".linglong.yaml"
+    config_path.write_text(config_content, encoding="utf-8")
+
+    print(f"\n知识库已初始化：{wiki_path}")
+    print(f"配置文件：{config_path}")
+    return wiki_path
