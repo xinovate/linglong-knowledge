@@ -5,7 +5,7 @@ from collections.abc import Callable
 from enum import Enum
 
 from linglong.core.config import get_config
-from linglong.core.models import Entity, EntityStatus
+from linglong.core.models import Entity, EntityStatus, EntityFacet
 
 
 class Action(Enum):
@@ -96,6 +96,32 @@ class ReviewEngine:
                 condition=lambda e: len(e.content) < cfg.review_min_content_length,
                 action=Action.FLAG_FOR_REVIEW,
                 priority=50,
+            )
+        )
+
+        # 规则 5：personal 分面 → 需人工确认（隐私相关）
+        self.rules.append(
+            Rule(
+                name="personal_requires_review",
+                condition=lambda e: (
+                    hasattr(e, 'facet') and e.facet == EntityFacet.PERSONAL
+                ),
+                action=Action.REQUIRE_HUMAN_CONFIRM,
+                priority=80,
+            )
+        )
+
+        # 规则 6：source 分面高置信度 → 自动确认
+        self.rules.append(
+            Rule(
+                name="source_auto_confirm",
+                condition=lambda e: (
+                    hasattr(e, 'facet')
+                    and e.facet == EntityFacet.SOURCE
+                    and float(e.confidence) >= 0.7
+                ),
+                action=Action.AUTO_CONFIRM,
+                priority=85,
             )
         )
 

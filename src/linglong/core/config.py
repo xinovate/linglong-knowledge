@@ -185,6 +185,9 @@ class KnowledgeConfig(BaseSettings):
     db_mode: str = Field(
         default="wal", description="SQLite journal mode"
     )
+    auto_lint: bool = Field(
+        default=False, description="Auto-run lint after write operations"
+    )
 
     # 审核引擎设置
     review_high_confidence_threshold: float = Field(

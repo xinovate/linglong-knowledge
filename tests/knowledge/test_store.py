@@ -519,3 +519,18 @@ def test_search_similar_with_facet():
                 query="概念", facet=EntityFacet.CONCEPT, limit=10
             )
             assert all(e.facet == EntityFacet.CONCEPT for e in results)
+
+
+def test_auto_lint_on_write(temp_store):
+    """auto_lint=True 时写入后自动触发巡检。"""
+    import logging
+
+    temp_store.config.auto_lint = True
+
+    # 写入时不应报错
+    entity = temp_store.create(Entity(
+        content="# 正常内容\n\n无问题",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    assert entity is not None

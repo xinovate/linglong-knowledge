@@ -235,6 +235,18 @@ class KnowledgeStore:
                     conn.commit()
 
             self._log_operation("create", entity.id, f"facet={entity.facet.value}")
+
+            # Auto-lint after write
+            if self.config.auto_lint:
+                try:
+                    from linglong.knowledge.lint import LintEngine
+                    lint_engine = LintEngine(self)
+                    lint_results = lint_engine.run_all()
+                    if lint_results:
+                        logger.info("Auto-lint found %d issues after %s", len(lint_results), entity.id)
+                except Exception as e:
+                    logger.warning("Auto-lint failed: %s", e)
+
             return entity
 
     def get(self, entity_id: str) -> Entity | None:
@@ -522,6 +534,18 @@ class KnowledgeStore:
                         conn.commit()
 
             self._log_operation("update", entity.id, f"v{entity.current_version}")
+
+            # Auto-lint after write
+            if self.config.auto_lint:
+                try:
+                    from linglong.knowledge.lint import LintEngine
+                    lint_engine = LintEngine(self)
+                    lint_results = lint_engine.run_all()
+                    if lint_results:
+                        logger.info("Auto-lint found %d issues after %s", len(lint_results), entity.id)
+                except Exception as e:
+                    logger.warning("Auto-lint failed: %s", e)
+
             return entity
 
     def archive(self, entity_id: str) -> Entity:

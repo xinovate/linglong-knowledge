@@ -73,3 +73,29 @@ def test_custom_rule():
 
     reviewed = engine.review(entity)
     assert reviewed.status == EntityStatus.REJECTED
+
+
+def test_personal_facet_requires_human():
+    """personal 分面需要人工确认。"""
+    engine = ReviewEngine()
+    entity = Entity(
+        content="个人数据内容",
+        facet=EntityFacet.PERSONAL,
+        created_by="agent:claude",
+        confidence=0.9,
+    )
+    reviewed = engine.review(entity)
+    assert reviewed.status == EntityStatus.PENDING_REVIEW
+
+
+def test_source_facet_auto_confirm():
+    """source 分面高置信度自动确认。"""
+    engine = ReviewEngine()
+    entity = Entity(
+        content="原始资料",
+        facet=EntityFacet.SOURCE,
+        created_by="agent:openclaw",
+        confidence=0.8,
+    )
+    reviewed = engine.review(entity)
+    assert reviewed.status == EntityStatus.AUTO_CONFIRMED
