@@ -445,6 +445,9 @@ def cmd_init(args: argparse.Namespace) -> int:
             from linglong.knowledge.init import init_interactive
             init_interactive()
             return 0
+        elif args.from_git:
+            init_from_git(args.from_git)
+            return 0
         elif args.from_backup:
             wiki_path = init_from_backup(Path(args.from_backup))
         elif args.from_openclaw:
@@ -453,7 +456,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             wiki_path = init_bare()
         print(f"知识库已初始化：{wiki_path}")
         return 0
-    except FileNotFoundError as e:
+    except (FileNotFoundError, RuntimeError) as e:
         print(f"错误：{e}")
         return 1
 
@@ -643,6 +646,7 @@ def main(argv: list[str] | None = None) -> int:
     init_parser = sub.add_parser("init", help="初始化知识库")
     init_parser.add_argument("--from-backup", default=None, help="从备份目录恢复")
     init_parser.add_argument("--from-openclaw", action="store_true", help="从 OpenClaw wiki 导入")
+    init_parser.add_argument("--from-git", default=None, metavar="URL", dest="from_git", help="从 Git 仓库初始化")
     init_parser.add_argument("--interactive", "-i", action="store_true", help="交互式配置向导")
     init_parser.set_defaults(func=cmd_init)
 

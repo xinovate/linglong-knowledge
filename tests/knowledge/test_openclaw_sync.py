@@ -147,3 +147,28 @@ def test_sync_handles_corrupt_file(temp_store, wiki_dir):
     assert stats["total"] == 2
     assert stats["created"] == 1
     assert stats["failed"] == 1
+
+
+def test_facet_mapping_from_type():
+    """OpenClaw type 映射到正确的 EntityFacet。"""
+    from linglong.core.models import EntityFacet
+    from linglong.knowledge.sync.openclaw import TYPE_TO_FACET, _file_to_entity
+
+    assert TYPE_TO_FACET["concept"] == EntityFacet.CONCEPT
+    assert TYPE_TO_FACET["article"] == EntityFacet.SOURCE
+    assert TYPE_TO_FACET["tutorial"] == EntityFacet.METHODOLOGY
+    assert TYPE_TO_FACET["daily"] == EntityFacet.PERSONAL
+
+    # 带有 type frontmatter 的文件
+    with tempfile.TemporaryDirectory() as tmpdir:
+        f = Path(tmpdir) / "test.md"
+        f.write_text("---\ntype: concept\n---\n# 测试", encoding="utf-8")
+        entity = _file_to_entity(f, "test.md")
+        assert entity.facet == EntityFacet.CONCEPT
+
+    # 未知 type 回退到 SOURCE
+    with tempfile.TemporaryDirectory() as tmpdir:
+        f = Path(tmpdir) / "test.md"
+        f.write_text("---\ntype: unknown_type\n---\n# 测试", encoding="utf-8")
+        entity = _file_to_entity(f, "test.md")
+        assert entity.facet == EntityFacet.SOURCE

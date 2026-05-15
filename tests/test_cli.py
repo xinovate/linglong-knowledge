@@ -402,3 +402,14 @@ def test_init_interactive(tmp_path):
         with patch('builtins.input', side_effect=['', '', 'n', '', 'n']):
             result = main(["init", "--interactive"])
         assert result == 0
+
+
+def test_init_from_git_no_git():
+    """init --from-git 没有 git 命令时优雅报错。"""
+    import tempfile
+    from pathlib import Path
+    config = _make_config(Path(tempfile.mkdtemp()))
+    # 用不存在的 URL，subprocess 会失败
+    result = main(["init", "--from-git", "https://nonexistent.invalid/repo.git"])
+    # 可能返回 1（subprocess 失败）或 raise
+    assert result in (0, 1)

@@ -19,6 +19,33 @@ logger = logging.getLogger(__name__)
 
 _WIKILINK_PATTERN = re.compile(r"\[\[(.*?)\]\]")
 
+TYPE_TO_FACET: dict[str, EntityFacet] = {
+    # 标准分面
+    "concept": EntityFacet.CONCEPT,
+    "entity": EntityFacet.ENTITY,
+    "experience": EntityFacet.EXPERIENCE,
+    "methodology": EntityFacet.METHODOLOGY,
+    "personal": EntityFacet.PERSONAL,
+    "source": EntityFacet.SOURCE,
+    "synthesis": EntityFacet.SYNTHESIS,
+    # OpenClaw 特有类型
+    "article": EntityFacet.SOURCE,
+    "tutorial": EntityFacet.METHODOLOGY,
+    "debug-log": EntityFacet.EXPERIENCE,
+    "decision": EntityFacet.SYNTHESIS,
+    "tip": EntityFacet.EXPERIENCE,
+    "reference": EntityFacet.SOURCE,
+    "howto": EntityFacet.METHODOLOGY,
+    "note": EntityFacet.EXPERIENCE,
+    "project": EntityFacet.SYNTHESIS,
+    "area": EntityFacet.CONCEPT,
+    "moc": EntityFacet.SYNTHESIS,
+    "daily": EntityFacet.PERSONAL,
+    "meeting": EntityFacet.PERSONAL,
+    "idea": EntityFacet.CONCEPT,
+    "bookmark": EntityFacet.SOURCE,
+}
+
 
 def _compute_id(relative_path: str) -> str:
     """Compute a stable entity ID from the relative file path."""
@@ -59,6 +86,9 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
     if wikilinks:
         metadata["wikilinks"] = wikilinks
 
+    file_type = post.get("type", "source")
+    facet = TYPE_TO_FACET.get(file_type, EntityFacet.SOURCE)
+
     entity_id = _compute_id(relative_path)
 
     source = Source(
@@ -70,7 +100,7 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
     return Entity(
         id=entity_id,
         content=raw_content,
-        facet=EntityFacet.SOURCE,
+        facet=facet,
         created_by="agent:openclaw",
         status=EntityStatus.AUTO_CONFIRMED,
         sources=[source],
