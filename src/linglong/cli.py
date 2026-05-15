@@ -5,7 +5,7 @@ import asyncio
 import json
 import logging
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from linglong.composer.composer import Composer
@@ -352,7 +352,7 @@ def cmd_archive(args: argparse.Namespace) -> int:
 
     if args.older_than:
         days = int(args.older_than.rstrip("d"))
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         results = store.search(limit=1000, include_archived=False)
         count = 0
         for e in results:

@@ -8,7 +8,7 @@ try:
 except ImportError:
     import sqlite3
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import sqlite_vec
@@ -50,7 +50,7 @@ class KnowledgeStore:
         """Append operation to log file."""
         log_path = self.wiki_path / "log.md"
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
         entry = f"- **{timestamp}** [{action}] {entity_id}"
         if details:
             entry += f" — {details}"
@@ -180,7 +180,7 @@ class KnowledgeStore:
         """Create a new entity."""
         with self._lock:
             entity.id = entity.id or str(uuid.uuid4())
-            entity.created_at = entity.created_at or datetime.utcnow()
+            entity.created_at = entity.created_at or datetime.now(UTC)
             entity.updated_at = entity.updated_at or entity.created_at
 
             # 解析 [[wikilinks]] 并自动填充 relations
@@ -465,7 +465,7 @@ class KnowledgeStore:
             # 解析 [[wikilinks]] 并自动填充 relations
             self._resolve_wikilinks(entity)
 
-            entity.updated_at = datetime.utcnow()
+            entity.updated_at = datetime.now(UTC)
 
             # 更新文件系统
             self._save_to_filesystem(entity)
@@ -555,8 +555,8 @@ class KnowledgeStore:
             if entity is None:
                 raise ValueError(f"Entity {entity_id} not found")
 
-            entity.archived_at = datetime.utcnow()
-            entity.updated_at = datetime.utcnow()
+            entity.archived_at = datetime.now(UTC)
+            entity.updated_at = datetime.now(UTC)
 
             # 从原 facet 目录删除
             old_path = self._get_entity_path(entity.id, entity.facet.value)

@@ -1,7 +1,7 @@
 """Tests for knowledge store."""
 
 import tempfile
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -420,7 +420,7 @@ def test_search_since_filter(temp_store):
     except ImportError:
         import sqlite3 as _sqlite3
     with _sqlite3.connect(str(temp_store.db_path)) as conn:
-        old_time = (datetime.utcnow() - timedelta(days=10)).isoformat()
+        old_time = (datetime.now(UTC) - timedelta(days=10)).isoformat()
         conn.execute("UPDATE entities SET updated_at = ? WHERE id = ?", (old_time, e1.id))
         conn.commit()
 
@@ -430,7 +430,7 @@ def test_search_since_filter(temp_store):
         created_by="agent:claude",
     ))
 
-    cutoff = (datetime.utcnow() - timedelta(days=5)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(UTC) - timedelta(days=5)).strftime("%Y-%m-%d")
     results = temp_store.search(since=cutoff)
     assert len(results) == 1
     assert results[0].content == "新条目"

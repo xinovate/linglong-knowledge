@@ -2,7 +2,7 @@
 
 import sqlite3
 import tempfile
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -102,7 +102,7 @@ def test_stale_content(lint_setup):
     ))
 
     # 直接修改数据库中的 updated_at（store.update 会重置为 now）
-    old_time = (datetime.utcnow() - timedelta(days=100)).isoformat()
+    old_time = (datetime.now(UTC) - timedelta(days=100)).isoformat()
     with sqlite3.connect(store.db_path) as conn:
         conn.execute(
             "UPDATE entities SET updated_at = ? WHERE id = ?",

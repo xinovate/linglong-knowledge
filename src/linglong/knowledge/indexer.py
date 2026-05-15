@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from linglong.core.models import EntityFacet
@@ -118,7 +118,7 @@ class IndexGenerator:
     def _write_main_index(self, per_facet: dict[EntityFacet, list[dict]]) -> int:
         """Write main index.md."""
         total = sum(len(entries) for entries in per_facet.values())
-        now = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+        now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
 
         lines = [
             "# 知识库索引",

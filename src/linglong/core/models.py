@@ -1,6 +1,6 @@
 """Shared data models for Linglong."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -167,8 +167,8 @@ class Entity(BaseModel):
     current_version: int = Field(default=1)
 
     # 时间戳
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # 向量嵌入（单独存储在 sqlite-vec 中）
     embedding_id: str | None = None
@@ -224,4 +224,4 @@ class Task(BaseModel):
     result: dict[str, Any] | None = None
     error: str | None = None
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

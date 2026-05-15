@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 
@@ -159,12 +159,12 @@ class LintEngine:
     def check_stale_content(self, days: int = 90) -> list[LintResult]:
         """Check for content that hasn't been updated in a while."""
         results = []
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
 
         entities = self.store.search(limit=10000)
         for e in entities:
             if e.updated_at and e.updated_at < cutoff:
-                days_old = (datetime.utcnow() - e.updated_at).days
+                days_old = (datetime.now(UTC) - e.updated_at).days
                 results.append(LintResult(
                     rule="stale_content",
                     severity=LintSeverity.INFO,
