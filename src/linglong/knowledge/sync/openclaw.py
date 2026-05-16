@@ -28,7 +28,7 @@ TYPE_TO_FACET: dict[str, EntityFacet] = {
     "personal": EntityFacet.PERSONAL,
     "source": EntityFacet.SOURCE,
     "synthesis": EntityFacet.SYNTHESIS,
-    # OpenClaw 特有类型
+    # OpenClaw 特有类型 — 内容类
     "article": EntityFacet.SOURCE,
     "tutorial": EntityFacet.METHODOLOGY,
     "debug-log": EntityFacet.EXPERIENCE,
@@ -44,6 +44,36 @@ TYPE_TO_FACET: dict[str, EntityFacet] = {
     "meeting": EntityFacet.PERSONAL,
     "idea": EntityFacet.CONCEPT,
     "bookmark": EntityFacet.SOURCE,
+    # OpenClaw 特有类型 — 补充
+    "skill": EntityFacet.EXPERIENCE,
+    "template": EntityFacet.METHODOLOGY,
+    "user": EntityFacet.PERSONAL,
+    "soul": EntityFacet.PERSONAL,
+    "todo": EntityFacet.PERSONAL,
+    "feedback": EntityFacet.EXPERIENCE,
+    "problem": EntityFacet.CONCEPT,
+    "dashboard": EntityFacet.SYNTHESIS,
+    # OpenClaw 特有类型 — 源码分析
+    "source-code-note": EntityFacet.SOURCE,
+    "source-code-analysis": EntityFacet.SOURCE,
+    # OpenClaw 特有类型 — 项目子文档
+    "test-report": EntityFacet.SOURCE,
+    "dependency-map": EntityFacet.SOURCE,
+    "design-spec": EntityFacet.SOURCE,
+    "change-list": EntityFacet.SOURCE,
+    "validation-report": EntityFacet.SOURCE,
+    "task-anchor": EntityFacet.SOURCE,
+    "integration-guide": EntityFacet.METHODOLOGY,
+    "project-development": EntityFacet.SYNTHESIS,
+    "project-history": EntityFacet.SYNTHESIS,
+    "orchestrator-spec": EntityFacet.SYNTHESIS,
+    "agent-coordination": EntityFacet.SYNTHESIS,
+    "quality-gate": EntityFacet.METHODOLOGY,
+    "task-decomposition": EntityFacet.METHODOLOGY,
+    "knowledge-flow": EntityFacet.CONCEPT,
+    "comprehensive-report": EntityFacet.SYNTHESIS,
+    "final-summary": EntityFacet.SYNTHESIS,
+    "feedback-log": EntityFacet.EXPERIENCE,
 }
 
 
