@@ -301,11 +301,12 @@ def test_entity_file_has_frontmatter(temp_store):
     )
     created = temp_store.create(entity)
 
+    # 语义文件名：从内容标题提取
     path = temp_store.wiki_path / "experience" / f"{created.id}.md"
     assert path.exists()
     content = path.read_text()
-    assert '"type": "experience"' in content
-    assert '"created_by": "agent:claude"' in content
+    assert "type: experience" in content
+    assert "created_by: agent:claude" in content
 
 
 def test_update_content_creates_version(temp_store):

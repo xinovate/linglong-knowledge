@@ -559,7 +559,9 @@ class KnowledgeStore:
             entity.updated_at = datetime.now(UTC)
 
             # 从原 facet 目录删除
-            old_path = self._get_entity_path(entity.id, entity.facet.value)
+            old_path = self._get_entity_path(
+                entity.id, entity.facet.value, content=entity.content
+            )
             if old_path.exists():
                 old_path.unlink()
 
@@ -586,18 +588,22 @@ class KnowledgeStore:
     def delete(self, entity_id: str) -> bool:
         """Delete an entity."""
         with self._lock:
-            # 删除前获取 embedding_id 和 facet
+            # 删除前获取 embedding_id、facet 和 content（用于语义文件名）
             embedding_id = None
             facet = "concept"
+            content = ""
             with sqlite3.connect(self.db_path) as conn:
                 row = conn.execute(
-                    "SELECT embedding_id, facet FROM entities WHERE id = ?", (entity_id,)
+                    "SELECT embedding_id, facet, content FROM entities WHERE id = ?",
+                    (entity_id,),
                 ).fetchone()
                 if row:
-                    embedding_id, facet = row[0], row[1] or "concept"
+                    embedding_id = row[0]
+                    facet = row[1] or "concept"
+                    content = row[2] or ""
 
             # 从文件系统删除
-            entity_path = self._get_entity_path(entity_id, facet)
+            entity_path = self._get_entity_path(entity_id, facet, content=content)
             if entity_path.exists():
                 entity_path.unlink()
 
@@ -645,39 +651,65 @@ class KnowledgeStore:
                 ))
                 existing_targets.add(target_id)
 
+    @staticmethod
+    def _slugify(text: str) -> str:
+        """Convert text to a filesystem-safe slug."""
+        import re
+
+        slug = text.strip().lower()
+        slug = re.sub(r'[\\/:*?"<>|]', "", slug)
+        slug = re.sub(r"\s+", "-", slug)
+        slug = re.sub(r"-+", "-", slug)
+        slug = slug.strip("-")
+        return slug[:80] or "untitled"
+
+    @staticmethod
+    def _extract_title(content: str) -> str | None:
+        """Extract title from first markdown heading."""
+        for line in content.split("\n"):
+            line = line.strip()
+            if line.startswith("# "):
+                return line[2:].strip()
+        return None
+
+    def _get_entity_path(self, entity_id: str, facet: str = "concept",
+                         content: str = "") -> Path:
+        """Get filesystem path for an entity, using semantic filename when possible."""
+        title = self._extract_title(content) if content else None
+        if title:
+            slug = self._slugify(title)
+            return self.wiki_path / facet / f"{slug}.md"
+        return self.wiki_path / facet / f"{entity_id}.md"
+
     def _save_to_filesystem(self, entity: Entity) -> None:
-        """Save entity as Markdown file."""
-        entity_path = self._get_entity_path(entity.id, entity.facet.value)
+        """Save entity as Markdown file with YAML frontmatter."""
+        old_path = self._get_entity_path(entity.id, entity.facet.value)
+        entity_path = self._get_entity_path(
+            entity.id, entity.facet.value, content=entity.content
+        )
         entity_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # 构建 frontmatter
-        frontmatter = {
-            "id": entity.id,
-            "type": entity.facet.value,
-            "created_by": entity.created_by,
-            "confirmed_by": entity.confirmed_by,
-            "confidence": float(entity.confidence),
-            "status": entity.status.value,
-            "created_at": entity.created_at.isoformat(),
-            "updated_at": entity.updated_at.isoformat(),
-        }
+        # 删除旧文件（文件名变更时路径不同）
+        if old_path != entity_path and old_path.exists():
+            old_path.unlink()
+
+        # 构建 YAML frontmatter（兼容 OpenClaw）
+        fm_lines = [
+            f"id: {entity.id}",
+            f"type: {entity.facet.value}",
+            f"created_by: {entity.created_by}",
+        ]
+        if entity.confirmed_by:
+            fm_lines.append(f"confirmed_by: {entity.confirmed_by}")
+        fm_lines.append(f"confidence: {float(entity.confidence)}")
+        fm_lines.append(f"status: {entity.status.value}")
+        fm_lines.append(f"created_at: {entity.created_at.isoformat()}")
+        fm_lines.append(f"updated_at: {entity.updated_at.isoformat()}")
         if entity.summary:
-            frontmatter["summary"] = entity.summary
-        if entity.archived_at:
-            frontmatter["archived_at"] = entity.archived_at.isoformat()
+            fm_lines.append(f"summary: {entity.summary}")
 
-        # 写入带 YAML frontmatter 的 markdown
-        content = f"""---
-{json.dumps(frontmatter, indent=2, ensure_ascii=False)}
----
-
-{entity.content}
-"""
-        entity_path.write_text(content, encoding="utf-8")
-
-    def _get_entity_path(self, entity_id: str, facet: str = "concept") -> Path:
-        """Get filesystem path for an entity, organized by facet."""
-        return self.wiki_path / facet / f"{entity_id}.md"
+        file_content = f"---\n" + "\n".join(fm_lines) + f"\n---\n\n{entity.content}\n"
+        entity_path.write_text(file_content, encoding="utf-8")
 
     def _row_to_entity(self, row: sqlite3.Row) -> Entity:
         """Convert database row to Entity."""
