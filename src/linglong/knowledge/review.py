@@ -118,7 +118,7 @@ class ReviewEngine:
                 condition=lambda e: (
                     hasattr(e, 'facet')
                     and e.facet == EntityFacet.SOURCE
-                    and float(e.confidence) > 0.7
+                    and float(e.confidence) >= 0.7
                 ),
                 action=Action.AUTO_CONFIRM,
                 priority=85,

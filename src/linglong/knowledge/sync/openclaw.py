@@ -82,7 +82,7 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
     if created is not None:
         metadata["created"] = created.isoformat() if hasattr(created, "isoformat") else str(created)
 
-    wikilinks = _extract_wikilinks(raw_content)
+    wikilinks = _extract_wikilinks(post.content)
     if wikilinks:
         metadata["wikilinks"] = wikilinks
 
@@ -97,9 +97,10 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
         url=relative_path,
     )
 
-    return Entity(
+    # 保留原始创建时间（frontmatter created → Entity created_at）
+    entity_kwargs: dict = dict(
         id=entity_id,
-        content=raw_content,
+        content=post.content,
         facet=facet,
         created_by="agent:openclaw",
         status=EntityStatus.AUTO_CONFIRMED,
@@ -107,6 +108,18 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
         confidence=get_config().knowledge.sync_confidence,
         metadata=metadata,
     )
+    if created is not None:
+        parsed = created if hasattr(created, "isoformat") else None
+        if parsed is None:
+            from datetime import datetime
+            try:
+                parsed = datetime.fromisoformat(str(created))
+            except (ValueError, TypeError):
+                pass
+        if parsed is not None:
+            entity_kwargs["created_at"] = parsed
+
+    return Entity(**entity_kwargs)
 
 
 class OpenClawSyncAdapter:

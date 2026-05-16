@@ -35,7 +35,10 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息获取 →
 
 ### 待完成
 
-- 🟡 端到端验证：跑通完整链路
+- 🟡 端到端验证：管道已跑通（sync→ingest→compose→publish），内容质量待改进
+  - OpenClaw wiki frontmatter 混入正文
+  - RSS ingest 条目 status 为 pending_review，未进入 compose
+  - 100 条聚合为 1 篇 927K 字符文章，需截断/摘要策略
 
 ## v2.0 延后项
 
@@ -44,7 +47,7 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息获取 →
 - 多模板（早报/周报/PPT/视频脚本）
 - AI 封面图生成
 - 跨 Agent 写入冲突解决
-- API 冻结、mypy strict、datetime.utcnow() 修复
+- API 冻结、mypy strict（datetime.utcnow() 已修复）
 
 ---
 

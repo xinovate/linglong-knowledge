@@ -62,7 +62,7 @@ async def test_rss_source_fetch(rss_source):
     entity = entities[0]
     assert entity.id == hashlib.sha256(b"https://example.com/article/1").hexdigest()[:16]
     assert "Test Article" in entity.content
-    assert entity.status == EntityStatus.PENDING_REVIEW
+    assert entity.status == EntityStatus.AUTO_CONFIRMED
     assert entity.created_by == "agent:ingest"
     assert float(entity.confidence) == 0.7
     assert len(entity.sources) == 1

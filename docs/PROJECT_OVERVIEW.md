@@ -109,7 +109,7 @@ Codex ──────┘         ↓
 | 短期→长期记忆转换未实现 | 🟡 中 | 待实现 | v2.0 | MEMORY.md 规则：任务完成后自动迁移到 wiki |
 | 发布队列与失败重试 | 🟡 中 | 待实现 | v2.0 | DispatchManager 当前直连发布，无队列和重试 |
 | 向量搜索增强（混合搜索/MMR/时间衰减） | 🟡 低 | 待实现 | v2.0 | 当前仅基础 cosine 相似度 |
-| `datetime.utcnow()` 已弃用 | 🟡 低 | 待修复 | v2.0 | Pydantic 和 store.py 多处使用，需替换为 timezone-aware |
+| `datetime.utcnow()` 已弃用 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 全局替换为 `datetime.now(UTC)`，237 测试通过 |
 
 完整债务清单 → [operations.md](operations.md)
 
@@ -137,7 +137,7 @@ Codex ──────┘         ↓
 2. ✅ **v1.0 多尺寸图片** — thumb/medium/large 变体生成 + 响应式 srcset 输出
 3. ✅ **v1.0 OSS CDN** — OSSUploader 阿里云图片上传 + CDN URL 替换
 4. ✅ **v1.0 文档更新** — CLAUDE.md、README.md、docs 重组、tech-debt 等已同步
-5. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish
+5. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish（管道已通，内容质量待改进）
 
 **v2.0 延后项**（非阻塞）：
 - WebSearchAdapter 实际搜索
@@ -145,6 +145,6 @@ Codex ──────┘         ↓
 - 多模板（早报/周报/PPT/视频脚本）
 - AI 封面图生成
 - 跨 Agent 写入冲突解决
-- API 冻结、mypy strict、datetime.utcnow() 修复
+- API 冻结、mypy strict（datetime.utcnow() 已修复）
 
 详细计划 → [版本路线图](roadmap.md)

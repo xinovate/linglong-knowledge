@@ -66,7 +66,7 @@ Some content here.
     expected_id = hashlib.sha256(b"concepts/test-reference.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
     assert entity is not None
-    assert entity.content == content
+    assert entity.content == "# Test Reference\n\nSome content here."
     assert entity.created_by == "agent:openclaw"
     assert entity.status == EntityStatus.AUTO_CONFIRMED
     assert float(entity.confidence) == 0.95

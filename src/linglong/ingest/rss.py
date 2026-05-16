@@ -63,13 +63,15 @@ class RSSSource:
         if hasattr(entry, "tags"):
             tags = [tag.term for tag in entry.tags]
 
-        return Entity(
+        # 保留原始发布时间
+        published_parsed = getattr(entry, "published_parsed", None)
+        entity_kwargs: dict = dict(
             id=entity_id,
             content=content,
             facet=EntityFacet.SOURCE,
             summary=getattr(entry, "summary", None),
             created_by="agent:ingest",
-            confidence=get_config().ingest.default_confidence.get("rss", 0.7),  # RSS content has moderate confidence
+            confidence=get_config().ingest.default_confidence.get("rss", 0.7),
             sources=[
                 Source(
                     type=SourceType.RSS,
@@ -83,6 +85,17 @@ class RSSSource:
                 )
             ],
         )
+        if published_parsed:
+            from datetime import datetime, timezone
+
+            try:
+                entity_kwargs["created_at"] = datetime(
+                    *published_parsed[:6], tzinfo=timezone.utc
+                )
+            except Exception:
+                pass
+
+        return Entity(**entity_kwargs)
 
 
 class RSSIngestor:
