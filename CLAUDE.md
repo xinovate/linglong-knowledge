@@ -209,7 +209,8 @@ except StorageError as e:
 
 - 映射配置：`docs/doc-map.yaml`（代码路径 → 文档路径）
 - 检查脚本：`scripts/doc-check.py`
-- hook 位置：`.git/hooks/pre-commit`
+- hook 文件：`scripts/hooks/pre-commit`
+- 安装方式：`bash scripts/install-hooks.sh`（clone 后首次需执行）
 
 提交时如果看到黄色警告 `⚠️ doc-check`，说明代码改动对应的文档没有更新，请检查后再提交。
 
