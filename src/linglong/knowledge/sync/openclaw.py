@@ -28,6 +28,13 @@ logger = logging.getLogger(__name__)
 
 _WIKILINK_PATTERN = re.compile(r"\[\[(.*?)\]\]")
 
+# memory 模式下跳过 OpenClaw 内部 Sleep 日志（无知识价值，会产生大量重复）
+_SKIP_MEMORY_TITLES: set[str] = {
+    "light sleep",
+    "deep sleep",
+    "rem sleep",
+}
+
 # OpenClaw wiki 第一级目录 → Linglong wiki 子目录映射
 # 按设计文档 02-directory-structure.md 的 OpenClaw 13 目录 → 7 Facet 映射
 _WIKI_DIR_TO_SUBDIR: dict[str, str] = {
@@ -276,6 +283,13 @@ def _memory_file_to_entity(file_path: Path, relative_path: str) -> Entity:
     else:
         content = raw_content
 
+    # Skip OpenClaw internal Sleep logs (no knowledge value)
+    first_line = content.strip().split("\n")[0].strip()
+    if first_line.startswith("# "):
+        title = first_line[2:].strip().lower()
+        if title in _SKIP_MEMORY_TITLES:
+            return None
+
     entity_id = _compute_id(relative_path)
 
     metadata: dict = {"type": file_type, "_subdir": subdir}
@@ -317,7 +331,7 @@ class OpenClawSyncAdapter:
         In **wiki mode** skips ``index.md``.
         Returns sync stats ``{"total": N, "created": N, "failed": N}``.
         """
-        stats = {"total": 0, "created": 0, "failed": 0}
+        stats = {"total": 0, "created": 0, "skipped": 0, "failed": 0}
 
         if not self.wiki_path.exists():
             logger.warning("Source path does not exist: %s", self.wiki_path)
@@ -335,6 +349,9 @@ class OpenClawSyncAdapter:
                 relative_path = str(file_path.relative_to(self.wiki_path))
                 if self._mode == "memory":
                     entity = _memory_file_to_entity(file_path, relative_path)
+                    if entity is None:
+                        stats["skipped"] += 1
+                        continue
                 else:
                     entity = _file_to_entity(file_path, relative_path)
                 self.store.create(entity)

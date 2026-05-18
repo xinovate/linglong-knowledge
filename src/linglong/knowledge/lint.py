@@ -133,6 +133,11 @@ class LintEngine:
         # 简单去重：检查标题重复
         seen_titles: dict[str, str] = {}
         for e in entities:
+            # 豁免 memory 目录的标题重复（diary 和 task-record 的标题重复是正常的）
+            sub_dir = e.metadata.get("_subdir", "") if e.metadata else ""
+            if sub_dir in ("diary", "task-record"):
+                continue
+
             title = ""
             for line in e.content.split("\n"):
                 if line.startswith("# "):

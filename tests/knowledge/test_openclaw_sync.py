@@ -61,7 +61,7 @@ Some content here.
     adapter = OpenClawSyncAdapter(str(wiki_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"concepts/test-reference.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -130,7 +130,7 @@ def test_sync_stats(temp_store, wiki_dir):
     adapter = OpenClawSyncAdapter(str(wiki_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 2, "created": 2, "failed": 0}
+    assert stats == {"total": 2, "created": 2, "skipped": 0, "failed": 0}
 
 
 def test_sync_handles_corrupt_file(temp_store, wiki_dir):
@@ -202,7 +202,7 @@ def test_memory_sync_daily_file(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"2026-04-12.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -227,7 +227,7 @@ def test_memory_sync_index_file(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"2026-04-07-index.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -254,7 +254,7 @@ def test_memory_sync_subdir_file(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"2026-04-09/task-completion-summary.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -280,7 +280,7 @@ def test_memory_sync_mixed_files(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 4, "created": 4, "failed": 0}
+    assert stats == {"total": 4, "created": 4, "skipped": 0, "failed": 0}
 
     # 验证各类 facet
     all_entities = temp_store.search(limit=100)
@@ -300,7 +300,7 @@ def test_memory_sync_with_frontmatter(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"2026-04-05.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
