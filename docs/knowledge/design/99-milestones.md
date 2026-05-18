@@ -1,0 +1,166 @@
+# 开发里程碑
+
+| 属性 | 值 |
+|------|-----|
+| 分类 | 方向锚点 |
+| 用途 | AI 会话压缩后阅读本文档可快速恢复项目上下文，避免方向分叉 |
+| 最后更新 | 2026-05-18 |
+
+---
+
+## 项目愿景
+
+Linglong 是**跨 Agent 知识中枢**——所有 AI Agent 的统一知识底座。
+
+```
+Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
+```
+
+核心价值：消除多 Agent 知识孤岛，一个概念只记一次，所有 Agent 共享。
+
+---
+
+## 设计原则
+
+| 原则 | 含义 | 违反示例 |
+|------|------|----------|
+| 单一知识源 | 知识只存在 `~/linglong/` 一处 | Agent 维护自己的 wiki 副本 |
+| Agent 是客户端 | Agent 通过 CLI 读写，不直接操作文件系统 | OpenClaw 直接改 wiki 文件 |
+| Token 经济性 | 两步索引查询，默认返回摘要 | 每次查询返回全量内容 |
+| 渐进式迁移 | 分阶段迁移，不强求一步到位 | 要求所有 Agent 同时切换 |
+| wiki 是真相源 | Markdown 文件是主数据，SQLite/向量是衍生索引 | 以 SQLite 为主数据 |
+
+---
+
+## 发布历史
+
+> 格式参考 [keepachangelog.com](https://keepachangelog.com)，分类：Added / Changed / Fixed / Deprecated / Removed。
+> 按时间倒序排列，最新在前。
+
+### [M4] v0.9 → v1.0 — 知识库独立 — 2026-05-16 ~ 2026-05-18
+
+**目标**：知识库从 OpenClaw 剥离为独立服务，支持子目录分类，实现全量数据同步。
+
+**Added**
+- 默认存储路径改为 `~/linglong/`（跨项目共享），init 所有入口统一 `cc79a6d`
+- memory 目录同步（310 条）：日记 → `personal/diary/`，任务记录 → `experience/task-record/` `cc79a6d`
+- 目录级 facet 覆盖 `_DIR_FACET_OVERRIDE`：`user/` → PERSONAL，`infra/` → PERSONAL 等 `cc79a6d`
+- 语义文件名 `{id[:8]}-{slug}.md` 防标题碰撞 `4c576f8`
+- OpenClaw type→facet 映射扩展至 33 种类型 `be434b8`
+- 设计文档体系重构（D-01 ~ D-10 + backlog + milestones）
+
+**Fixed**
+- sync + RSS 保留原始 `created_at`，修复管线数据流 `1f283e7`
+
+**数据结果**：451 条 Entity（wiki 141 + memory 310），7 个 facet 全覆盖
+
+**关键文件**：`sync/openclaw.py`、`store.py`、`init.py`、`docs/knowledge/design/`
+
+---
+
+### [M3] v0.7 ~ v0.9 — 产品化 — 2026-05-13 ~ 2026-05-15
+
+**目标**：CLI 入口、配置外部化、dispatch 正式化、知识库完善。
+
+**Added**
+- `linglong` CLI 全命令集：ingest/compose/publish/sync/write/read/search/review/archive/lint/index/stats/init/migrate `4ec1e16` `4f3a96a` `e04e85b` `0cb83e0` `b691839`
+- `.linglong.yaml` 配置文件 + 交互式配置向导 `715d3c6` `39dd567`
+- DispatchManager + LocalPublisher + HexoPublisher `37673cd` `0e072aa` `df15339`
+- 图片资产管线：下载/压缩/EXIF 清理/多尺寸响应式/OSS CDN 上传 `715d3c6` `dadff2d`
+- EntityFacet 七分面枚举 + Entity facet/archived_at 字段 `819d789`
+- FTS5 全文搜索 + facet/status/since 过滤 `d1e349c`
+- Entity 文件按 facet 分目录存储 + YAML frontmatter `fee6974`
+- 版本管理 + 版本压缩策略 `66e9830`
+- 归档机制 + archive 目录 `37123ff`
+- WikiLinks 解析器 `[[target]]` + `[[target|display]]` `3bf313a`
+- 索引生成器（主索引 + 7 分面子索引）`2b1b72b`
+- 巡检引擎（索引一致性 + WikiLinks + 内容冲突 + 过期检测 + `--fix` 自动修复）`9ffd309` `a3f75c0`
+- 文件锁 `fcntl.flock` + SQLite WAL 模式 `5410e34` `c718500`
+- ReviewEngine facet 差异化规则 + auto_lint 写入触发 `bed1778`
+- 乐观锁 + WikiLinks Relations 自动填充 `9b2d983`
+- write_mode 确认模式 + 交互式配置向导 `39dd567`
+
+**Changed**
+- `source_auto_confirm` 阈值从 `>= 0.7` 改为 `> 0.7` `a2cb8c2`
+
+**Fixed**
+- 2 个预存测试失败（dispatch 日期 + package 源数量）`53a0878`
+- `datetime.utcnow()` 替换为 `datetime.now(UTC)` `19549f2`
+
+**关键文件**：`cli.py`、`store.py`、`review.py`、`lint.py`、`indexer.py`、`dispatch/`
+
+---
+
+### [M2] v0.4 ~ v0.6 — 多 Agent 知识统一 — 2026-05-12
+
+**目标**：三种 Agent 知识源同步到 Linglong。
+
+**Added**
+- OpenClawSyncAdapter（wiki 模式）`ccd2011`
+- ClaudeCodeSyncAdapter `ffb7c10`
+- CodexSyncAdapter `a11b013`
+- 向量搜索（sqlite-vec + OpenClaw 远程 embedding）`8548815`
+- Ingest 泛化：SourceAdapter ABC + AdapterRegistry + PackageExecutor `4721ec9` `6b4fab4` `5f6c43d`
+- TruthVerificationEngine 五层验证 `e554106`
+- RSS/WebFetch/WebSearch/API 四种 SourceAdapter `257cc7e`
+- IngestConfig + SourcePackage YAML 配置模型 `4841fc5` `6b4fab4`
+- 端到端集成测试（ingest→knowledge→composer→dispatch）`b6281e6`
+
+**关键文件**：`sync/*.py`、`ingest/adapters/`、`ingest/truth.py`
+
+---
+
+### [M1] v0.1 ~ v0.3 — 基础管线 — 2026-05-12
+
+**目标**：core + ingest + knowledge + composer 四模块骨架，端到端可运行。
+
+**Added**
+- Entity/Task/Source 数据模型 `3d7b1e1`
+- KnowledgeStore 三层存储（文件 + SQLite + sqlite-vec）`3d7b1e1`
+- Composer 日聚合 + BlogTemplate `e51497f`
+- Ingest 模块骨架（RSS 采集）`3d7b1e1`
+- Frontmatter YAML list 验证 + 测试 `35bc663`
+- Makefile + CI workflow `25be4c3`
+- 全链路集成测试 `3d7b1e1`
+
+**关键文件**：`core/models.py`、`knowledge/store.py`、`composer/composer.py`、`ingest/`
+
+---
+
+## 明确放弃的方案
+
+| 方案 | 放弃原因 | 替代方案 |
+|------|----------|----------|
+| 四分面（LLM-Wiki 原设计） | 无法覆盖经验/方法论/个人数据 | 七分面 |
+| Push 模式（Agent 推送） | Agent 需要适配 Linglong API | Pull 模式（Linglong 拉取） |
+| 纯文件系统存储 | 无全文搜索和向量搜索能力 | 文件 + SQLite + sqlite-vec |
+| 项目本地存储（`./linglong/`） | 多项目共享知识库时配置冲突 | `~/linglong/` 统一路径 |
+| 纯 slug 文件名 | 标题碰撞时互相覆盖 | ID 前缀 + slug |
+| 同时同步 wiki 和默认 wiki | 内容重叠导致重复条目 | 先实现去重策略再支持（见 BACKLOG-002） |
+
+---
+
+## 当前聚焦
+
+**v1.0 目标**：博客流水线端到端验证（内容质量待改进）
+
+**当前数据**：451 条 Entity（wiki 141 + memory 310），7 个 facet 全覆盖，245 个测试全部通过
+
+**下一步方向**：
+
+| 优先级 | 方向 | 状态 | 关联 |
+|--------|------|------|------|
+| 高 | 同步去重策略 | 待实现 | BACKLOG-001 |
+| 中 | OpenClaw 默认 wiki 路径支持 | 依赖去重 | BACKLOG-002 |
+| 中 | 索引文件自动生成 | 待实现 | BACKLOG-003 |
+| 中 | CLI write 增加 `--created-by` 参数 | 待实现 | — |
+| 中 | CLAUDE.md 添加知识库使用指引 | 待实现 | — |
+| 低 | Codex 同步运行 | 适配器已实现，未执行 | — |
+
+---
+
+## 版本变动历史
+
+| 版本 | 日期 | 变动摘要 |
+|------|------|----------|
+| v1.0 | 2026-05-18 | 初始创建：基于 git 历史重写，keepachangelog 格式，M1-M4 含具体 commit 引用 |

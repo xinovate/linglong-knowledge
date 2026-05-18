@@ -1,7 +1,14 @@
 # Agent 接入设计
 
-> 创建日期：2026-05-14
-> 状态：设计阶段
+| 属性 | 值 |
+|------|-----|
+| 分类 | 接入层 |
+| 状态 | 🟡 部分实现 |
+| 依赖 | [D-03 写入设计](03-write-path.md), [D-04 搜索设计](04-search.md) |
+| 关联实现 | `src/linglong/cli.py`, `src/linglong/knowledge/sync/*.py` |
+| 最后更新 | 2026-05-14 |
+
+**未实现项**: OpenClaw 默认 wiki 路径支持（见 D-09 BACKLOG-002）、Agent hooks 自动同步
 
 ---
 
@@ -297,11 +304,26 @@ linglong migrate --from ~/.openclaw/workspace/memory/wiki/ --no-index
 
 ---
 
-## 相关文档
+## 设计决策记录
 
-- [全局架构](00-overview.md) — Agent 接入方式概述
-- [写入设计](03-write-path.md) — 写入流程、确认模式
-- [搜索设计](04-search.md) — 搜索命令、模式选择
-- [巡检设计](05-lint.md) — lint 命令、报告格式
-- [更新设计](07-update-path.md) — Entity 更新、版本管理
-- [初始化与并发](08-init-and-concurrency.md) — init 命令详解、并发写入协调
+| 编号 | 决策 | 选择 | 原因 | 替代方案 |
+|------|------|------|------|----------|
+| D-06a | 接入方式 | CLI 命令行 | Agent 无需代码集成 | SDK/API |
+| D-06b | 配置优先级 | CLI > .linglong.yaml > 默认值 | 灵活覆盖 | 仅配置文件 |
+| D-06c | 迁移策略 | 渐进式四阶段 | 降低迁移风险 | 一次性全量 |
+
+## 版本变动历史
+
+| 版本 | 日期 | 变动摘要 | 影响范围 |
+|------|------|----------|----------|
+| v1.0 | 2026-05-14 | 初始设计 | 全文 |
+
+## 关联文档
+
+| 文档 | 关系 |
+|------|------|
+| [D-03 写入设计](03-write-path.md) | 写入流程、确认模式 |
+| [D-04 搜索设计](04-search.md) | 搜索命令、模式选择 |
+| [D-05 巡检设计](05-lint.md) | lint 命令、报告格式 |
+| [D-07 更新设计](07-update-path.md) | update 命令 |
+| [D-08 初始化与并发](08-init-and-concurrency.md) | init 命令详解 |

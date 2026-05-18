@@ -1,7 +1,15 @@
 # 知识库搜索设计
 
-> 创建日期：2026-05-14
-> 状态：设计阶段
+
+| 属性 | 值 |
+|------|-----|
+| 分类 | 查询层 |
+| 状态 | 🟡 部分实现 |
+| 依赖 | [D-01 数据模型](01-data-model.md) |
+| 关联实现 | `src/linglong/knowledge/store.py`, `src/linglong/knowledge/embeddings.py` |
+| 最后更新 | 2026-05-14 |
+
+**未实现项**: 混合搜索（RRF）、两步索引查询、自动模式
 
 ---
 
@@ -278,8 +286,25 @@ linglong index --facet concept
 
 ---
 
-## 相关文档
+## 设计决策记录
 
-- [全局架构](00-overview.md) — Token 经济性原则
-- [数据模型](01-data-model.md) — Facet 分类
-- [写入设计](03-write-path.md) — 去重时的搜索策略
+| 编号 | 决策 | 选择 | 原因 | 替代方案 |
+|------|------|------|------|----------|
+| D-04a | 全文搜索 | SQLite FTS5 | 内置、离线、无依赖 | Whoosh / Elasticsearch |
+| D-04b | 向量搜索 | sqlite-vec + 远程 embedding | 无需本地 GPU | 本地模型 |
+| D-04c | 查询模式 | on_demand 默认 + --deep 可选 | 降低 token 成本 | 总是返回全文 |
+| D-04d | 降级策略 | FTS5 → LIKE，向量 → 关键词 | 保证离线可用 | 失败即报错 |
+
+## 版本变动历史
+
+| 版本 | 日期 | 变动摘要 | 影响范围 |
+|------|------|----------|----------|
+| v1.0 | 2026-05-14 | 初始设计 | 全文 |
+
+## 关联文档
+
+| 文档 | 关系 |
+|------|------|
+| [D-01 数据模型](01-data-model.md) | facet 过滤基于 EntityFacet |
+| [D-03 写入设计](03-write-path.md) | 去重时的搜索策略 |
+| [D-06 Agent 接入](06-agent-integration.md) | search CLI 命令 |

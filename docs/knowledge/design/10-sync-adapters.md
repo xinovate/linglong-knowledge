@@ -1,5 +1,15 @@
 # 跨 Agent 同步协议
 
+| 属性 | 值 |
+|------|-----|
+| 分类 | 接入层 |
+| 状态 | ✅ 已实现 |
+| 依赖 | [D-01 数据模型](01-data-model.md), [D-06 Agent 接入](06-agent-integration.md) |
+| 关联实现 | `src/linglong/knowledge/sync/*.py` |
+| 最后更新 | 2026-05-18 |
+
+---
+
 ## 概述
 
 Linglong 通过 SyncAdapter 将各 Agent 的知识库统一同步到 KnowledgeStore。每个 Agent 写入时带命名空间前缀（`openclaw:`、`claude:`、`codex:`）。
@@ -87,3 +97,29 @@ class MyAgentSyncAdapter(BaseSyncAdapter):
         # 调用 store.create()
         return count
 ```
+
+---
+
+## 设计决策记录
+
+| 编号 | 决策 | 选择 | 原因 | 替代方案 |
+|------|------|------|------|----------|
+| D-10a | 同步方向 | Pull（Linglong 拉取） | Agent 无需适配 | Push（Agent 推送） |
+| D-10b | 模式检测 | 目录结构启发式（wiki vs memory） | 自动适配不同数据源 | 手动指定模式 |
+| D-10c | 子目录分类 | metadata._subdir 透传到 store | 灵活扩展，不影响 store 接口 | 硬编码子目录规则 |
+
+## 版本变动历史
+
+| 版本 | 日期 | 变动摘要 | 影响范围 |
+|------|------|----------|----------|
+| v1.0 | 2026-05-14 | 初始设计 | 全文 |
+| v1.1 | 2026-05-18 | 新增 memory 模式（diary/task-record），目录级 facet 覆盖 | OpenClawSyncAdapter |
+
+## 关联文档
+
+| 文档 | 关系 |
+|------|------|
+| [D-01 数据模型](01-data-model.md) | Entity 模型、Facet 分类 |
+| [D-02 目录结构](02-directory-structure.md) | 子目录分类规范 |
+| [D-06 Agent 接入](06-agent-integration.md) | CLI 命令、触发时机 |
+| [D-09 待办事项](09-backlog.md) | 同步去重、默认路径支持 |
