@@ -673,19 +673,21 @@ class KnowledgeStore:
         return None
 
     def _get_entity_path(self, entity_id: str, facet: str = "concept",
-                         content: str = "") -> Path:
+                         content: str = "", subdir: str = "") -> Path:
         """Get filesystem path for an entity, using semantic filename when possible."""
         title = self._extract_title(content) if content else None
+        base = self.wiki_path / facet / subdir if subdir else self.wiki_path / facet
         if title:
             slug = self._slugify(title)
-            return self.wiki_path / facet / f"{slug}.md"
-        return self.wiki_path / facet / f"{entity_id}.md"
+            return base / f"{entity_id[:8]}-{slug}.md"
+        return base / f"{entity_id}.md"
 
     def _save_to_filesystem(self, entity: Entity) -> None:
         """Save entity as Markdown file with YAML frontmatter."""
+        subdir = entity.metadata.get("_subdir", "")
         old_path = self._get_entity_path(entity.id, entity.facet.value)
         entity_path = self._get_entity_path(
-            entity.id, entity.facet.value, content=entity.content
+            entity.id, entity.facet.value, content=entity.content, subdir=subdir
         )
         entity_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -14,19 +14,35 @@ from linglong.core.config import get_config
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_CONFIG_TEMPLATE = """# Linglong 配置文件
-# 详细说明：https://github.com/your-org/linglong
+_DEFAULT_CONFIG_TEMPLATE = """# Linglong 知识库配置
 
 knowledge:
-  wiki_path: ./wiki
-  db_path: ./knowledge.db
+  wiki_path: ~/linglong/wiki
+  db_path: ~/linglong/db/knowledge.db
   generate_embeddings: false
-  write_mode: confirm
-  search_mode: on_demand
-  auto_index: true
+  write_mode: auto
+  auto_lint: false
   max_versions: 10
-  lock_timeout: 5
   db_mode: wal
+
+composer:
+  distiller_use_llm: false
+  template_name: blog
+  auto_publish: true
+  default_publisher: local
+  image_assets:
+    enabled: false
+
+dispatch:
+  enabled: true
+  default_publisher: local
+  publishers:
+    - name: local
+      type: local
+      enabled: true
+      config:
+        output_dir: ~/Downloads/linglong-output
+        overwrite: true
 """
 
 
@@ -43,12 +59,13 @@ def init_bare(target_dir: Path | None = None) -> Path:
     """
     from linglong.core.models import EntityFacet
 
-    wiki_path = (target_dir or Path.cwd()) / "wiki"
+    base = target_dir or Path.home() / "linglong"
+    wiki_path = base / "wiki"
     wiki_path.mkdir(parents=True, exist_ok=True)
     (wiki_path / "archive").mkdir(exist_ok=True)
 
     # 写配置模板
-    config_path = (target_dir or Path.cwd()) / ".linglong.yaml"
+    config_path = base / ".linglong.yaml"
     if not config_path.exists():
         config_path.write_text(_DEFAULT_CONFIG_TEMPLATE, encoding="utf-8")
         logger.info("已创建配置模板：%s", config_path)
@@ -73,7 +90,7 @@ def init_from_backup(backup_dir: Path, target_dir: Path | None = None) -> Path:
     if not backup_wiki.exists():
         raise FileNotFoundError(f"备份目录无 wiki/：{backup_dir}")
 
-    target_dir = target_dir or Path.cwd()
+    target_dir = target_dir or Path.home() / "linglong"
     target_wiki = target_dir / "wiki"
 
     if target_wiki.exists():
@@ -150,7 +167,7 @@ def init_from_git(repo_url: str, target_dir: Path | None = None) -> Path:
     """
     import subprocess
 
-    base = target_dir or Path.cwd()
+    base = target_dir or Path.home() / "linglong"
     wiki_path = base / "wiki"
 
     # clone 到临时目录
@@ -196,7 +213,7 @@ def init_interactive(target_dir: Path | None = None) -> Path:
 
     Prompts user for key settings and generates customized .linglong.yaml.
     """
-    base = target_dir or Path.cwd()
+    base = target_dir or Path.home() / "linglong"
 
     print("=== Linglong 知识库初始化向导 ===\n")
 
