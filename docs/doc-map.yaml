@@ -1,0 +1,35 @@
+# 代码路径 → 文档路径映射
+# pre-commit hook 读取此文件，如果 staged 文件命中 code 路径，
+# 但本次 commit 没有改动对应 docs，则输出提醒。
+
+mappings:
+  - code: src/linglong/core/
+    docs:
+      - docs/core/config.md
+      - docs/architecture.md
+
+  - code: src/linglong/knowledge/
+    docs:
+      - docs/knowledge/README.md
+      - docs/knowledge/design/
+
+  - code: src/linglong/composer/
+    docs:
+      - docs/composer/README.md
+      - docs/composer/
+
+  - code: src/linglong/ingest/
+    docs:
+      - docs/ingest/README.md
+
+  - code: src/linglong/dispatch/
+    docs:
+      - docs/dispatch/README.md
+
+  - code: src/linglong/cli.py
+    docs:
+      - docs/PROJECT_OVERVIEW.md
+
+  - code: tests/
+    docs:
+      - docs/testing.md
