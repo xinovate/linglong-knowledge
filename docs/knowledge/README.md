@@ -10,16 +10,16 @@
 
 ## 核心组件
 
-| 组件 | 路径 | 说明 |
-|------|------|------|
-| `KnowledgeStore` | `knowledge/store.py` | 统一存储接口（CRUD + 搜索 + 向量） |
-| `ReviewEngine` | `knowledge/review.py` | 自动审核引擎（facet 差异化规则） |
-| `LintEngine` | `knowledge/lint.py` | 巡检引擎（索引/WikiLinks/冲突/过期） |
-| `Indexer` | `knowledge/indexer.py` | 索引生成器（主索引 + 7 分面子索引） |
-| `WikiLinks` | `knowledge/wikilinks.py` | WikiLinks 解析器 |
+| 组件                | 路径 | 说明 |
+|-------------------|------|------|
+| `KnowledgeStore`  | `knowledge/store.py` | 统一存储接口（CRUD + 搜索 + 向量） |
+| `ReviewEngine`    | `knowledge/review.py` | 自动审核引擎（facet 差异化规则） |
+| `LintEngine`      | `knowledge/lint.py` | 巡检引擎（索引/WikiLinks/冲突/过期） |
+| `Indexer`         | `knowledge/indexer.py` | 索引生成器（主索引 + 7 分面子索引） |
+| `WikiLinks`       | `knowledge/wikilinks.py` | WikiLinks 解析器 |
 | `EmbeddingService` | `knowledge/embeddings.py` | 向量嵌入服务（远程 embedding） |
-| `init` | `knowledge/init.py` | 知识库初始化（裸初始化/Git/备份/OpenClaw 迁移） |
-| SyncAdapters | `knowledge/sync/*.py` | OpenClaw / Claude Code / Codex 同步适配器 |
+| `init`            | `knowledge/init.py` | 知识库初始化（裸初始化/Git/备份/OpenClaw 迁移） |
+| `SyncAdapters`      | `knowledge/sync/*.py` | OpenClaw / Claude Code / Codex 同步适配器 |
 
 ## 快速开始
 

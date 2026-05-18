@@ -148,31 +148,42 @@ Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
 
 | 阶段 | 目标 | 状态 |
 |------|------|------|
-| M1 基础管线 | core + ingest + knowledge + composer 骨架 | ✅ 完成 |
-| M2 多 Agent 同步 | 三种 Agent 知识源统一 | ✅ 完成 |
-| M3 产品化 | CLI + 配置 + dispatch + 知识库完善 | ✅ 完成 |
-| M4 知识库独立 | 从 OpenClaw 剥离，子目录分类，全量同步 | ✅ 完成 |
-| M5 博客流水线 | 端到端验证 + 内容质量 | 🔵 进行中 |
+| M1 基础管线 | core + ingest + knowledge + composer 骨架 | 完成 |
+| M2 多 Agent 同步 | 三种 Agent 知识源统一 | 完成 |
+| M3 产品化 | CLI + 配置 + dispatch + 知识库完善 | 完成 |
+| M4 知识库独立 | 从 OpenClaw 剥离，子目录分类，全量同步 | 完成 |
+| M5 博客流水线 | 端到端验证 + 内容质量 | 进行中 |
 
 ### 当前聚焦
 
-**任务**：v1.0 博客流水线端到端验证
+**任务**：检查知识库同步输出质量（OpenClaw wiki → ~/linglong/wiki）
 
-**进展**：知识库数据就绪（451 Entity，7 facet 全覆盖），博客模板已实现，图片管线已通，245 测试通过
+**进展**：
+- 知识库数据就绪（451 Entity，7 facet 全覆盖），博客模板已实现，图片管线已通，245 测试通过
+- 正在逐项检查同步后的文件：frontmatter 完整性、facet 分类准确性、WikiLinks 解析正确性、目录结构是否符合设计规范
+- 发现若干小问题，需要微调修复
 
 ### 卡点 / 阻塞项
 
 | 项目 | 状态 | 说明 |
 |------|------|------|
-| 同步去重策略 | 🔴 阻塞 | BACKLOG-001，无去重会导致重复条目，阻塞默认 wiki 路径支持 |
-| LIMIT-001 frontmatter | 🟡 观察 | 2 个文件解析跳过，非关键 |
+| 同步去重策略 | 阻塞 | BACKLOG-001，无去重会导致重复条目，阻塞默认 wiki 路径支持 |
+| LIMIT-001 frontmatter | 观察 | 2 个文件解析跳过，非关键 |
 
 ### 下一步
 
-1. [ ] 同步去重策略（BACKLOG-001）
-2. [ ] OpenClaw 默认 wiki 路径支持（BACKLOG-002，依赖去重）
-3. [ ] 索引文件自动生成（BACKLOG-003）
-4. [ ] CLI write 增加 `--created-by` 参数
+**M5 验证**（当前阶段核心）：
+1. [ ] 知识库同步质量检查（进行中）— 检查 OpenClaw wiki → ~/linglong/wiki 的输出质量
+2. [ ] 微调修复同步中发现的问题
+3. [ ] 博客流水线端到端跑通（ingest → knowledge → composer → dispatch）
+4. [ ] 输出内容质量检查（博客标题、正文、图片、标签）
+5. [ ] 修复验证中的阻塞问题
+
+**基础设施改进**：
+6. [ ] 同步去重策略（BACKLOG-001）
+7. [ ] OpenClaw 默认 wiki 路径支持（BACKLOG-002，依赖去重）
+8. [ ] 索引文件自动生成（BACKLOG-003）
+9. [ ] CLI write 增加 `--created-by` 参数
 
 ---
 
