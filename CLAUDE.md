@@ -203,16 +203,14 @@ except StorageError as e:
     raise
 ```
 
-### 文档同步（pre-commit hook）
+### 文档同步（Claude Code hook）
 
-项目配置了 pre-commit hook，提交代码时自动检查是否需要同步更新文档：
+项目配置了 PreToolUse hook（`.claude/settings.json`），执行 `git commit` 前自动检查代码改动对应的文档是否需要更新：
 
 - 映射配置：`docs/doc-map.yaml`（代码路径 → 文档路径）
-- 检查脚本：`scripts/doc-check.py`
-- hook 文件：`scripts/hooks/pre-commit`
-- 安装方式：`bash scripts/install-hooks.sh`（clone 后首次需执行）
+- 检查脚本：`scripts/doc-check.py --claude-hook`
 
-提交时如果看到黄色警告 `⚠️ doc-check`，说明代码改动对应的文档没有更新，请检查后再提交。
+提交时如果上下文中出现 `⚠️ doc-check` 提醒，说明代码改动对应的文档没有更新，请检查后再提交。
 
 ---
 

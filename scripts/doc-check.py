@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Pre-commit hook: 检查代码改动是否需要同步更新文档。
+"""文档同步检查脚本。
+
+两种调用方式：
+1. git hook:  python scripts/doc-check.py           → 纯文本输出
+2. claude hook: python scripts/doc-check.py --claude-hook → JSON 输出（additionalContext）
 
 读取 docs/doc-map.yaml 中的代码→文档映射，
 对比 git diff --staged 的文件列表，
@@ -9,6 +13,7 @@
 仅使用标准库，无需虚拟环境。
 """
 
+import json
 import re
 import subprocess
 import sys
@@ -101,6 +106,8 @@ def check(staged: list[str], mappings: list[dict]) -> list[str]:
 
 
 def main():
+    claude_hook = "--claude-hook" in sys.argv
+
     staged = get_staged_files()
     if not staged:
         sys.exit(0)
@@ -117,7 +124,20 @@ def main():
         sys.exit(0)
 
     warnings = check(staged, mappings)
-    if warnings:
+    if not warnings:
+        sys.exit(0)
+
+    if claude_hook:
+        # Claude Code hook 模式：输出 JSON，通过 additionalContext 注入上下文
+        msg = "⚠️  doc-check: code changed without doc updates\n" + "\n".join(warnings)
+        json.dump({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "additionalContext": msg,
+            }
+        }, sys.stdout)
+    else:
+        # git hook 模式：纯文本输出
         YELLOW = "\033[33m"
         RESET = "\033[0m"
         print(f"{YELLOW}⚠️  doc-check: code changed without doc updates{RESET}")
