@@ -157,33 +157,34 @@ Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
 
 ### 当前聚焦
 
-**任务**：检查知识库同步输出质量（OpenClaw wiki → ~/linglong/wiki）
+**任务**：知识库同步质量检查已完成，进入博客流水线端到端验证
 
 **进展**：
-- 知识库数据就绪（451 Entity，7 facet 全覆盖），博客模板已实现，图片管线已通，245 测试通过
-- 正在逐项检查同步后的文件：frontmatter 完整性、facet 分类准确性、WikiLinks 解析正确性、目录结构是否符合设计规范
-- 发现若干小问题，需要微调修复
+- 知识库质量检查全部完成：index_consistency 归零、content_conflict 归零、wikilinks 343 个死链修复、16 个无 slug 文件名处理、Sleep 日志过滤修复
+- BACKLOG-001 同步去重策略已实现（双层去重：ID 去重 + Content Hash 去重）
+- 245+ 测试全部通过，lint 输出 "知识库健康，无问题"
+- 博客模板已实现，图片管线已通，待端到端验证
 
 ### 卡点 / 阻塞项
 
 | 项目 | 状态 | 说明 |
 |------|------|------|
-| 同步去重策略 | 阻塞 | BACKLOG-001，无去重会导致重复条目，阻塞默认 wiki 路径支持 |
 | LIMIT-001 frontmatter | 观察 | 2 个文件解析跳过，非关键 |
+| BACKLOG-003 索引文件 | 待实现 | `index --rebuild` 生成的索引结构不完整 |
 
 ### 下一步
 
 **M5 验证**（当前阶段核心）：
-1. [ ] 知识库同步质量检查（进行中）— 检查 OpenClaw wiki → ~/linglong/wiki 的输出质量
-2. [ ] 微调修复同步中发现的问题
+1. [x] 知识库同步质量检查 — 已完成（index_consistency/content_conflict/wikilinks 全部清零）
+2. [x] 微调修复同步中发现的问题 — 已完成（Sleep 过滤、无 slug 文件名、lint 递归扫描修复）
 3. [ ] 博客流水线端到端跑通（ingest → knowledge → composer → dispatch）
 4. [ ] 输出内容质量检查（博客标题、正文、图片、标签）
-5. [ ] 修复验证中的阻塞问题
 
 **基础设施改进**：
-6. [ ] 同步去重策略（BACKLOG-001）
-7. [ ] OpenClaw 默认 wiki 路径支持（BACKLOG-002，依赖去重）
-8. [ ] 索引文件自动生成（BACKLOG-003）
+5. [x] 同步去重策略（BACKLOG-001）— 已完成
+6. [ ] OpenClaw 默认 wiki 路径支持（BACKLOG-002，前置依赖已解除）
+7. [ ] 索引文件自动生成（BACKLOG-003）
+8. [ ] 文件名移除 ID 前缀（BACKLOG-004，低优先级）
 9. [ ] CLI write 增加 `--created-by` 参数
 
 ---

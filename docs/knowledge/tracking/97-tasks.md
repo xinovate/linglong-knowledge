@@ -13,11 +13,12 @@
 | 1 | 处理 34 个 index_consistency | 已完成 | 1 小时 | lint | [详情](#1) |
 | 2 | 清理 Sleep 日志重复（Light/Deep/REM） | 已完成 | 30 分钟 | sync | [详情](#2) |
 | 3 | 清理重复标题（源码分析工作流 + 迁移阿里云） | 已完成 | 20 分钟 | sync | [详情](#3) |
+| 3.1 | 清理僵尸记录（源码分析工作流 v2.0） | 已完成 | 5 分钟 | db | [详情](#3) |
 | 4 | 修复 lint content_conflict 误报 | 已完成 | 30 分钟 | lint | [详情](#4) |
 | 5 | OpenClaw sync 过滤 Sleep 日志 | 已完成 | 20 分钟 | sync | [详情](#5) |
-| 6 | 调查 16 个无 slug 文件名 | 待处理 | 35 分钟 | sync | [详情](#6) |
-| 7 | 修复 wikilinks 死链（概念链接） | 待处理 | 1 小时 | wikilinks | [详情](#7) |
-| 8 | 同步去重策略 | 阻塞中 | — | BACKLOG-001 | [详情](#8) |
+| 6 | 调查 16 个无 slug 文件名 | 已完成 | 35 分钟 | sync | [详情](#6) |
+| 7 | 修复 wikilinks 死链（343 个） | 已完成 | 1 小时 | lint | [详情](#7) |
+| 8 | 同步去重策略 | 已完成 | — | BACKLOG-001 | [详情](#8) |
 
 ---
 
@@ -82,22 +83,52 @@
 
 ## 6. 调查 16 个无 slug 文件名
 
-**状态**：待处理
+**状态**：已完成
 
-**下一步**：检查原始文件 frontmatter 是否有 title 字段。
+**调查**：
+- 16 个文件中：8 个 `## Light Sleep`（OpenClaw 内部日志）、4 个无价值草稿/记忆、2 个空内容、2 个有价值但无标题
+- 根因：源文件无一级标题 `# 标题`，`_save_to_filesystem()` 无法提取 slug
+- 发现 bug：`openclaw.py` Sleep 过滤只检查一级标题，漏过 `## Light Sleep`
+
+**处理**：
+- 删除 11 个无价值文件（Sleep 日志 + 草稿 + 系统日志）
+- 保留 2 个有价值的，补 `# 标题` 并重命名为正确 slug
+- 修复 `openclaw.py`：Sleep 过滤支持多级标题
+- 修复 `lint.py`：`check_index_consistency` 递归扫描子目录，正确处理 `{id[:8]}-{slug}.md` 命名
+
+**关联**：`src/linglong/knowledge/sync/openclaw.py`、`src/linglong/knowledge/lint.py`
 
 ---
 
 ## 7. 修复 wikilinks 死链
 
-**状态**：待处理
+**状态**：已完成
 
-**下一步**：先执行 `linglong lint` 导出完整死链列表，筛选概念类链接。
+**操作**：
+1. 调查：343 次引用 → 132 个唯一目标。分类：OpenClaw 内部常量(40) / 相对路径(44) / 占位符(16) / 概念链接(243)
+2. 确认：相对路径目标全部不存在；绝大多数概念链接目标也不存在
+3. 实现：`lint.py` 的 `fix_all()` 增加 `_fix_wikilinks()` 方法，批量把 `[[死链]]` 还原为纯文本
+4. 执行：`linglong lint --fix`，343 个死链全部修复
+5. 连带修复：过程中发现并清理 18 个新的 index_consistency 孤立文件
+
+**结果**：wikilinks 归零，lint 输出 "知识库健康，无问题"
+
+**关联**：`src/linglong/knowledge/lint.py`
 
 ---
 
 ## 8. 同步去重策略
 
-**状态**：阻塞中
+**状态**：已完成
 
-**阻塞原因**：等 BACKLOG-001 方案确定。
+**方案**：双层去重
+- **ID 去重**（源级）：同一文件路径同步多次 → 幂等跳过或更新
+- **Content Hash 去重**（跨源）：不同路径但内容完全相同 → 返回已有实体
+- 语义相近的留给 `lint content_conflict` 人工处理
+
+**实现**：
+1. `store.py`：`create()` 增加去重检查；`_init_database()` 新增 `content_hash` 列
+2. `openclaw.py`：`sync_to_linglong()` stats 增加 `updated`，adapter 层预检查
+3. 新增 5 个测试覆盖幂等性、内容更新、跨源去重
+
+**关联**：`src/linglong/knowledge/store.py`、`src/linglong/knowledge/sync/openclaw.py`

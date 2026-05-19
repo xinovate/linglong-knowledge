@@ -61,7 +61,7 @@ Some content here.
     adapter = OpenClawSyncAdapter(str(wiki_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "updated": 0, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"concepts/test-reference.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -130,7 +130,7 @@ def test_sync_stats(temp_store, wiki_dir):
     adapter = OpenClawSyncAdapter(str(wiki_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 2, "created": 2, "skipped": 0, "failed": 0}
+    assert stats == {"total": 2, "created": 2, "updated": 0, "skipped": 0, "failed": 0}
 
 
 def test_sync_handles_corrupt_file(temp_store, wiki_dir):
@@ -202,7 +202,7 @@ def test_memory_sync_daily_file(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "updated": 0, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"2026-04-12.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -227,7 +227,7 @@ def test_memory_sync_index_file(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "updated": 0, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"2026-04-07-index.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -254,7 +254,7 @@ def test_memory_sync_subdir_file(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "updated": 0, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"2026-04-09/task-completion-summary.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -280,7 +280,7 @@ def test_memory_sync_mixed_files(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 4, "created": 4, "skipped": 0, "failed": 0}
+    assert stats == {"total": 4, "created": 4, "updated": 0, "skipped": 0, "failed": 0}
 
     # 验证各类 facet
     all_entities = temp_store.search(limit=100)
@@ -300,7 +300,7 @@ def test_memory_sync_with_frontmatter(temp_store, memory_dir):
     adapter = OpenClawSyncAdapter(str(memory_dir), temp_store)
     stats = adapter.sync_to_linglong()
 
-    assert stats == {"total": 1, "created": 1, "skipped": 0, "failed": 0}
+    assert stats == {"total": 1, "created": 1, "updated": 0, "skipped": 0, "failed": 0}
 
     expected_id = hashlib.sha256(b"2026-04-05.md").hexdigest()[:16]
     entity = temp_store.get(expected_id)
@@ -342,3 +342,46 @@ def test_detect_mode_memory_by_name(tmp_path):
     mem.mkdir()
     # Even with no files, name match triggers memory mode
     assert _detect_mode(mem) == "memory"
+
+
+def test_sync_idempotent(temp_store, wiki_dir):
+    """Syncing the same file twice should skip on second run."""
+    content = """---
+type: concept
+---
+
+# Concept A
+
+Content here.
+"""
+    _make_wiki_file(wiki_dir, "concepts/concept-a.md", content)
+
+    adapter = OpenClawSyncAdapter(str(wiki_dir), temp_store)
+    stats1 = adapter.sync_to_linglong()
+    assert stats1 == {"total": 1, "created": 1, "updated": 0, "skipped": 0, "failed": 0}
+
+    # Second sync of identical content
+    stats2 = adapter.sync_to_linglong()
+    assert stats2 == {"total": 1, "created": 0, "updated": 0, "skipped": 1, "failed": 0}
+
+
+def test_sync_update_content(temp_store, wiki_dir):
+    """Modifying a file and re-syncing should update the entity."""
+    rel_path = "concepts/concept-b.md"
+    _make_wiki_file(wiki_dir, rel_path, "# Concept B\n\nOriginal content.")
+
+    adapter = OpenClawSyncAdapter(str(wiki_dir), temp_store)
+    stats1 = adapter.sync_to_linglong()
+    assert stats1 == {"total": 1, "created": 1, "updated": 0, "skipped": 0, "failed": 0}
+
+    # Modify file content
+    _make_wiki_file(wiki_dir, rel_path, "# Concept B\n\nUpdated content.")
+
+    stats2 = adapter.sync_to_linglong()
+    assert stats2 == {"total": 1, "created": 0, "updated": 1, "skipped": 0, "failed": 0}
+
+    # Verify content was updated
+    expected_id = hashlib.sha256(b"concepts/concept-b.md").hexdigest()[:16]
+    entity = temp_store.get(expected_id)
+    assert entity is not None
+    assert "Updated content" in entity.content

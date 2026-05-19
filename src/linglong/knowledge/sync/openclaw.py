@@ -284,11 +284,13 @@ def _memory_file_to_entity(file_path: Path, relative_path: str) -> Entity:
         content = raw_content
 
     # Skip OpenClaw internal Sleep logs (no knowledge value)
-    first_line = content.strip().split("\n")[0].strip()
-    if first_line.startswith("# "):
-        title = first_line[2:].strip().lower()
-        if title in _SKIP_MEMORY_TITLES:
-            return None
+    for line in content.strip().split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            title = stripped.lstrip("#").strip().lower()
+            if title in _SKIP_MEMORY_TITLES:
+                return None
+            break
 
     entity_id = _compute_id(relative_path)
 
@@ -331,7 +333,7 @@ class OpenClawSyncAdapter:
         In **wiki mode** skips ``index.md``.
         Returns sync stats ``{"total": N, "created": N, "failed": N}``.
         """
-        stats = {"total": 0, "created": 0, "skipped": 0, "failed": 0}
+        stats = {"total": 0, "created": 0, "updated": 0, "skipped": 0, "failed": 0}
 
         if not self.wiki_path.exists():
             logger.warning("Source path does not exist: %s", self.wiki_path)
@@ -354,8 +356,18 @@ class OpenClawSyncAdapter:
                         continue
                 else:
                     entity = _file_to_entity(file_path, relative_path)
+
+                # Adapter-level dedup check for accurate stats
+                existing = self.store.get(entity.id)
+                if existing is not None:
+                    if existing.content == entity.content:
+                        stats["skipped"] += 1
+                        continue
+                    stats["updated"] += 1
+                else:
+                    stats["created"] += 1
+
                 self.store.create(entity)
-                stats["created"] += 1
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Failed to sync %s: %s", file_path, exc)
                 stats["failed"] += 1

@@ -535,3 +535,58 @@ def test_auto_lint_on_write(temp_store):
         created_by="agent:claude",
     ))
     assert entity is not None
+
+
+def test_create_dedup_same_id_same_content(temp_store):
+    """Same ID + same content → return existing entity (idempotent)."""
+    entity = Entity(
+        id="test-dedup-001",
+        content="# Title\n\nContent",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    )
+    first = temp_store.create(entity)
+    second = temp_store.create(entity)
+
+    assert first.id == second.id
+    assert first.created_at == second.created_at
+
+
+def test_create_dedup_same_id_different_content(temp_store):
+    """Same ID + different content → update without version bump."""
+    entity = Entity(
+        id="test-dedup-002",
+        content="# Title\n\nOriginal",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    )
+    temp_store.create(entity)
+
+    entity.content = "# Title\n\nUpdated"
+    updated = temp_store.create(entity)
+
+    assert updated.content == "# Title\n\nUpdated"
+    assert updated.current_version == 1  # no version bump (append mode)
+
+
+def test_create_dedup_cross_source_same_content(temp_store):
+    """Different ID + same content → return existing entity (cross-source dedup)."""
+    entity1 = Entity(
+        id="source-a-001",
+        content="# Shared Content\n\nSame text",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    )
+    first = temp_store.create(entity1)
+
+    entity2 = Entity(
+        id="source-b-001",
+        content="# Shared Content\n\nSame text",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:openclaw",
+    )
+    second = temp_store.create(entity2)
+
+    # Should return the existing entity, not create a new one
+    assert second.id == first.id
+    assert second.created_by == "agent:claude"  # keeps original metadata

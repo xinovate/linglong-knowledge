@@ -130,3 +130,69 @@ def test_lint_fix_removes_orphan(lint_setup):
     fixed = engine.fix_all(results)
     assert fixed[0].fixed is True
     assert not orphan_path.exists()
+
+
+def test_fix_wikilinks_plain(lint_setup):
+    """[[死链]] 修复为纯文本。"""
+    store, engine = lint_setup
+    entity = store.create(Entity(
+        content="# 测试\n\n参考 [[不存在的页面]] 和 [[另一个死链]]。",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    results = engine.check_wikilinks()
+    assert len(results) == 2
+
+    fixed = engine.fix_all(results)
+    assert all(r.fixed for r in fixed)
+
+    updated = store.get(entity.id)
+    assert "[[不存在的页面]]" not in updated.content
+    assert "[[另一个死链]]" not in updated.content
+    assert "参考 不存在的页面 和 另一个死链。" in updated.content
+
+
+def test_fix_wikilinks_with_display(lint_setup):
+    """[[死链|显示文本]] 保留显示文本。"""
+    store, engine = lint_setup
+    entity = store.create(Entity(
+        content="# 测试\n\n参见 [[missing|显示名称]]。",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    results = engine.check_wikilinks()
+    assert len(results) == 1
+
+    fixed = engine.fix_all(results)
+    assert fixed[0].fixed is True
+
+    updated = store.get(entity.id)
+    assert "[[missing|显示名称]]" not in updated.content
+    assert "参见 显示名称。" in updated.content
+
+
+def test_fix_wikilinks_valid_link_untouched(lint_setup):
+    """有效链接在修复死链时不受影响。"""
+    store, engine = lint_setup
+    store.create(Entity(
+        content="# 存在的概念\n\n内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    entity = store.create(Entity(
+        content="# 测试\n\n参考 [[存在的概念]] 和 [[不存在的页面]]。",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    results = engine.check_wikilinks()
+    assert len(results) == 1
+    assert "不存在的页面" in results[0].message
+
+    engine.fix_all(results)
+
+    updated = store.get(entity.id)
+    assert "[[存在的概念]]" in updated.content
+    assert "[[不存在的页面]]" not in updated.content

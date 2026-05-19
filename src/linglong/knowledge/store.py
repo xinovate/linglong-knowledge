@@ -1,5 +1,6 @@
 """Knowledge storage layer - File + SQLite + Vector."""
 
+import hashlib
 import json
 import logging
 
@@ -68,6 +69,7 @@ class KnowledgeStore:
                 CREATE TABLE IF NOT EXISTS entities (
                     id TEXT PRIMARY KEY,
                     content TEXT NOT NULL,
+                    content_hash TEXT,  -- SHA256 of content for deduplication
                     summary TEXT,
                     facet TEXT NOT NULL DEFAULT 'concept',
                     created_by TEXT NOT NULL,
@@ -86,6 +88,12 @@ class KnowledgeStore:
                     metadata TEXT  -- JSON
                 )
             """)
+
+            # 迁移：旧数据库可能没有 content_hash 列
+            try:
+                conn.execute("ALTER TABLE entities ADD COLUMN content_hash TEXT")
+            except sqlite3.OperationalError:
+                pass  # 列已存在
 
             # FTS5 全文搜索虚拟表
             conn.execute("""
@@ -176,12 +184,52 @@ class KnowledgeStore:
                 self._write_embedding(conn, entity.embedding_id, embedding)
                 conn.commit()
 
+    def _content_hash(self, content: str) -> str:
+        """Compute SHA256 hash of content for deduplication."""
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
     def create(self, entity: Entity) -> Entity:
-        """Create a new entity."""
+        """Create a new entity with deduplication.
+
+        Deduplication logic:
+        - Same ID (same source path) + same content → return existing (idempotent)
+        - Same ID + different content → update without version bump
+        - Different ID + same content → link as duplicate and return existing
+        """
         with self._lock:
             entity.id = entity.id or str(uuid.uuid4())
             entity.created_at = entity.created_at or datetime.now(UTC)
             entity.updated_at = entity.updated_at or entity.created_at
+
+            content_hash = self._content_hash(entity.content)
+
+            # --- Layer 1: source-level dedup by ID ---
+            existing = self.get(entity.id)
+            if existing is not None:
+                if existing.content == entity.content:
+                    logger.debug("Deduplication: same ID+content, skipping %s", entity.id)
+                    return existing
+                # Content changed → update without version bump
+                entity.metadata["update_mode"] = "append"
+                entity.updated_at = existing.updated_at  # bypass optimistic lock
+                return self.update(entity)
+
+            # --- Layer 2: cross-source dedup by content hash ---
+            with sqlite3.connect(self.db_path) as conn:
+                row = conn.execute(
+                    "SELECT id FROM entities WHERE content_hash = ? AND archived_at IS NULL",
+                    (content_hash,),
+                ).fetchone()
+                if row is not None:
+                    dup_id = row[0]
+                    logger.info(
+                        "Deduplication: content hash matches %s, linking %s as duplicate",
+                        dup_id, entity.id,
+                    )
+                    # Return the existing entity (do not create a new one)
+                    dup_entity = self.get(dup_id)
+                    if dup_entity is not None:
+                        return dup_entity
 
             # 解析 [[wikilinks]] 并自动填充 relations
             self._resolve_wikilinks(entity)
@@ -194,14 +242,15 @@ class KnowledgeStore:
                 conn.execute(
                     """
                     INSERT INTO entities
-                    (id, content, summary, facet, created_by, confirmed_by, confirmed_at,
+                    (id, content, content_hash, summary, facet, created_by, confirmed_by, confirmed_at,
                      confidence, status, sources, relations, versions, current_version,
                      created_at, updated_at, archived_at, embedding_id, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         entity.id,
                         entity.content,
+                        content_hash,
                         entity.summary,
                         entity.facet.value,
                         entity.created_by,
@@ -471,11 +520,13 @@ class KnowledgeStore:
             self._save_to_filesystem(entity)
 
             # 更新 SQLite
+            content_hash = self._content_hash(entity.content)
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
                     UPDATE entities SET
                         content = ?,
+                        content_hash = ?,
                         summary = ?,
                         facet = ?,
                         confirmed_by = ?,
@@ -494,6 +545,7 @@ class KnowledgeStore:
                     """,
                     (
                         entity.content,
+                        content_hash,
                         entity.summary,
                         entity.facet.value,
                         entity.confirmed_by,

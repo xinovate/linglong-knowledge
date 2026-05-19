@@ -52,18 +52,74 @@ class LintEngine:
         if results is None:
             results = self.run_all(stale_days=stale_days)
 
+        # 先处理 index_consistency
         for r in results:
             if r.fixed:
                 continue
             if r.rule == "index_consistency" and r.entity_id:
-                # 删除孤立文件
-                if r.facet:
+                # 删除孤立文件（优先使用 details 中记录的实际路径）
+                orphan_path = r.details.get("path")
+                if orphan_path:
+                    orphan = self.store.wiki_path / orphan_path
+                elif r.facet:
                     orphan = self.store.wiki_path / r.facet / f"{r.entity_id}.md"
-                    if orphan.exists():
-                        orphan.unlink()
-                        r.fixed = True
-                        r.message += " (已修复：删除孤立文件)"
+                else:
+                    orphan = None
+                if orphan and orphan.exists():
+                    orphan.unlink()
+                    r.fixed = True
+                    r.message += " (已修复：删除孤立文件)"
+
+        # 再处理 wikilinks — 按实体聚合后批量修复
+        wikilink_results = [r for r in results if r.rule == "wikilinks" and not r.fixed and r.entity_id]
+        if wikilink_results:
+            self._fix_wikilinks(wikilink_results)
+
         return results
+
+    def _fix_wikilinks(self, results: list[LintResult]) -> None:
+        """Batch-fix dead wikilinks by converting [[target]] to plain text."""
+        import re
+
+        # 按 entity_id 聚合死链目标
+        entity_dead_links: dict[str, set[str]] = {}
+        for r in results:
+            entity_id = r.entity_id
+            target = r.details.get("target", "")
+            if entity_id and target:
+                entity_dead_links.setdefault(entity_id, set()).add(target)
+
+        _WIKILINK_RE = re.compile(r"\[\[(.*?)\]\]")
+
+        for entity_id, dead_targets in entity_dead_links.items():
+            entity = self.store.get(entity_id)
+            if entity is None:
+                continue
+
+            original_content = entity.content
+
+            def _replace_link(match: re.Match) -> str:
+                link_text = match.group(1)
+                parts = link_text.split("|", 1)
+                target = parts[0].strip()
+                display = parts[1].strip() if len(parts) > 1 else target
+                if target in dead_targets:
+                    return display
+                return match.group(0)
+
+            new_content = _WIKILINK_RE.sub(_replace_link, original_content)
+            if new_content != original_content:
+                entity.content = new_content
+                try:
+                    self.store.update(entity)
+                    # 标记该实体相关的所有 wikilink 结果为已修复
+                    for r in results:
+                        if r.entity_id == entity_id and r.details.get("target") in dead_targets:
+                            r.fixed = True
+                            r.message += " (已修复：删除死链)"
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Failed to fix wikilinks for %s: %s", entity_id, exc)
+
 
     def check_index_consistency(self) -> list[LintResult]:
         """Check that index files reflect actual wiki files."""
@@ -78,18 +134,40 @@ class LintEngine:
             if not facet_dir.exists():
                 continue
 
-            for md_file in facet_dir.glob("*.md"):
+            for md_file in facet_dir.rglob("*.md"):
                 # 验证文件在 SQLite 中存在
-                entity_id = md_file.stem
-                entity = self.store.get(entity_id)
-                if entity is None:
-                    results.append(LintResult(
-                        rule="index_consistency",
-                        severity=LintSeverity.WARNING,
-                        message=f"文件存在但数据库中无记录：{md_file.name}",
-                        entity_id=entity_id,
-                        facet=facet.value,
-                    ))
+                # 文件名格式：{id[:8]}-{slug}.md 或 {id}.md
+                stem = md_file.stem
+                if "-" in stem:
+                    partial_id = stem.split("-", 1)[0]
+                    # 用前8位模糊匹配数据库
+                    import sqlite3
+                    with sqlite3.connect(self.store.db_path) as conn:
+                        row = conn.execute(
+                            "SELECT id FROM entities WHERE id LIKE ?",
+                            (f"{partial_id}%",),
+                        ).fetchone()
+                    if row is None:
+                        results.append(LintResult(
+                            rule="index_consistency",
+                            severity=LintSeverity.WARNING,
+                            message=f"文件存在但数据库中无记录：{md_file.name}",
+                            entity_id=partial_id,
+                            facet=facet.value,
+                            details={"path": str(md_file.relative_to(self.store.wiki_path))},
+                        ))
+                else:
+                    entity_id = stem
+                    entity = self.store.get(entity_id)
+                    if entity is None:
+                        results.append(LintResult(
+                            rule="index_consistency",
+                            severity=LintSeverity.WARNING,
+                            message=f"文件存在但数据库中无记录：{md_file.name}",
+                            entity_id=entity_id,
+                            facet=facet.value,
+                            details={"path": str(md_file.relative_to(self.store.wiki_path))},
+                        ))
 
         return results
 
