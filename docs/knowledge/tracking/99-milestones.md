@@ -157,13 +157,14 @@ Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
 
 ### 当前聚焦
 
-**任务**：知识库同步质量检查已完成，进入博客流水线端到端验证
+**任务**：MCP Server 已实现，Claude Code 可通过 MCP 工具读写 Linglong 知识库
 
 **进展**：
 - 知识库质量检查全部完成：index_consistency 归零、content_conflict 归零、wikilinks 343 个死链修复、16 个无 slug 文件名处理、Sleep 日志过滤修复
 - BACKLOG-001 同步去重策略已实现（双层去重：ID 去重 + Content Hash 去重）
 - BACKLOG-004 文件名格式已调整：`{id[:8]}-{slug}.md` → `{slug}-{id[:8]}.md`，331 个文件批量重命名，slug 打头提升可读性
-- 253 个测试全部通过，lint 输出 "知识库健康，无问题"
+- **MCP Server 已完成**：暴露 `search_wiki`、`search_similar`、`read_entity`、`write_entity`、`list_entities` 5 个工具，Claude Code 可自主查询和写入知识库
+- 264 个测试全部通过，lint 输出 "知识库健康，无问题"
 - 博客模板已实现，图片管线已通，待端到端验证
 
 ### 卡点 / 阻塞项
