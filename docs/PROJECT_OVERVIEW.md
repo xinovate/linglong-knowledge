@@ -86,6 +86,7 @@ Codex ──────┘         ↓
 | MCP Server（Claude Code 读写接入） | v1.0 | ✅ | `0c285f2` | 2026-05-20 |
 | MCP search_and_read + update_entity 工具 | v1.0 | ✅ | — | 2026-05-20 |
 | MCP 搜索返回质量优化（summary 优先 + 500 字符） | v1.0 | ✅ | — | 2026-05-20 |
+| MCP 模板体系（9 个 facet 模板 + get_template） | v1.0 | ✅ | — | 2026-05-20 |
 | 文件名格式 slug-ID 后缀调整 | v1.0 | ✅ | `8b7a84f` | 2026-05-20 |
 
 ---

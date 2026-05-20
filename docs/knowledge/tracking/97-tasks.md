@@ -159,3 +159,23 @@
 **结果**：MCP 工具从 5 个增至 7 个，测试 17/17 通过，全量 270/270 通过
 
 **关联**：`src/linglong/mcp/tools.py`、`src/linglong/mcp/server.py`
+
+---
+
+## 10. 模板体系
+
+**状态**：已完成
+
+**设计**：
+- 8 个 facet 模板：concept/experience/project/methodology/source/entity/synthesis/personal
+- 参考 OpenClaw 模板结构，适配 Linglong 的 7 分面分类
+- 模板存放于 `~/linglong/templates/`，含 YAML frontmatter 和 Markdown 占位符
+
+**实现**：
+1. `core/templates.py`：`TemplateManager` 管理模板加载和查询
+2. MCP 工具：`get_template(facet)` + `list_templates()`
+3. CLI：`linglong template list` + `linglong template get {facet}`
+
+**测试**：新增 3 个测试，全量 273/273 通过
+
+**关联**：`src/linglong/core/templates.py`、`src/linglong/mcp/tools.py`、`src/linglong/cli.py`

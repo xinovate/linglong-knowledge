@@ -169,7 +169,8 @@ Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
   - P1：新增 `search_and_read` 一键搜索+读取（默认截断 2000 字符防 Token 燃烧）
   - P2：`write_entity` docstring 引导 Agent 参考同类文档格式，新增 `reference_entity_ids` 参数
   - P3：新增 `update_entity` 支持替换/追加更新
-- 270 个测试全部通过，lint 输出 "知识库健康，无问题"
+- **模板体系**：8 个 facet 模板（concept/experience/project/methodology/source/entity/synthesis/personal）+ `get_template` / `list_templates` MCP 工具
+- 273 个测试全部通过，lint 输出 "知识库健康，无问题"
 - 博客模板已实现，图片管线已通，待端到端验证
 
 ### 卡点 / 阻塞项
