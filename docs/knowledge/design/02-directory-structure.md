@@ -38,6 +38,10 @@ graph TD
             PER[personal/ 个人数据]
         end
 
+        subgraph 模板
+            TPL[templates/ 写作模板]
+        end
+
         subgraph 归档
             ARC[archive/ 已归档]
         end
@@ -77,6 +81,16 @@ graph TD
 ├── index-methodology.md        # methodology 分类索引
 ├── index-personal.md           # personal 分类索引
 ├── log.md                      # 操作日志
+│
+├── templates/                  # 写作模板
+│   ├── concept.md
+│   ├── experience.md
+│   ├── project.md
+│   ├── methodology.md
+│   ├── source.md
+│   ├── entity.md
+│   ├── synthesis.md
+│   └── personal.md
 │
 ├── source/                     # 原始资料汇编
 ├── entity/                     # 专有名词
@@ -327,6 +341,7 @@ archive/
 |------|------|----------|----------|
 | v1.0 | 2026-05-14 | 初始设计 | 全文 |
 | v1.1 | 2026-05-18 | memory 目录分类（diary/task-record），目录级 facet 覆盖，文件名加 ID 前缀 | 全文 |
+| v1.2 | 2026-05-20 | 新增 templates/ 模板目录，8 个 facet 写作模板 | 目录结构 |
 
 ## 关联文档
 

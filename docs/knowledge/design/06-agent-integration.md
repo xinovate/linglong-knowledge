@@ -23,6 +23,7 @@ graph TD
     end
 
     subgraph 接入层
+        MCP[MCP Server<br/>stdio 协议]
         CLI[linglong CLI<br/>统一命令行工具]
         CONFIG[配置层<br/>.linglong.yaml]
     end
@@ -31,11 +32,14 @@ graph TD
         KS[KnowledgeStore<br/>三层存储]
         IDX[索引系统<br/>index.md + index-*.md]
         REV[ReviewEngine<br/>自动审核]
+        TPL[TemplateManager<br/>模板体系]
     end
 
     OC --> CLI
-    CC --> CLI
+    CC --> MCP
     CX --> CLI
+    MCP --> KS
+    MCP --> TPL
     CLI --> CONFIG
     CONFIG --> KS
     KS --> IDX
@@ -63,6 +67,7 @@ graph TD
 | `index` | 索引管理 | `linglong index --rebuild` |
 | `migrate` | 迁移工具 | `linglong migrate --from ~/.openclaw/workspace/memory/wiki/` |
 | `stats` | 统计信息 | `linglong stats` |
+| `template` | 模板管理 | `linglong template list` / `linglong template get concept` |
 | `archive` | 归档管理 | `linglong archive <id>` |
 
 ### search — 搜索
@@ -191,27 +196,59 @@ tools:
 
 ### Claude Code 接入
 
-在项目 CLAUDE.md 中添加：
+Claude Code 通过 **MCP Server** 接入 Linglong，实现原生工具调用。
 
-```markdown
-## 知识库
+#### MCP 配置
 
-使用 `linglong` CLI 读写知识库：
+在 `~/.claude/mcp.json` 中添加：
 
-### 读取时机
-- 当用户提问时，先 `linglong search "关键词"` 检查知识库
-- 当遇到不确定的概念，`linglong search "概念" --facet concept`
+```json
+{
+  "mcpServers": {
+    "linglong": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "source /path/to/linglong/venv/bin/activate && python -m linglong.mcp"
+      ]
+    }
+  }
+}
+```
 
-### 写入时机
+#### MCP 工具清单
+
+| 工具 | 用途 | 示例场景 |
+|------|------|----------|
+| `search_wiki` | FTS5 全文搜索 | 用户提问时检索相关知识 |
+| `search_similar` | 向量语义搜索 | 找语义相近的内容 |
+| `search_and_read` | 搜索+读取全文 | 详细讲解某个主题 |
+| `read_entity` | 读取完整内容 | 查看某条知识的详情 |
+| `write_entity` | 写入新知识 | 记录踩坑经验、架构决策 |
+| `update_entity` | 更新已有条目 | 追加内容或修正错误 |
+| `list_entities` | 浏览最近条目 | 查看最近更新的知识 |
+| `get_template` | 获取写作模板 | 写入前参考格式 |
+| `list_templates` | 列出所有模板 | 了解可用模板 |
+
+#### 读取时机
+
+- 当用户提问时，调用 `search_wiki` 或 `search_and_read` 检索知识库
+- 当遇到不确定的概念，搜索 `--facet concept`
+- 当引用历史决策时，调用 `read_entity`
+
+#### 写入时机
+
 - 当用户说"记住"、"记录"、"保存到知识库"时
 - 当解决了一个非 trivial 的问题后
 - 当做出架构决策时
-- 写入前先 search 确认不重复
+- **写入前调用 `get_template(facet)` 获取模板，确保格式一致**
 
-### 命令参考
-- 搜索：`linglong search "关键词" --facet concept`
-- 写入：`linglong write --facet experience --title "..." --content "..."`
-- 读取：`linglong read <id>`
+#### 写入最佳实践
+
+```
+1. get_template(facet) → 获取模板结构
+2. search_wiki(facet) → 搜索同类文档参考格式
+3. write_entity(title, content, facet, tags) → 写入
 ```
 
 ### Codex 接入
@@ -317,6 +354,7 @@ linglong migrate --from ~/.openclaw/workspace/memory/wiki/ --no-index
 | 版本 | 日期 | 变动摘要 | 影响范围 |
 |------|------|----------|----------|
 | v1.0 | 2026-05-14 | 初始设计 | 全文 |
+| v1.1 | 2026-05-20 | 新增 MCP Server 接入方式，9 个 MCP 工具，模板体系 | Agent 接入、工具清单 |
 
 ## 关联文档
 

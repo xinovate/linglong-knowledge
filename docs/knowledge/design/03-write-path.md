@@ -30,6 +30,10 @@ graph TD
         J3{确认写入?}
     end
 
+    subgraph 参考层
+        R1[TemplateManager<br/>模板获取]
+    end
+
     subgraph 存储层
         S1[ReviewEngine<br/>自动审核]
         S2[KnowledgeStore<br/>三层写入]
@@ -45,8 +49,9 @@ graph TD
     J1 -->|否| END1[丢弃]
     J2 -->|重复| END2[跳过]
     J2 -->|新内容| J3
-    J3 -->|确认| S1
+    J3 -->|确认| R1
     J3 -->|拒绝| END3[取消]
+    R1 --> S1
     S1 --> S2
     S2 --> S3
     S3 --> S4
@@ -260,6 +265,10 @@ linglong write --facet entity --title "..." --content "..." --no-index
 
 # 从文件写入
 linglong write --facet source --from-file article.md
+
+# 模板
+linglong template list              # 列出所有模板
+linglong template get concept       # 查看 concept 模板
 
 # 归档
 linglong archive <entity-id>
