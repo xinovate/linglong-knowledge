@@ -265,8 +265,29 @@ def test_search_and_read_returns_full_content(temp_store):
     data = json.loads(result)
     assert "error" not in data
     assert data["count"] >= 1
-    # Should return full content, not just preview
+    # Should return full content (under default 2000 limit), not just preview
     assert "学习 Python 的最佳实践" in data["results"][0]["content"]
+    assert data["results"][0]["truncated"] is False
+
+
+def test_search_and_read_truncates_long_content(temp_store):
+    long_text = "A" * 5000
+    temp_store.create(
+        Entity(
+            content=f"# 长文\n\n{long_text}",
+            facet=EntityFacet.CONCEPT,
+            created_by="agent:test",
+        )
+    )
+
+    result = search_and_read("长文", limit=1, max_content_length=2000)
+    data = json.loads(result)
+    assert "error" not in data
+    assert data["count"] == 1
+    assert "... [truncated]" in data["results"][0]["content"]
+    assert data["results"][0]["truncated"] is True
+    # Verify it was actually truncated
+    assert len(data["results"][0]["content"]) < 5000
 
 
 def test_search_and_read_empty_results(temp_store):

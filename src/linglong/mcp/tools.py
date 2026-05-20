@@ -91,11 +91,17 @@ def search_similar(query: str, facet: str | None = None, limit: int = 10) -> str
         return json.dumps({"error": str(exc)}, ensure_ascii=False)
 
 
-def search_and_read(query: str, facet: str | None = None, limit: int = 3) -> str:
+def search_and_read(
+    query: str,
+    facet: str | None = None,
+    limit: int = 3,
+    max_content_length: int = 2000,
+) -> str:
     """Search the knowledge base and automatically read the top-N most relevant entities.
 
     This is a convenience tool that combines search_wiki + read_entity into a single
-    call, returning full content for each result.
+    call. To save tokens, content is truncated to max_content_length (default 2000).
+    Set max_content_length=0 to return full content.
     """
     try:
         store = _get_store()
@@ -103,14 +109,20 @@ def search_and_read(query: str, facet: str | None = None, limit: int = 3) -> str
         results = store.search(query=query, facet=facet_enum, limit=limit)
         full_results: list[dict[str, Any]] = []
         for entity in results:
+            content = entity.content
+            truncated = False
+            if max_content_length > 0 and len(content) > max_content_length:
+                content = content[:max_content_length] + "\n\n... [truncated]"
+                truncated = True
             full_results.append(
                 {
                     "id": entity.id,
                     "facet": entity.facet.value,
                     "status": entity.status.value,
                     "title": _extract_title(entity.content) or "(无标题)",
-                    "content": entity.content,
+                    "content": content,
                     "summary": entity.summary,
+                    "truncated": truncated,
                     "updated_at": entity.updated_at.isoformat() if entity.updated_at else None,
                 }
             )
