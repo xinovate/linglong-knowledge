@@ -15,7 +15,7 @@
 | BACKLOG-001 | 同步去重策略 | 数据质量 | 高 | 已完成 | 2026-05-18 |
 | BACKLOG-002 | OpenClaw 默认 wiki 路径支持 | 多用户适配 | 中 | 待实现 | 2026-05-18 |
 | BACKLOG-003 | 索引文件自动生成 | 存储层 | 中 | 待实现 | 2026-05-18 |
-| BACKLOG-004 | 文件名移除 ID 前缀 | 存储层 | 中 | 待评估 | 2026-05-18 |
+| BACKLOG-004 | 文件名调整为 slug-ID 后缀格式 | 存储层 | 中 | 已完成 | 2026-05-18 |
 
 ## 已知限制
 
@@ -66,26 +66,24 @@
 
 ---
 
-### BACKLOG-004: 文件名移除 ID 前缀
+### BACKLOG-004: 文件名调整为 slug-ID 后缀格式
 
-**关联文件**: `src/linglong/knowledge/store.py`
+**关联文件**: `src/linglong/knowledge/store.py`, `src/linglong/knowledge/lint.py`
 
-**问题**: 当前文件名格式为 `{id[:8]}-{slug}.md`（如 `b2778921-agent-mastery-项目完成总结.md`），ID 前缀占用空间且降低可读性。希望文件名只用 slug（如 `agent-mastery-项目完成总结.md`），ID 完全存于 frontmatter。
+**问题**: 当前文件名格式为 `{id[:8]}-{slug}.md`（如 `b2778921-agent-mastery-项目完成总结.md`），ID 前缀占用空间且降低可读性。
 
-**前提条件**: 去重策略已实现（BACKLOG-001），但标题碰撞风险仍存在。
+**方案**: 将文件名格式调整为 `{slug}-{id[:8]}.md`（如 `agent-mastery-项目完成总结-b2778921.md`）。
+- **优点**: slug 打头，目录列表一眼识别；反查仍为 O(1)；无需改数据库 schema
+- **风险评估**: 无碰撞风险（ID 后缀保证唯一）
 
-**风险评估**:
-- 两个文件标题相同 → 文件名碰撞 → 互相覆盖
-- `check_index_consistency` 当前从文件名提取 ID，需要改为读取 frontmatter
-- `_get_entity_path` 需要改为从数据库查询而非根据 ID 构造路径
+**实现**:
+1. `store.py`: `_get_entity_path()` 调整文件名拼接顺序
+2. `lint.py`: `check_index_consistency` ID 提取改为 `rsplit("-", 1)[-1]`
+3. 批量重命名现有 331 个文件
 
-**方案（待评估）**:
-1. 文件名只用 slug，ID 完全存于 frontmatter `id:` 字段
-2. 碰撞处理：同名文件加序号 `-1`、`-2`
-3. `check_index_consistency` 改为读取文件 frontmatter 获取真实 ID
-4. `_get_entity_path` 改为根据内容标题查询数据库获取路径
+**状态**: 已完成（2026-05-20）
 
-**优先级**: 低（当前 ID 前缀无功能性问题，仅为美观）
+**测试**: 253 个测试全部通过
 
 ---
 

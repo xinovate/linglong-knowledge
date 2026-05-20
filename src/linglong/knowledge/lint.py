@@ -136,11 +136,11 @@ class LintEngine:
 
             for md_file in facet_dir.rglob("*.md"):
                 # 验证文件在 SQLite 中存在
-                # 文件名格式：{id[:8]}-{slug}.md 或 {id}.md
+                # 文件名格式：{slug}-{id[:8]}.md 或 {id}.md
                 stem = md_file.stem
                 if "-" in stem:
-                    partial_id = stem.split("-", 1)[0]
-                    # 用前8位模糊匹配数据库
+                    partial_id = stem.rsplit("-", 1)[-1]
+                    # 用后8位模糊匹配数据库
                     import sqlite3
                     with sqlite3.connect(self.store.db_path) as conn:
                         row = conn.execute(

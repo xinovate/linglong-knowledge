@@ -5,7 +5,7 @@
 | 分类 | 方向锚点 |
 | 定位 | 阶段里程碑和当前状态。不记录具体任务（去 `97-tasks.md`）、长期规划细节（去 `98-backlog.md`）、已完成工作（去 `journal/`）。 |
 | 用途 | AI 会话压缩后阅读本文档可快速恢复项目上下文，避免方向分叉 |
-| 最后更新 | 2026-05-18 |
+| 最后更新 | 2026-05-20 |
 
 ---
 
@@ -143,7 +143,7 @@ Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
 
 ## 当前状态
 
-> 最后更新：2026-05-18 | 每次会话有实质进展时更新此节
+> 最后更新：2026-05-20 | 每次会话有实质进展时更新此节
 
 ### 总体进度
 
@@ -162,7 +162,8 @@ Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
 **进展**：
 - 知识库质量检查全部完成：index_consistency 归零、content_conflict 归零、wikilinks 343 个死链修复、16 个无 slug 文件名处理、Sleep 日志过滤修复
 - BACKLOG-001 同步去重策略已实现（双层去重：ID 去重 + Content Hash 去重）
-- 245+ 测试全部通过，lint 输出 "知识库健康，无问题"
+- BACKLOG-004 文件名格式已调整：`{id[:8]}-{slug}.md` → `{slug}-{id[:8]}.md`，331 个文件批量重命名，slug 打头提升可读性
+- 253 个测试全部通过，lint 输出 "知识库健康，无问题"
 - 博客模板已实现，图片管线已通，待端到端验证
 
 ### 卡点 / 阻塞项
@@ -184,7 +185,7 @@ Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
 5. [x] 同步去重策略（BACKLOG-001）— 已完成
 6. [ ] OpenClaw 默认 wiki 路径支持（BACKLOG-002，前置依赖已解除）
 7. [ ] 索引文件自动生成（BACKLOG-003）
-8. [ ] 文件名移除 ID 前缀（BACKLOG-004，低优先级）
+8. [x] 文件名调整为 slug-ID 后缀格式（BACKLOG-004）— 已完成
 9. [ ] CLI write 增加 `--created-by` 参数
 
 ---

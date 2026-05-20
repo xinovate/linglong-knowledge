@@ -731,7 +731,7 @@ class KnowledgeStore:
         base = self.wiki_path / facet / subdir if subdir else self.wiki_path / facet
         if title:
             slug = self._slugify(title)
-            return base / f"{entity_id[:8]}-{slug}.md"
+            return base / f"{slug}-{entity_id[:8]}.md"
         return base / f"{entity_id}.md"
 
     def _save_to_filesystem(self, entity: Entity) -> None:
