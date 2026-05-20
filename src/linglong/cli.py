@@ -538,6 +538,37 @@ def cmd_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_template(args: argparse.Namespace) -> int:
+    """Manage knowledge entry templates."""
+    from linglong.core.templates import get_template_manager
+
+    manager = get_template_manager()
+
+    if args.action == "list":
+        templates = manager.list_templates()
+        if not templates:
+            print("暂无模板")
+            return 0
+        print("可用模板")
+        print("========")
+        for facet, info in templates.items():
+            desc = info.get("description", "")
+            print(f"  {facet:15s} {desc}")
+        return 0
+
+    if args.action == "get":
+        content = manager.get_template(args.facet)
+        if content is None:
+            available = list(manager.list_templates().keys())
+            print(f"模板 '{args.facet}' 不存在")
+            print(f"可用模板：{', '.join(available)}")
+            return 1
+        print(content)
+        return 0
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="linglong", description="Linglong cross-agent knowledge hub")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
@@ -641,6 +672,12 @@ def main(argv: list[str] | None = None) -> int:
     # stats
     stats_parser = sub.add_parser("stats", help="知识库统计")
     stats_parser.set_defaults(func=cmd_stats)
+
+    # template
+    template_parser = sub.add_parser("template", help="管理知识条目模板")
+    template_parser.add_argument("action", choices=["list", "get"], help="操作：list 列出模板，get 获取模板内容")
+    template_parser.add_argument("facet", nargs="?", default=None, help="模板分类（get 时使用）")
+    template_parser.set_defaults(func=cmd_template)
 
     # init
     init_parser = sub.add_parser("init", help="初始化知识库")

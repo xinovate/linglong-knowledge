@@ -11,7 +11,9 @@ from linglong.core.config import LinglongConfig, get_config, set_config
 from linglong.core.models import Entity, EntityFacet
 from linglong.knowledge.store import KnowledgeStore
 from linglong.mcp.tools import (
+    get_template,
     list_entities,
+    list_templates,
     read_entity,
     search_and_read,
     search_similar,
@@ -341,6 +343,33 @@ def test_update_entity_not_found(temp_store):
     data = json.loads(result)
     assert "error" in data
     assert "not found" in data["error"].lower()
+
+
+# --- template ---
+
+
+def test_list_templates_returns_available():
+    result = list_templates()
+    data = json.loads(result)
+    assert "error" not in data
+    assert data["count"] >= 1
+    facets = [t["facet"] for t in data["templates"]]
+    assert "concept" in facets
+
+
+def test_get_template_concept():
+    result = get_template("concept")
+    data = json.loads(result)
+    assert "error" not in data
+    assert data["facet"] == "concept"
+    assert "# [概念名称]" in data["template"]
+
+
+def test_get_template_not_found():
+    result = get_template("nonexistent_facet_xyz")
+    data = json.loads(result)
+    assert "error" in data
+    assert "available_templates" in data
 
 
 # --- list_entities ---

@@ -247,3 +247,53 @@ def list_entities(facet: str | None = None, since: str | None = None, limit: int
     except Exception as exc:
         logger.exception("list_entities failed")
         return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def get_template(facet: str) -> str:
+    """Get the writing template for a specific facet.
+
+    Use this before writing to understand the expected structure and format.
+    """
+    try:
+        from linglong.core.templates import get_template_manager
+
+        manager = get_template_manager()
+        content = manager.get_template(facet)
+        if content is None:
+            available = list(manager.list_templates().keys())
+            return json.dumps(
+                {
+                    "error": f"Template not found for facet '{facet}'",
+                    "available_templates": available,
+                },
+                ensure_ascii=False,
+            )
+        return json.dumps(
+            {"facet": facet, "template": content},
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("get_template failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def list_templates() -> str:
+    """List all available writing templates."""
+    try:
+        from linglong.core.templates import get_template_manager
+
+        manager = get_template_manager()
+        templates = manager.list_templates()
+        return json.dumps(
+            {
+                "templates": [
+                    {"facet": k, "description": v.get("description", "")}
+                    for k, v in templates.items()
+                ],
+                "count": len(templates),
+            },
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("list_templates failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)

@@ -3,7 +3,9 @@
 from mcp.server.fastmcp import FastMCP
 
 from linglong.mcp.tools import (
+    get_template,
     list_entities,
+    list_templates,
     read_entity,
     search_and_read,
     search_similar,
@@ -21,3 +23,5 @@ mcp.tool()(read_entity)
 mcp.tool()(write_entity)
 mcp.tool()(update_entity)
 mcp.tool()(list_entities)
+mcp.tool()(get_template)
+mcp.tool()(list_templates)
