@@ -132,3 +132,30 @@
 3. 新增 5 个测试覆盖幂等性、内容更新、跨源去重
 
 **关联**：`src/linglong/knowledge/store.py`、`src/linglong/knowledge/sync/openclaw.py`
+
+---
+
+## 9. MCP Server 工具增强（P0-P3）
+
+**状态**：已完成
+
+**P0 search 质量**：
+- `_entity_to_preview` 优先返回 `entity.summary`（AI 生成摘要），否则 preview 从 120 字符扩至 500 字符
+- Agent 能更快判断相关性，减少盲目 `read_entity` 调用
+
+**P1 search_and_read**：
+- 新增一键搜索+读取工具，内部先 `search` 再对前 N 个结果 `read`
+- 默认截断 2000 字符防 Token 燃烧，超长标注 `... [truncated]`，返回 `truncated: true`
+- 适合"详细讲讲 X"类需要全文的情境，减少 Agent 往返
+
+**P2 write 风格引导**：
+- `write_entity` docstring 引导 Agent 写入前先搜索同类 facet 参考格式
+- 新增可选 `reference_entity_ids` 参数，显式传入参考文档 ID
+
+**P3 update_entity**：
+- 新增更新工具，支持替换模式（默认）和追加模式（`append=True`）
+- 让 Agent 可以更新已有条目，而不只是新建
+
+**结果**：MCP 工具从 5 个增至 7 个，测试 17/17 通过，全量 270/270 通过
+
+**关联**：`src/linglong/mcp/tools.py`、`src/linglong/mcp/server.py`

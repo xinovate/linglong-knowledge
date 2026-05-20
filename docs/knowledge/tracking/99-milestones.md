@@ -164,7 +164,12 @@ Agent 写入 → KnowledgeStore → Composer 编译 → Dispatch 分发
 - BACKLOG-001 同步去重策略已实现（双层去重：ID 去重 + Content Hash 去重）
 - BACKLOG-004 文件名格式已调整：`{id[:8]}-{slug}.md` → `{slug}-{id[:8]}.md`，331 个文件批量重命名，slug 打头提升可读性
 - **MCP Server 已完成**：暴露 `search_wiki`、`search_similar`、`read_entity`、`write_entity`、`list_entities` 5 个工具，Claude Code 可自主查询和写入知识库
-- 264 个测试全部通过，lint 输出 "知识库健康，无问题"
+- **MCP 工具增强（P0-P3）**：
+  - P0：`search_wiki` preview 优先返回 AI summary，无 summary 时扩至 500 字符
+  - P1：新增 `search_and_read` 一键搜索+读取（默认截断 2000 字符防 Token 燃烧）
+  - P2：`write_entity` docstring 引导 Agent 参考同类文档格式，新增 `reference_entity_ids` 参数
+  - P3：新增 `update_entity` 支持替换/追加更新
+- 270 个测试全部通过，lint 输出 "知识库健康，无问题"
 - 博客模板已实现，图片管线已通，待端到端验证
 
 ### 卡点 / 阻塞项
