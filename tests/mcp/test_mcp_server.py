@@ -13,8 +13,10 @@ from linglong.knowledge.store import KnowledgeStore
 from linglong.mcp.tools import (
     list_entities,
     read_entity,
+    search_and_read,
     search_similar,
     search_wiki,
+    update_entity,
     write_entity,
 )
 
@@ -238,6 +240,86 @@ def test_write_entity_invalid_facet(temp_store):
     data = json.loads(result)
     assert "error" in data
     assert "Invalid facet" in data["error"]
+
+
+# --- search_and_read ---
+
+
+def test_search_and_read_returns_full_content(temp_store):
+    temp_store.create(
+        Entity(
+            content="# Python 教程\n\n学习 Python 的最佳实践和高级技巧。",
+            facet=EntityFacet.CONCEPT,
+            created_by="agent:test",
+        )
+    )
+    temp_store.create(
+        Entity(
+            content="# JavaScript 指南\n\n前端开发基础知识。",
+            facet=EntityFacet.CONCEPT,
+            created_by="agent:test",
+        )
+    )
+
+    result = search_and_read("Python", limit=5)
+    data = json.loads(result)
+    assert "error" not in data
+    assert data["count"] >= 1
+    # Should return full content, not just preview
+    assert "学习 Python 的最佳实践" in data["results"][0]["content"]
+
+
+def test_search_and_read_empty_results(temp_store):
+    result = search_and_read("nonexistent-query-xyz")
+    data = json.loads(result)
+    assert "error" not in data
+    assert data["count"] == 0
+
+
+# --- update_entity ---
+
+
+def test_update_entity_replace(temp_store):
+    created = temp_store.create(
+        Entity(
+            content="# 原始标题\n\n原始内容",
+            facet=EntityFacet.CONCEPT,
+            created_by="agent:test",
+        )
+    )
+
+    result = update_entity(created.id, "# 新标题\n\n新内容")
+    data = json.loads(result)
+    assert "error" not in data
+    assert data["message"] == "Entity updated successfully"
+
+    entity = temp_store.get(created.id)
+    assert "新内容" in entity.content
+
+
+def test_update_entity_append(temp_store):
+    created = temp_store.create(
+        Entity(
+            content="# 原始标题\n\n原始内容",
+            facet=EntityFacet.CONCEPT,
+            created_by="agent:test",
+        )
+    )
+
+    result = update_entity(created.id, "追加内容", append=True)
+    data = json.loads(result)
+    assert "error" not in data
+
+    entity = temp_store.get(created.id)
+    assert "原始内容" in entity.content
+    assert "追加内容" in entity.content
+
+
+def test_update_entity_not_found(temp_store):
+    result = update_entity("nonexistent-id-12345", "新内容")
+    data = json.loads(result)
+    assert "error" in data
+    assert "not found" in data["error"].lower()
 
 
 # --- list_entities ---

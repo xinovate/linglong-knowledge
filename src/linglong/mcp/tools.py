@@ -35,7 +35,11 @@ def _extract_title(content: str) -> str | None:
 def _entity_to_preview(entity: Entity) -> dict[str, Any]:
     """Convert entity to a lightweight preview dict."""
     title = _extract_title(entity.content) or "(无标题)"
-    preview = entity.content.replace("\n", " ")[:120].strip()
+    # Prefer AI-generated summary for relevance judgment; fall back to content snippet.
+    if entity.summary:
+        preview = entity.summary.strip()
+    else:
+        preview = entity.content.replace("\n", " ")[:500].strip()
     return {
         "id": entity.id,
         "facet": entity.facet.value,
@@ -87,6 +91,76 @@ def search_similar(query: str, facet: str | None = None, limit: int = 10) -> str
         return json.dumps({"error": str(exc)}, ensure_ascii=False)
 
 
+def search_and_read(query: str, facet: str | None = None, limit: int = 3) -> str:
+    """Search the knowledge base and automatically read the top-N most relevant entities.
+
+    This is a convenience tool that combines search_wiki + read_entity into a single
+    call, returning full content for each result.
+    """
+    try:
+        store = _get_store()
+        facet_enum = _facet_enum(facet)
+        results = store.search(query=query, facet=facet_enum, limit=limit)
+        full_results: list[dict[str, Any]] = []
+        for entity in results:
+            full_results.append(
+                {
+                    "id": entity.id,
+                    "facet": entity.facet.value,
+                    "status": entity.status.value,
+                    "title": _extract_title(entity.content) or "(无标题)",
+                    "content": entity.content,
+                    "summary": entity.summary,
+                    "updated_at": entity.updated_at.isoformat() if entity.updated_at else None,
+                }
+            )
+        return json.dumps(
+            {"results": full_results, "count": len(full_results)},
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("search_and_read failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def update_entity(entity_id: str, content: str, append: bool = False) -> str:
+    """Update an existing knowledge entity.
+
+    Args:
+        entity_id: The ID of the entity to update.
+        content: New content (markdown). In append mode this is appended to existing content.
+        append: If True, append content instead of replacing. Default is replace.
+    """
+    try:
+        store = _get_store()
+        entity = store.get(entity_id)
+        if entity is None:
+            return json.dumps(
+                {"error": "Entity not found", "entity_id": entity_id},
+                ensure_ascii=False,
+            )
+
+        if append:
+            entity.content = entity.content + "\n\n" + content
+            entity.metadata["update_mode"] = "append"
+        else:
+            entity.content = content
+
+        updated = store.update(entity)
+        return json.dumps(
+            {
+                "id": updated.id,
+                "facet": updated.facet.value,
+                "status": updated.status.value,
+                "message": "Entity updated successfully",
+            },
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("update_entity failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
 def read_entity(entity_id: str) -> str:
     """Read a full knowledge entity by its ID."""
     try:
@@ -103,8 +177,18 @@ def read_entity(entity_id: str) -> str:
         return json.dumps({"error": str(exc)}, ensure_ascii=False)
 
 
-def write_entity(title: str, content: str, facet: str, tags: list[str] | None = None) -> str:
-    """Create a new knowledge entity in the Linglong wiki."""
+def write_entity(
+    title: str,
+    content: str,
+    facet: str,
+    tags: list[str] | None = None,
+    reference_entity_ids: list[str] | None = None,
+) -> str:
+    """Create a new knowledge entity in the Linglong wiki.
+
+    Best practice: before writing, call search_wiki with the same facet to find
+    existing entries and reference their frontmatter style and structure.
+    """
     try:
         store = _get_store()
         facet_enum = _facet_enum(facet)
@@ -115,6 +199,8 @@ def write_entity(title: str, content: str, facet: str, tags: list[str] | None = 
         metadata: dict[str, Any] = {}
         if tags:
             metadata["tags"] = tags
+        if reference_entity_ids:
+            metadata["references"] = reference_entity_ids
 
         entity = Entity(
             content=full_content,
