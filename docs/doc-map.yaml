@@ -26,6 +26,11 @@ mappings:
     docs:
       - docs/dispatch/README.md
 
+  - code: src/linglong/mcp/
+    docs:
+      - docs/api.md
+      - docs/architecture.md
+
   - code: src/linglong/cli.py
     docs:
       - docs/PROJECT_OVERVIEW.md

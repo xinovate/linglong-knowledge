@@ -83,6 +83,8 @@ Codex ──────┘         ↓
 | OSSUploader（阿里云 OSS 图片 CDN 上传） | v1.0 | ✅ | — | 2026-05-13 |
 | DispatchManager OSS 上传集成 | v1.0 | ✅ | — | 2026-05-13 |
 | background/background_image 命名一致性修复 | v1.0 | ✅ | — | 2026-05-13 |
+| MCP Server（Claude Code 读写接入） | v1.0 | ✅ | `0c285f2` | 2026-05-20 |
+| 文件名格式 slug-ID 后缀调整 | v1.0 | ✅ | `8b7a84f` | 2026-05-20 |
 
 ---
 
@@ -110,6 +112,7 @@ Codex ──────┘         ↓
 | 发布队列与失败重试 | 🟡 中 | 待实现 | v2.0 | DispatchManager 当前直连发布，无队列和重试 |
 | 向量搜索增强（混合搜索/MMR/时间衰减） | 🟡 低 | 待实现 | v2.0 | 当前仅基础 cosine 相似度 |
 | `datetime.utcnow()` 已弃用 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 全局替换为 `datetime.now(UTC)`，237 测试通过 |
+| MCP Server 读写接入 | 🟡 中 | ✅ 已完成 | v1.0 | Claude Code 通过 MCP 工具查询/写入知识库 |
 
 完整债务清单 → [operations.md](operations.md)
 
@@ -146,5 +149,6 @@ Codex ──────┘         ↓
 - AI 封面图生成
 - 跨 Agent 写入冲突解决
 - API 冻结、mypy strict（datetime.utcnow() 已修复）
+- MCP Server 扩展更多工具（update_entity、delete_entity）
 
 详细计划 → [版本路线图](roadmap.md)

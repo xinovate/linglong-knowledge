@@ -257,7 +257,12 @@ graph TD
     A[OpenClaw wiki/] -->|OpenClawSyncAdapter| D[Linglong KnowledgeStore]
     B[Claude Code memory/] -->|ClaudeCodeSyncAdapter| D
     C[Codex CLI] -->|CodexSyncAdapter| D
+    E[Claude Code MCP Client] -->|MCP Server| D
 ```
+
+同步方式有两种：
+1. **批处理同步**：`SyncAdapter` 定期拉取 Agent 本地文件（OpenClaw wiki、Claude Code memory）到 KnowledgeStore
+2. **实时 MCP 接入**：Claude Code 通过 MCP Server 直接调用 `search_wiki` / `write_entity` 等工具读写知识库
 
 ## 模块间协作规则
 

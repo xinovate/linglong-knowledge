@@ -263,3 +263,43 @@ rule = Rule(
     priority=100,
 )
 ```
+
+---
+
+## MCP Server API
+
+Linglong 提供 MCP Server，支持 Claude Code 等 MCP Client 通过标准协议读写知识库。
+
+### 工具清单
+
+| 工具 | 功能 | 对应 Store 方法 |
+|------|------|----------------|
+| `search_wiki` | FTS5 全文搜索 | `store.search()` |
+| `search_similar` | 向量语义搜索（失败回退 FTS5） | `store.search_similar()` |
+| `read_entity` | 读取完整内容+元数据 | `store.get()` |
+| `write_entity` | 写入新知识 | `store.create()` |
+| `list_entities` | 浏览最近条目 | `store.search()` |
+
+### 配置方式
+
+在 `~/.claude/mcp.json` 中添加：
+
+```json
+{
+  "mcpServers": {
+    "linglong": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "source /path/to/linglong/venv/bin/activate && python -m linglong.mcp"
+      ]
+    }
+  }
+}
+```
+
+### 启动 MCP Server
+
+```bash
+python -m linglong.mcp
+```
