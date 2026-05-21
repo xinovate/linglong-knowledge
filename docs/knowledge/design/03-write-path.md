@@ -6,10 +6,10 @@
 | 分类 | 写入层 |
 | 状态 | 🟡 部分实现 |
 | 依赖 | [D-01 数据模型](01-data-model.md), [D-04 搜索设计](04-search.md) |
-| 关联实现 | `src/linglong/knowledge/store.py`, `src/linglong/knowledge/review.py` |
-| 最后更新 | 2026-05-14 |
+| 关联实现 | `src/linglong/knowledge/store.py`, `src/linglong/knowledge/review.py`, `src/linglong/knowledge/lint.py` |
+| 最后更新 | 2026-05-21 |
 
-**未实现项**: 去重策略（语义去重）、归档批量操作、多 Agent 更新合并
+**未实现项**: 多 Agent 更新合并
 
 ---
 
@@ -194,7 +194,7 @@ linglong search "sqlite-vec 维度" --facet experience
 1. **ID 去重** — Entity ID 相同（同一条知识）
 2. **内容去重** — MD5 hash 相同（内容完全一致）
 3. **标题去重** — 标题相似度 > 阈值（可能重复）
-4. **语义去重** — 向量相似度 > 0.95（内容不同但意思相同）
+4. **语义去重** — 向量相似度 > 0.95（`lint --check conflicts` 检测，embedding 不可用时降级为标题去重）
 
 ---
 
@@ -290,6 +290,7 @@ linglong archive --older-than 90d
 | 版本 | 日期 | 变动摘要 | 影响范围 |
 |------|------|----------|----------|
 | v1.0 | 2026-05-14 | 初始设计 | 全文 |
+| v1.1 | 2026-05-21 | 语义去重已实现（向量相似度 >0.95），归档批量操作已实现（`--older-than`），未实现项缩减为多 Agent 更新合并 | 去重策略、归档机制、未实现项 |
 
 ## 关联文档
 

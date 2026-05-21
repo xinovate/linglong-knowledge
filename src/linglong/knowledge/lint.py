@@ -45,6 +45,7 @@ class LintEngine:
         results.extend(self.check_wikilinks())
         results.extend(self.check_content_conflicts())
         results.extend(self.check_stale_content(stale_days))
+        results.extend(self.check_orphans())
         return results
 
     def fix_all(self, results: list[LintResult] | None = None, stale_days: int = 90) -> list[LintResult]:
@@ -210,6 +211,8 @@ class LintEngine:
 
         # 简单去重：检查标题重复
         seen_titles: dict[str, str] = {}
+        reported_pairs: set[tuple[str, str]] = set()
+
         for e in entities:
             # 豁免 memory 目录的标题重复（diary 和 task-record 的标题重复是正常的）
             sub_dir = e.metadata.get("_subdir", "") if e.metadata else ""
@@ -222,20 +225,60 @@ class LintEngine:
                     title = line[2:].strip().lower()
                     break
 
-            if not title:
-                continue
+            if title:
+                if title in seen_titles:
+                    pair = tuple(sorted([e.id, seen_titles[title]]))
+                    if pair not in reported_pairs:
+                        reported_pairs.add(pair)
+                        results.append(LintResult(
+                            rule="content_conflict",
+                            severity=LintSeverity.WARNING,
+                            message=f"标题重复：'{title}'",
+                            entity_id=e.id,
+                            facet=e.facet.value,
+                            details={"duplicate_of": seen_titles[title]},
+                        ))
+                else:
+                    seen_titles[title] = e.id
 
-            if title in seen_titles:
-                results.append(LintResult(
-                    rule="content_conflict",
-                    severity=LintSeverity.WARNING,
-                    message=f"标题重复：'{title}'",
-                    entity_id=e.id,
-                    facet=e.facet.value,
-                    details={"duplicate_of": seen_titles[title]},
-                ))
-            else:
-                seen_titles[title] = e.id
+        # 向量语义去重检测
+        try:
+            for e in entities:
+                sub_dir = e.metadata.get("_subdir", "") if e.metadata else ""
+                if sub_dir in ("diary", "task-record"):
+                    continue
+
+                query = e.content[:500]
+                similar = self.store.search_similar(
+                    query=query,
+                    facet=e.facet,
+                    limit=5,
+                )
+                for candidate in similar:
+                    if candidate.id == e.id:
+                        continue
+                    if candidate.distance is None:
+                        continue
+                    # vec_distance_cosine 返回的是余弦距离，范围 [0, 2]
+                    # 相似度 = 1 - distance/2，阈值 0.95 对应 distance < 0.1
+                    similarity = 1.0 - candidate.distance / 2.0
+                    if similarity > 0.95:
+                        pair = tuple(sorted([e.id, candidate.id]))
+                        if pair not in reported_pairs:
+                            reported_pairs.add(pair)
+                            results.append(LintResult(
+                                rule="content_conflict",
+                                severity=LintSeverity.WARNING,
+                                message=f"语义重复（相似度 {similarity:.2f}）",
+                                entity_id=e.id,
+                                facet=e.facet.value,
+                                details={
+                                    "similarity": similarity,
+                                    "duplicate_of": candidate.id,
+                                },
+                            ))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Vector similarity check skipped: %s", exc)
 
         return results
 
@@ -255,6 +298,74 @@ class LintEngine:
                     entity_id=e.id,
                     facet=e.facet.value,
                     details={"days_old": days_old},
+                ))
+
+        return results
+
+    def check_orphans(self) -> list[LintResult]:
+        """Check for orphan entities (never referenced by any other entity)."""
+        results = []
+        entities = self.store.search(limit=10000, include_archived=True)
+
+        # Build a set of all referenced targets
+        referenced: set[str] = set()
+        for e in entities:
+            for link in self.parser.parse(e.content):
+                referenced.add(link.target)
+
+        # Build title -> entity mapping for resolving references by title
+        title_to_id: dict[str, str] = {}
+        for e in entities:
+            title_to_id[e.id] = e.id
+            for line in e.content.split("\n"):
+                if line.startswith("# "):
+                    title_to_id[line[2:].strip()] = e.id
+                    break
+
+        # Count references per entity
+        ref_counts: dict[str, int] = {e.id: 0 for e in entities}
+        for target in referenced:
+            entity_id = title_to_id.get(target)
+            if entity_id:
+                ref_counts[entity_id] = ref_counts.get(entity_id, 0) + 1
+
+        # Pre-extract titles for suggestion scanning
+        entity_titles: dict[str, str] = {}
+        for e in entities:
+            for line in e.content.split("\n"):
+                if line.startswith("# "):
+                    entity_titles[e.id] = line[2:].strip()
+                    break
+
+        for e in entities:
+            # Only check concept and entity facets — other facets are standalone documents
+            if e.facet not in (EntityFacet.CONCEPT, EntityFacet.ENTITY):
+                continue
+
+            if ref_counts.get(e.id, 0) == 0:
+                # Scan for documents that mention this orphan's title
+                orphan_title = entity_titles.get(e.id, "")
+                suggestions: list[str] = []
+                if orphan_title:
+                    lower_title = orphan_title.lower()
+                    for other in entities:
+                        if other.id == e.id:
+                            continue
+                        if lower_title in other.content.lower():
+                            other_title = entity_titles.get(other.id, other.id[:8])
+                            suggestions.append(f"{other.id[:8]}... ({other_title})")
+
+                details: dict[str, Any] = {}
+                if suggestions:
+                    details["suggested_references"] = suggestions[:5]  # limit to 5
+
+                results.append(LintResult(
+                    rule="orphan",
+                    severity=LintSeverity.INFO,
+                    message=f"孤儿资源：未被任何页面引用" + (f"，{len(suggestions)} 篇文档提到此标题" if suggestions else ""),
+                    entity_id=e.id,
+                    facet=e.facet.value,
+                    details=details,
                 ))
 
         return results

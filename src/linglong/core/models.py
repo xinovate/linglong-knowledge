@@ -173,6 +173,9 @@ class Entity(BaseModel):
     # 向量嵌入（单独存储在 sqlite-vec 中）
     embedding_id: str | None = None
 
+    # 向量搜索距离（仅由 search_similar 填充）
+    distance: float | None = None
+
     # 附加元数据（如 frontmatter、wikilinks）
     metadata: dict[str, Any] = Field(default_factory=dict)
 

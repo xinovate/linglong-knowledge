@@ -796,5 +796,6 @@ class KnowledgeStore:
                 datetime.fromisoformat(archived_at_raw) if archived_at_raw else None
             ),
             embedding_id=row["embedding_id"],
+            distance=row["distance"] if "distance" in row.keys() else None,
             metadata=json.loads(row["metadata"]) if row["metadata"] else {},
         )

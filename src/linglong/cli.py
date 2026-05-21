@@ -21,6 +21,7 @@ from linglong.knowledge.sync.claude_code import ClaudeCodeSyncAdapter
 from linglong.knowledge.sync.codex import CodexSyncAdapter
 from linglong.knowledge.sync.openclaw import OpenClawSyncAdapter
 from linglong.knowledge.init import init_bare, init_from_backup, init_from_git, init_from_openclaw
+from linglong.knowledge.lint_schedule import run_daemon, run_lint_and_log
 
 logger = logging.getLogger(__name__)
 
@@ -368,18 +369,30 @@ def cmd_archive(args: argparse.Namespace) -> int:
 
 def cmd_lint(args: argparse.Namespace) -> int:
     """Run lint checks on knowledge base."""
+    if args.daemon:
+        _setup_logging(args.verbose)
+        run_daemon(stale_days=args.stale_days)
+        return 0
+
+    if args.run_scheduled:
+        _setup_logging(args.verbose)
+        return run_lint_and_log(stale_days=args.stale_days)
+
     store = KnowledgeStore()
     engine = LintEngine(store)
 
-    if args.rule:
-        if args.rule == "index_consistency":
+    check = args.check or args.rule
+    if check:
+        if check in ("index", "index_consistency"):
             results = engine.check_index_consistency()
-        elif args.rule == "wikilinks":
+        elif check in ("links", "wikilinks"):
             results = engine.check_wikilinks()
-        elif args.rule == "content_conflict":
+        elif check in ("conflicts", "content_conflict"):
             results = engine.check_content_conflicts()
-        elif args.rule == "stale_content":
+        elif check in ("stale", "stale_content"):
             results = engine.check_stale_content(args.stale_days)
+        elif check == "orphans":
+            results = engine.check_orphans()
         else:
             results = engine.run_all(args.stale_days)
     else:
@@ -411,6 +424,9 @@ def cmd_lint(args: argparse.Namespace) -> int:
         for r in items:
             eid = r.entity_id[:8] if r.entity_id else "N/A"
             print(f"  [{r.rule}] {eid}... {r.message}")
+            if r.rule == "orphan" and r.details.get("suggested_references"):
+                for suggestion in r.details["suggested_references"]:
+                    print(f"          → 建议在 {suggestion} 中添加 [[链接]]")
         print()
 
     return 1 if by_severity["error"] else 0
@@ -658,9 +674,15 @@ def main(argv: list[str] | None = None) -> int:
     # lint
     lint_parser = sub.add_parser("lint", help="巡检知识库")
     lint_parser.add_argument("--stale-days", type=int, default=90, help="过期天数阈值")
+    lint_parser.add_argument("--check", default=None,
+        choices=["index", "links", "conflicts", "stale", "orphans"],
+        help="指定检查项：index（索引一致性）、links（死链）、conflicts（内容冲突）、stale（过期内容）、orphans（孤儿资源）")
     lint_parser.add_argument("--rule", default=None,
-        choices=["index_consistency", "wikilinks", "content_conflict", "stale_content"])
+        choices=["index_consistency", "wikilinks", "content_conflict", "stale_content"],
+        help="已废弃，请使用 --check")
     lint_parser.add_argument("--fix", action="store_true", help="自动修复可修复的问题")
+    lint_parser.add_argument("--daemon", action="store_true", help="后台守护进程模式，按 lint_schedule 定时巡检")
+    lint_parser.add_argument("--run-scheduled", action="store_true", help="立即执行一次巡检并退出（用于系统 cron 调用）")
     lint_parser.set_defaults(func=cmd_lint)
 
     # index

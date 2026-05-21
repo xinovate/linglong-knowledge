@@ -188,6 +188,9 @@ class KnowledgeConfig(BaseSettings):
     auto_lint: bool = Field(
         default=False, description="Auto-run lint after write operations"
     )
+    lint_schedule: str | None = Field(
+        default=None, description="定时巡检的 cron 表达式，如 '0 2 * * *'"
+    )
 
     # 审核引擎设置
     review_high_confidence_threshold: float = Field(

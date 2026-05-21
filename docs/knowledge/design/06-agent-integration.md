@@ -5,10 +5,10 @@
 | 分类 | 接入层 |
 | 状态 | 🟡 部分实现 |
 | 依赖 | [D-03 写入设计](03-write-path.md), [D-04 搜索设计](04-search.md) |
-| 关联实现 | `src/linglong/cli.py`, `src/linglong/knowledge/sync/*.py` |
-| 最后更新 | 2026-05-14 |
+| 关联实现 | `src/linglong/cli.py`, `src/linglong/knowledge/sync/*.py`, `src/linglong/mcp/` |
+| 最后更新 | 2026-05-21 |
 
-**未实现项**: OpenClaw 默认 wiki 路径支持（见 D-09 BACKLOG-002）、Agent hooks 自动同步
+**未实现项**: OpenClaw 默认 wiki 路径自动检测（见 BACKLOG-002）、Agent hooks 自动同步
 
 ---
 
@@ -355,6 +355,7 @@ linglong migrate --from ~/.openclaw/workspace/memory/wiki/ --no-index
 |------|------|----------|----------|
 | v1.0 | 2026-05-14 | 初始设计 | 全文 |
 | v1.1 | 2026-05-20 | 新增 MCP Server 接入方式，9 个 MCP 工具，模板体系 | Agent 接入、工具清单 |
+| v1.2 | 2026-05-21 | 同步文档：MCP Server + mcp/ 模块已上线，关联实现补齐 | 元数据、关联实现 |
 
 ## 关联文档
 

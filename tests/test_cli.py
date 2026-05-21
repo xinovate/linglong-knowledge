@@ -399,7 +399,7 @@ def test_init_interactive(tmp_path):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Mock input() 返回默认值
-        with patch('builtins.input', side_effect=['', '', 'n', '', 'n']):
+        with patch('builtins.input', side_effect=['', '', 'n', '', 'n', 'n', '']):
             result = main(["init", "--interactive"])
         assert result == 0
 

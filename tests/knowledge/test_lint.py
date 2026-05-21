@@ -92,6 +92,66 @@ def test_content_conflict_duplicate_titles(lint_setup):
     assert results[0].rule == "content_conflict"
 
 
+def test_content_conflict_semantic(lint_setup):
+    """向量语义去重检测（相似度 > 0.95）。"""
+    store, engine = lint_setup
+    e1 = store.create(Entity(
+        content="# 标题A\n\nPython 类型提示最佳实践",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    e2 = store.create(Entity(
+        content="# 标题B\n\nPython type hints best practices",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    # Mock search_similar 返回高相似度结果
+    from unittest.mock import patch
+
+    def _fake_search_similar(query, facet=None, limit=5):
+        # 当查询 e1 时返回 e2，distance=0.05 -> similarity=0.975
+        if e1.id in query or "Python 类型提示" in query:
+            e2_copy = e2.model_copy()
+            e2_copy.distance = 0.05
+            return [e2_copy]
+        return []
+
+    with patch.object(store, "search_similar", side_effect=_fake_search_similar):
+        results = engine.check_content_conflicts()
+
+    semantic_results = [r for r in results if "语义重复" in r.message]
+    assert len(semantic_results) == 1
+    assert semantic_results[0].rule == "content_conflict"
+    assert semantic_results[0].details["similarity"] == pytest.approx(0.975)
+    assert semantic_results[0].details["duplicate_of"] == e2.id
+
+
+def test_content_conflict_semantic_fallback(lint_setup):
+    """向量服务不可用时仅返回标题重复，不崩溃。"""
+    store, engine = lint_setup
+    store.create(Entity(
+        content="# 重复标题\n\n内容1",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    store.create(Entity(
+        content="# 重复标题\n\n内容2",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    from unittest.mock import patch
+
+    with patch.object(store, "search_similar", side_effect=RuntimeError("embedding service down")):
+        results = engine.check_content_conflicts()
+
+    # 标题重复仍应被检测到
+    assert len(results) == 1
+    assert results[0].rule == "content_conflict"
+    assert "标题重复" in results[0].message
+
+
 def test_stale_content(lint_setup):
     """检测过期内容。"""
     store, engine = lint_setup
@@ -196,3 +256,63 @@ def test_fix_wikilinks_valid_link_untouched(lint_setup):
     updated = store.get(entity.id)
     assert "[[存在的概念]]" in updated.content
     assert "[[不存在的页面]]" not in updated.content
+
+
+def test_orphan_detection(lint_setup):
+    """检测孤儿资源。"""
+    store, engine = lint_setup
+    store.create(Entity(
+        content="# 概念A\n\n内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    store.create(Entity(
+        content="# 概念B\n\n参考 [[概念A]]",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    results = engine.check_orphans()
+    assert len(results) == 1
+    assert results[0].rule == "orphan"
+    assert "概念A" not in results[0].message
+    assert results[0].entity_id is not None
+
+
+def test_orphan_exempt_personal_diary(lint_setup):
+    """personal facet 下的 diary 和 task-record 不计为孤儿。"""
+    store, engine = lint_setup
+    store.create(Entity(
+        content="# 日记\n\n今天",
+        facet=EntityFacet.PERSONAL,
+        created_by="agent:claude",
+        metadata={"_subdir": "diary"},
+    ))
+    store.create(Entity(
+        content="# 任务记录\n\n任务",
+        facet=EntityFacet.PERSONAL,
+        created_by="agent:claude",
+        metadata={"_subdir": "task-record"},
+    ))
+
+    results = engine.check_orphans()
+    assert len(results) == 0
+
+
+def test_orphan_no_false_positive_for_linked(lint_setup):
+    """被引用的实体不应被标记为孤儿。"""
+    store, engine = lint_setup
+    a = store.create(Entity(
+        content="# 概念A\n\n内容",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+    store.create(Entity(
+        content="# 概念B\n\n参考 [[概念A]]",
+        facet=EntityFacet.CONCEPT,
+        created_by="agent:claude",
+    ))
+
+    results = engine.check_orphans()
+    orphan_ids = {r.entity_id for r in results}
+    assert a.id not in orphan_ids

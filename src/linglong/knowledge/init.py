@@ -239,10 +239,18 @@ def init_interactive(target_dir: Path | None = None) -> Path:
     lint_input = input("写入后自动巡检？[y/N]: ").strip().lower()
     auto_lint = lint_input in ("y", "yes")
 
+    # 定时巡检
+    schedule_input = input("是否启用定时巡检？[y/N]: ").strip().lower()
+    lint_schedule = None
+    if schedule_input in ("y", "yes"):
+        cron_input = input("定时巡检时间（cron 格式，默认 0 2 * * *）: ").strip()
+        lint_schedule = cron_input if cron_input else "0 2 * * *"
+
     # 初始化目录
     init_bare(target_dir=base)
 
     # 生成配置
+    schedule_line = f"  lint_schedule: {lint_schedule}" if lint_schedule else "  # lint_schedule: \"0 2 * * *\""
     config_content = f"""# Linglong 知识库配置
 # 由 linglong init --interactive 生成
 
@@ -252,6 +260,7 @@ knowledge:
   generate_embeddings: {str(vector_enabled).lower()}
   write_mode: {write_mode}
   auto_lint: {str(auto_lint).lower()}
+{schedule_line}
   max_versions: 10
   db_mode: wal
 """
