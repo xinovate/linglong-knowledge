@@ -3,12 +3,12 @@
 | 属性 | 值 |
 |------|-----|
 | 分类 | 接入层 |
-| 状态 | 🟡 部分实现 |
+| 状态 | ✅ 已实现 |
 | 依赖 | [D-03 写入设计](03-write-path.md), [D-04 搜索设计](04-search.md) |
 | 关联实现 | `src/linglong/cli.py`, `src/linglong/knowledge/sync/*.py`, `src/linglong/mcp/` |
 | 最后更新 | 2026-05-21 |
 
-**未实现项**: Agent hooks 自动同步
+**未实现项**: Agent hooks 自动同步（v2.0）
 
 **详细接入方案**: 各 Agent 的现状、接入方案、已知问题见 [agents/](../agents/) 目录。
 
@@ -18,7 +18,7 @@
 
 | Agent | 接入方式 | 状态 | 详细方案 |
 |-------|----------|------|----------|
-| OpenClaw (violet) | MCP 优先 | 🟡 接入中 | [agents/openclaw.md](../agents/openclaw.md) |
+| OpenClaw (violet) | MCP | ✅ 已接入 | [agents/openclaw.md](../agents/openclaw.md) |
 | Claude Code | MCP | ✅ 已接入 | [agents/claude-code.md](../agents/claude-code.md) |
 | Codex CLI | CLI | ⚪ 预留 | [agents/codex.md](../agents/codex.md) |
 

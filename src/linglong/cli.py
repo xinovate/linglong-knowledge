@@ -142,7 +142,7 @@ def cmd_write(args: argparse.Namespace) -> int:
     # 去重检查
     store = KnowledgeStore()
     existing = store.search(query=args.title, facet=facet, limit=5)
-    if existing:
+    if existing and not args.force:
         for e in existing:
             if args.title.lower() in e.content.lower():
                 print(f"⚠️ 已存在相似条目：{e.id} ({e.facet.value})")
@@ -279,6 +279,8 @@ def cmd_update(args: argparse.Namespace) -> int:
     # 更新操作
     if args.content:
         entity.content = args.content
+    elif args.from_file:
+        entity.content = Path(args.from_file).read_text(encoding="utf-8")
     elif args.append:
         entity.content = entity.content + "\n\n" + args.append
     elif args.metadata:
@@ -287,7 +289,7 @@ def cmd_update(args: argparse.Namespace) -> int:
             if value:
                 entity.metadata[key] = value
     else:
-        print("错误：必须指定 --content / --append / --metadata 之一")
+        print("错误：必须指定 --content / --from-file / --append / --metadata 之一")
         return 1
 
     try:
@@ -295,7 +297,7 @@ def cmd_update(args: argparse.Namespace) -> int:
     except ConcurrentModificationError as e:
         print(f"冲突：{e}")
         return 1
-    mode = "替换" if args.content else "追加" if args.append else "元数据更新"
+    mode = "替换" if args.content or args.from_file else "追加" if args.append else "元数据更新"
     print(f"✅ 已更新 ({mode})：{updated.id} v{updated.current_version}")
     return 0
 
@@ -629,6 +631,7 @@ def main(argv: list[str] | None = None) -> int:
     write_parser.add_argument("--content", default=None, help="内容文本")
     write_parser.add_argument("--from-file", default=None, help="从文件读取内容")
     write_parser.add_argument("--yes", action="store_true", help="跳过确认直接写入")
+    write_parser.add_argument("--force", action="store_true", help="强制创建，即使存在相似条目")
     write_parser.add_argument("--no-index", action="store_true", help="跳过索引更新")
     write_parser.set_defaults(func=cmd_write)
 
@@ -656,6 +659,7 @@ def main(argv: list[str] | None = None) -> int:
     update_parser = sub.add_parser("update", help="更新知识条目")
     update_parser.add_argument("entity_id", help="Entity ID")
     update_parser.add_argument("--content", default=None, help="替换内容")
+    update_parser.add_argument("--from-file", default=None, help="从文件读取替换内容")
     update_parser.add_argument("--append", default=None, help="追加内容")
     update_parser.add_argument("--metadata", nargs="*", default=None, help="更新元数据 key=value")
     update_parser.add_argument("--history", action="store_true", help="查看版本历史")

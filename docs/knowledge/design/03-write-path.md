@@ -4,12 +4,12 @@
 | 属性 | 值 |
 |------|-----|
 | 分类 | 写入层 |
-| 状态 | 🟡 部分实现 |
+| 状态 | ✅ 已实现 |
 | 依赖 | [D-01 数据模型](01-data-model.md), [D-04 搜索设计](04-search.md) |
 | 关联实现 | `src/linglong/knowledge/store.py`, `src/linglong/knowledge/review.py`, `src/linglong/knowledge/lint.py` |
 | 最后更新 | 2026-05-21 |
 
-**未实现项**: 多 Agent 更新合并
+**未实现项**: 多 Agent 更新合并（v2.0）
 
 ---
 

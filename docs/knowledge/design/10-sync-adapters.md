@@ -104,8 +104,8 @@ class MyAgentSyncAdapter(BaseSyncAdapter):
 
 | 编号 | 决策 | 选择 | 原因 | 替代方案 |
 |------|------|------|------|----------|
-| D-10a | 同步方向 | Pull（Linglong 拉取） | Agent 无需适配 | Push（Agent 推送） |
-| D-10b | 模式检测 | 目录结构启发式（wiki vs memory） | 自动适配不同数据源 | 手动指定模式 |
+| D-10a | 同步方向 | Pull（Linglong 拉取）+ MCP 直写 | Agent 无需适配，MCP 支持主动写入 | Push（Agent 推送） |
+| D-10b | 模式检测 | 仅 wiki 目录同步 | memory 模式已移除（短期记忆不属于知识库） | wiki + memory 双模式 |
 | D-10c | 子目录分类 | metadata._subdir 透传到 store | 灵活扩展，不影响 store 接口 | 硬编码子目录规则 |
 
 ## 版本变动历史
@@ -114,6 +114,7 @@ class MyAgentSyncAdapter(BaseSyncAdapter):
 |------|------|----------|----------|
 | v1.0 | 2026-05-14 | 初始设计 | 全文 |
 | v1.1 | 2026-05-18 | 新增 memory 模式（diary/task-record），目录级 facet 覆盖 | OpenClawSyncAdapter |
+| v1.2 | 2026-05-21 | 移除 memory 模式（短期记忆不属于知识库边界），OpenClaw 改为 MCP 直写 | OpenClawSyncAdapter、设计决策 |
 
 ## 关联文档
 
@@ -122,4 +123,3 @@ class MyAgentSyncAdapter(BaseSyncAdapter):
 | [D-01 数据模型](01-data-model.md) | Entity 模型、Facet 分类 |
 | [D-02 目录结构](02-directory-structure.md) | 子目录分类规范 |
 | [D-06 Agent 接入](06-agent-integration.md) | CLI 命令、触发时机 |
-| [D-09 待办事项](09-backlog.md) | 同步去重、默认路径支持 |
