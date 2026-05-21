@@ -446,6 +446,12 @@ def cmd_index(args: argparse.Namespace) -> int:
         for name, count in stats.items():
             print(f"  {name}: {count} 条")
         print(f"✅ 已重建全部索引 ({len(stats)} 个文件)")
+        # Rebuild embeddings for changed entities
+        emb_stats = store.rebuild_embeddings()
+        if emb_stats["total"] > 0:
+            print(f"  向量化: {emb_stats['regenerated']} 条重建, "
+                  f"{emb_stats['unchanged']} 条未变, "
+                  f"{emb_stats['failed']} 条失败")
     else:
         stats = gen.generate_all()
         for name, count in stats.items():

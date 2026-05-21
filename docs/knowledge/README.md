@@ -19,6 +19,7 @@
 
 - **统一存储**：文件系统（Markdown + YAML frontmatter）+ SQLite（结构化元数据 + FTS5）+ sqlite-vec（向量索引）
 - **七分面分类**：source / entity / concept / synthesis / experience / methodology / personal
+- **智能搜索**：FTS5 关键词 + 向量语义 + RRF 混合搜索 + 自动模式路由
 - **Agent 接入**：MCP Server（9 个工具）+ CLI + SyncAdapter，支持任意 MCP 客户端接入
 - **自动审核**：ReviewEngine 规则驱动，高置信度自动确认、低置信度标记待审
 - **巡检修复**：LintEngine 索引一致性 + WikiLinks 完整性 + 内容冲突检测

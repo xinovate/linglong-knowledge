@@ -1,10 +1,12 @@
 # 工作日志
 
 > **定位**：按天记录工作过程中的问题调查、决策和发现。
-> **不记录**：任务计划（去 `../tracking/97-tasks.md`）、长期规划（去 `../tracking/98-backlog.md`）、阶段方向（去 `../tracking/99-milestones.md`）。
+> **不记录**：长期规划（去 `../tracking/98-backlog.md`）、阶段方向（去 `../tracking/99-milestones.md`）。
 > **结构**：概览 → 问题/任务 → 结论 → 关联链接。
 > **更新时机**：当天工作结束或会话压缩前。
 
 | 日期 | 主题 | 关键结论 |
 |------|------|----------|
+| [2026-05-21](2026-05-21.md) | lint 增强 + OpenClaw 接入 + 搜索增强 | lint 5 项补齐；OpenClaw Phase 0+2 完成，MCP 全链路通过；RRF 混合搜索 + 自动模式实现；SyncAdapter 移除 memory 模式 |
+| [2026-05-20](2026-05-20.md) | MCP Server + 模板体系 | 9 个 MCP 工具上线；search_and_read 截断控制；模板体系 9 facet |
 | [2026-05-18](2026-05-18.md) | 知识库同步质量检查 | entity facet 缺失是正常状态；发现 614 个 lint 问题 |

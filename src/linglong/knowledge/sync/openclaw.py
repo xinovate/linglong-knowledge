@@ -1,15 +1,12 @@
 """OpenClaw sync adapter.
 
-Reads OpenClaw files from the filesystem (wiki or memory) and syncs them
+Reads OpenClaw wiki files from the filesystem and syncs them
 into Linglong's KnowledgeStore as Entity objects.
 
-Two modes:
-- **wiki mode** (default): Reads ``.md`` files with YAML frontmatter that
-  include a ``type`` field for facet mapping.
-- **memory mode**: Reads ``~/.openclaw/workspace/memory/`` diary and task
-  files.  Facet is inferred from the file's position in the directory tree:
-  top-level daily ``*.md`` and ``*-index.md`` → ``PERSONAL``; files inside
-  date sub-directories → ``EXPERIENCE``.
+Only syncs ``wiki/`` directory content (long-term knowledge).
+Short-term memory (Dreaming files, task indexes, daily task details) is
+excluded per Linglong's boundary: Linglong only handles shared long-term
+knowledge, not agent session state.
 """
 
 import hashlib
@@ -27,13 +24,6 @@ from linglong.knowledge.store import KnowledgeStore
 logger = logging.getLogger(__name__)
 
 _WIKILINK_PATTERN = re.compile(r"\[\[(.*?)\]\]")
-
-# memory 模式下跳过 OpenClaw 内部 Sleep 日志（无知识价值，会产生大量重复）
-_SKIP_MEMORY_TITLES: set[str] = {
-    "light sleep",
-    "deep sleep",
-    "rem sleep",
-}
 
 # OpenClaw wiki 第一级目录 → Linglong wiki 子目录映射
 # 按设计文档 02-directory-structure.md 的 OpenClaw 13 目录 → 7 Facet 映射
@@ -220,118 +210,21 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
     return Entity(**entity_kwargs)
 
 
-_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_DATE_FILE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}(-index)?\.md$")
-_INDEX_FILE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}-index\.md$")
-
-
-def _detect_mode(path: Path) -> str:
-    """Detect whether *path* is a wiki directory or a memory directory.
-
-    Returns ``"memory"`` when the directory (or its basename) looks like an
-    OpenClaw memory directory — i.e. it contains top-level date-named files
-    or date-named subdirectories.  Otherwise returns ``"wiki"``.
-    """
-    if path.name == "memory":
-        return "memory"
-    # Heuristic: if >50% of top-level entries match date patterns → memory
-    try:
-        entries = list(path.iterdir())
-    except OSError:
-        return "wiki"
-    if not entries:
-        return "wiki"
-    date_like = sum(
-        1 for e in entries
-        if _DATE_PATTERN.match(e.name) or _DATE_FILE_PATTERN.match(e.name)
-    )
-    return "memory" if date_like > len(entries) * 0.5 else "wiki"
-
-
-def _memory_file_to_entity(file_path: Path, relative_path: str) -> Entity:
-    """Convert a memory/ file into a Linglong Entity.
-
-    Facet and subdirectory rules (aligned with docs/knowledge/design/02-directory-structure.md):
-    - Top-level ``YYYY-MM-DD.md`` → ``PERSONAL/diary/``
-    - Top-level ``YYYY-MM-DD-index.md`` → ``PERSONAL/diary/``
-    - Inside a date subdirectory (``YYYY-MM-DD/*.md``) → ``EXPERIENCE/task-record/``
-    """
-    parts = Path(relative_path).parts
-    is_in_subdir = len(parts) > 1
-
-    if is_in_subdir:
-        facet = EntityFacet.EXPERIENCE
-        subdir = "task-record"
-        file_type = "task-record"
-    else:
-        facet = EntityFacet.PERSONAL
-        if _INDEX_FILE_PATTERN.match(Path(relative_path).name):
-            subdir = "diary"
-            file_type = "daily-index"
-        else:
-            subdir = "diary"
-            file_type = "daily"
-
-    raw_content = file_path.read_text(encoding="utf-8")
-    # Strip frontmatter if present (memory files may have it)
-    if raw_content.startswith("---"):
-        try:
-            post = frontmatter.loads(raw_content)
-            content = post.content
-        except Exception:  # noqa: BLE001
-            content = raw_content
-    else:
-        content = raw_content
-
-    # Skip OpenClaw internal Sleep logs (no knowledge value)
-    for line in content.strip().split("\n"):
-        stripped = line.strip()
-        if stripped.startswith("#"):
-            title = stripped.lstrip("#").strip().lower()
-            if title in _SKIP_MEMORY_TITLES:
-                return None
-            break
-
-    entity_id = _compute_id(relative_path)
-
-    metadata: dict = {"type": file_type, "_subdir": subdir}
-
-    # Use file modification time as created_at
-    mtime = file_path.stat().st_mtime
-    created_at = datetime.fromtimestamp(mtime, tz=UTC)
-
-    source = Source(
-        type=SourceType.FILE,
-        name="openclaw-memory",
-        url=relative_path,
-    )
-
-    return Entity(
-        id=entity_id,
-        content=content,
-        facet=facet,
-        created_by="agent:openclaw",
-        status=EntityStatus.AUTO_CONFIRMED,
-        sources=[source],
-        confidence=get_config().knowledge.sync_confidence,
-        metadata=metadata,
-        created_at=created_at,
-    )
-
-
 class OpenClawSyncAdapter:
-    """Sync adapter for OpenClaw files (wiki or memory)."""
+    """Sync adapter for OpenClaw wiki files.
+
+    Only syncs wiki/ content. Short-term memory (Dreaming, task indexes,
+    daily task details) is excluded.
+    """
 
     def __init__(self, wiki_path: str, store: KnowledgeStore) -> None:
         self.wiki_path = Path(wiki_path)
         self.store = store
-        self._mode = _detect_mode(self.wiki_path)
 
     def sync_to_linglong(self) -> dict:
-        """Read all ``.md`` files under the source path and sync them.
+        """Read all ``.md`` files under the wiki path and sync them.
 
-        In **wiki mode** skips ``index.md``.
-        Returns sync stats ``{"total": N, "created": N, "failed": N}``.
+        Skips ``index.md``. Returns sync stats.
         """
         stats = {"total": 0, "created": 0, "updated": 0, "skipped": 0, "failed": 0}
 
@@ -342,22 +235,14 @@ class OpenClawSyncAdapter:
         md_files = [p for p in self.wiki_path.rglob("*.md")]
 
         for file_path in md_files:
-            # Skip index.md in wiki mode
-            if self._mode == "wiki" and file_path.name == "index.md":
+            if file_path.name == "index.md":
                 continue
 
             stats["total"] += 1
             try:
                 relative_path = str(file_path.relative_to(self.wiki_path))
-                if self._mode == "memory":
-                    entity = _memory_file_to_entity(file_path, relative_path)
-                    if entity is None:
-                        stats["skipped"] += 1
-                        continue
-                else:
-                    entity = _file_to_entity(file_path, relative_path)
+                entity = _file_to_entity(file_path, relative_path)
 
-                # Adapter-level dedup check for accurate stats
                 existing = self.store.get(entity.id)
                 if existing is not None:
                     if existing.content == entity.content:

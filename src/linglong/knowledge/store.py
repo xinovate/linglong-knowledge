@@ -47,17 +47,97 @@ class KnowledgeStore:
             conn.execute(f"PRAGMA journal_mode={self.config.db_mode}")
             conn.execute("PRAGMA busy_timeout=5000")
 
-    def _log_operation(self, action: str, entity_id: str, details: str = "") -> None:
-        """Append operation to log file."""
+    def _log_operation(self, action: str, entity_id: str, details: str = "", entity: Entity | None = None) -> None:
+        """Append operation to log file with agent and title info."""
         log_path = self.wiki_path / "log.md"
         log_path.parent.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
-        entry = f"- **{timestamp}** [{action}] {entity_id}"
+
+        parts = [f"- **{timestamp}** `[{action}]`"]
+        if entity:
+            if entity.created_by:
+                parts.append(f"**{entity.created_by}**")
+            parts.append(entity_id)
+            parts.append(f"facet={entity.facet.value}")
+            # Extract title from first heading
+            title = self._extract_title(entity.content)
+            if title:
+                parts.append(f"「{title[:50]}」")
+        else:
+            parts.append(entity_id)
+
         if details:
-            entry += f" — {details}"
-        entry += "\n"
+            parts.append(details)
+
+        entry = " ".join(parts) + "\n"
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(entry)
+
+    @staticmethod
+    def _extract_title(content: str) -> str | None:
+        """Extract title from first markdown heading."""
+        for line in content.split("\n"):
+            line = line.strip()
+            if line.startswith("# "):
+                return line[2:].strip()
+        return None
+
+    def rebuild_embeddings(self) -> dict[str, int]:
+        """Re-generate embeddings for entities whose content has changed.
+
+        Scans all non-archived entities, compares content_hash, and
+        regenerates embeddings for those that changed. Returns stats.
+        """
+        stats = {"total": 0, "regenerated": 0, "unchanged": 0, "failed": 0}
+
+        if not self._vector_available or not self.config.generate_embeddings:
+            logger.warning("Vector search disabled; skipping embedding rebuild")
+            return stats
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT id, content, content_hash, embedding_id FROM entities WHERE archived_at IS NULL"
+            ).fetchall()
+
+        stats["total"] = len(rows)
+        for row in rows:
+            entity_id = row["id"]
+            content = row["content"]
+            old_hash = row["content_hash"]
+            old_embedding_id = row["embedding_id"]
+
+            current_hash = self._content_hash(content)
+            if current_hash == old_hash and old_embedding_id:
+                stats["unchanged"] += 1
+                continue
+
+            try:
+                # Delete old embedding
+                if old_embedding_id:
+                    with sqlite3.connect(self.db_path) as conn:
+                        self._delete_embedding(conn, old_embedding_id)
+                        conn.commit()
+
+                # Generate new embedding
+                embedding = self._embedding_generator.generate(content)
+                if embedding is not None:
+                    new_embedding_id = self._embedding_generator.generate_id()
+                    with sqlite3.connect(self.db_path) as conn:
+                        self._write_embedding(conn, new_embedding_id, embedding)
+                        conn.execute(
+                            "UPDATE entities SET embedding_id = ? WHERE id = ?",
+                            (new_embedding_id, entity_id),
+                        )
+                        conn.commit()
+                    stats["regenerated"] += 1
+                else:
+                    stats["failed"] += 1
+            except Exception as exc:
+                logger.warning("Failed to rebuild embedding for %s: %s", entity_id, exc)
+                stats["failed"] += 1
+
+        return stats
 
     def _init_database(self) -> None:
         """Initialize SQLite database with required tables."""
@@ -283,7 +363,7 @@ class KnowledgeStore:
                     )
                     conn.commit()
 
-            self._log_operation("create", entity.id, f"facet={entity.facet.value}")
+            self._log_operation("create", entity.id, entity=entity)
 
             # Auto-lint after write
             if self.config.auto_lint:
@@ -449,6 +529,62 @@ class KnowledgeStore:
 
             return [self._row_to_entity(row) for row in rows]
 
+    def search_hybrid(
+        self,
+        query: str,
+        facet: EntityFacet | None = None,
+        limit: int = 10,
+    ) -> list[Entity]:
+        """Hybrid search combining FTS5 and vector results via RRF.
+
+        Reciprocal Rank Fusion: score = sum(1 / (k + rank)) for each source.
+        """
+        k = 60  # RRF constant
+
+        # Fetch from both sources (oversample for better fusion)
+        fetch_limit = limit * 2
+        fts_results = self.search(query=query, facet=facet, limit=fetch_limit)
+        vec_results = (
+            self.search_similar(query=query, facet=facet, limit=fetch_limit)
+            if self._vector_available
+            else []
+        )
+
+        # Build id → entity map and RRF scores
+        entities: dict[str, Entity] = {}
+        scores: dict[str, float] = {}
+
+        for rank, entity in enumerate(fts_results):
+            entities[entity.id] = entity
+            scores[entity.id] = scores.get(entity.id, 0.0) + 1.0 / (k + rank + 1)
+
+        for rank, entity in enumerate(vec_results):
+            entities[entity.id] = entity
+            scores[entity.id] = scores.get(entity.id, 0.0) + 1.0 / (k + rank + 1)
+
+        # Sort by fused score, return top N
+        ranked_ids = sorted(scores, key=lambda eid: scores[eid], reverse=True)[:limit]
+        return [entities[eid] for eid in ranked_ids]
+
+    def search_auto(
+        self,
+        query: str,
+        facet: EntityFacet | None = None,
+        limit: int = 10,
+    ) -> list[Entity]:
+        """Auto-select search mode based on query and service availability."""
+        # Heuristic: if query looks like an ID or path, use keyword only
+        import re
+        if re.match(r'^[a-f0-9]{8,}$', query.strip()) or '/' in query:
+            return self.search(query=query, facet=facet, limit=limit)
+
+        # If vector search available, use hybrid for best results
+        if self._vector_available:
+            return self.search_hybrid(query=query, facet=facet, limit=limit)
+
+        # Fallback to FTS5
+        return self.search(query=query, facet=facet, limit=limit)
+
     def update(self, entity: Entity) -> Entity:
         """Update an existing entity.
 
@@ -585,7 +721,7 @@ class KnowledgeStore:
                         )
                         conn.commit()
 
-            self._log_operation("update", entity.id, f"v{entity.current_version}")
+            self._log_operation("update", entity.id, details=f"v{entity.current_version}", entity=entity)
 
             # Auto-lint after write
             if self.config.auto_lint:
@@ -634,7 +770,7 @@ class KnowledgeStore:
                 )
                 conn.commit()
 
-            self._log_operation("archive", entity.id)
+            self._log_operation("archive", entity.id, entity=entity)
             return entity
 
     def delete(self, entity_id: str) -> bool:

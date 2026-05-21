@@ -63,11 +63,11 @@ def _facet_enum(facet: str | None) -> EntityFacet | None:
 
 
 def search_wiki(query: str, facet: str | None = None, limit: int = 10) -> str:
-    """Search the Linglong knowledge base using full-text search (FTS5)."""
+    """Search the Linglong knowledge base. Auto-selects the best search mode (keyword, vector, or hybrid)."""
     try:
         store = _get_store()
         facet_enum = _facet_enum(facet)
-        results = store.search(query=query, facet=facet_enum, limit=limit)
+        results = store.search_auto(query=query, facet=facet_enum, limit=limit)
         previews = [_entity_to_preview(e) for e in results]
         return json.dumps({"results": previews, "count": len(previews)}, ensure_ascii=False)
     except Exception as exc:
@@ -106,7 +106,7 @@ def search_and_read(
     try:
         store = _get_store()
         facet_enum = _facet_enum(facet)
-        results = store.search(query=query, facet=facet_enum, limit=limit)
+        results = store.search_auto(query=query, facet=facet_enum, limit=limit)
         full_results: list[dict[str, Any]] = []
         for entity in results:
             content = entity.content
