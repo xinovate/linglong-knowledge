@@ -6,7 +6,12 @@
 - **API 调用**：GitHub API、自定义 REST API
 - **Web Fetch**：并行抓取预定义网站列表
 - **Web Search**：搜索引擎采集（placeholder）
-- **AI 任务输出**：接收各 Agent 产出的结构化数据
+
+## 设计原则
+
+**ingest 是信息采集工具，不写知识库。**
+
+ingest 采集的数据是原始信息，需要人和 Agent 讨论筛选后，才有价值的内容写入知识库。ingest 只负责获取和验证，不负责存储。
 
 ## 数据流
 
@@ -15,7 +20,10 @@ graph LR
     A[RSS/API/Web] --> B[SourceAdapter]
     B --> C[PackageExecutor]
     C --> D[TruthVerification]
-    D --> E[KnowledgeStore]
+    D --> E[返回结果给调用方]
+    E --> F[人 + Agent 讨论]
+    F -->|有价值| G[写入 KnowledgeStore]
+    F -->|无价值| H[丢弃]
 ```
 
 ## 核心组件
@@ -56,17 +64,11 @@ ingest:
 ## 使用示例
 
 ```bash
-# CLI
-linglong pipeline ingest
+# CLI — 返回采集结果到终端
+linglong ingest
 
-# Python
-from linglong.ingest import PackageExecutor, SourcePackage
-from linglong.knowledge.store import KnowledgeStore
-
-package = SourcePackage.from_yaml("examples/packages/ai-morning-brief.yaml")
-store = KnowledgeStore()
-executor = PackageExecutor(store=store)
-results = asyncio.run(executor.execute(package))
+# MCP 工具 — 在对话中调用，Agent 讨论后决定是否写入知识库
+# search_wiki / search_and_read / write_entity
 ```
 
 ## 自定义 Adapter

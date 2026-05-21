@@ -14,8 +14,8 @@ Linglong 是一个**跨 Agent 知识中枢**。
 
 **当前状态**：
 - v0.1–v0.9 已完成：core + ingest + knowledge + composer + dispatch 五模块完整流水线，CLI 入口，图片资产管线
-- v1.0 进行中：博客流水线端到端跑通（image assets 集成、Playwright 解析、YAML 配置）
-- 知识库模块已完成（M1-M4）：7 Facet 分类、FTS5 全文搜索、版本管理、归档、CLI 命令、索引+巡检、文件锁+WAL
+- v1.0 知识库已封版：MCP Server 9 工具、RRF 混合搜索、lint 巡检、Agent 接入、277 测试
+- v1.0 其他模块：ingest 与知识库解耦、composer/dispatch 输出追踪、pipeline 概念移除
 
 **你的任务**：
 1. 阅读本文档和 `docs/` 目录（尤其是 `PROJECT_OVERVIEW.md`、`roadmap.md`、`rules.md`）
@@ -35,12 +35,17 @@ Linglong 是一个**跨 Agent 知识中枢**。
 ### 1. 模块边界
 
 ```
-ingest → knowledge → composer → dispatch
+ingest（工具，不写知识库）→ 返回数据给对话
+knowledge（已沉淀的知识）→ composer → dispatch
+                                  ↓
+                            output_log（已输出追踪）
 ```
 
+- **ingest 不写知识库**：ingest 是信息采集工具，结果返回给调用方（CLI/MCP/对话），不直接写入 KnowledgeStore
+- **知识库只接受讨论沉淀后的写入**：人和 Agent 讨论筛选后，通过 MCP/CLI 写入
 - **composer 只从 knowledge 读取**，不直接读文件系统
 - **composer 不处理发布**，发布逻辑在 dispatch
-- **composer 输出标记为 `dispatch_ready=True`**，由 dispatch 消费
+- **dispatch 发布后写 output_log**：记录 entity_id + publisher + published_at，避免重复消费
 
 ### 2. 数据模型
 
@@ -51,7 +56,7 @@ ingest → knowledge → composer → dispatch
 - `Source` — 来源信息
 
 **关键字段**：
-- `created_by` — 标记创建者（如 `agent:claude`）
+- `created_by` — 标记创建者（如 `agent:claude`、`agent:openclaw`；不再有 `agent:ingest`）
 - `confirmed_by` — 人工确认标记
 - `confidence` — AI 置信度
 - `status` — 审核状态
@@ -243,7 +248,9 @@ from linglong.knowledge.store import KnowledgeStore
 from linglong.core.models import EntityStatus
 
 store = KnowledgeStore()
+# 只读已沉淀的知识（非 ingest 原始数据）
 entities = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
+# 可通过 output_log 排除已输出的 entity
 ```
 
 ### Q: composer 如何输出到 dispatch？
@@ -272,7 +279,7 @@ class NewsletterTemplate(BaseTemplate):
 
 ### Q: 当前优先工作是什么？
 
-查看 `docs/PROJECT_OVERVIEW.md` 的 **Next Actions** 列表。当前重点是 v1.0 博客流水线端到端验证。
+查看 `docs/PROJECT_OVERVIEW.md` 的 **Next Actions** 列表。当前重点是 v1.0 各模块边界对齐（ingest 解耦、composer/dispatch 输出追踪）。
 
 ---
 

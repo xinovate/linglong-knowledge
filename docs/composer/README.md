@@ -2,14 +2,20 @@
 
 ## 职责
 
-从知识库读取碎片 → 聚合 → 提炼 → 套模板 → 输出成品。
+从知识库读取已沉淀的知识 → 聚合 → 提炼 → 套模板 → 输出成品。
+
+## 设计原则
+
+**composer 只从知识库读取已沉淀的知识。** 知识库中的内容都经过人和 Agent 讨论筛选，不存在原始 ingest 数据。composer 不关心知识的来源，只消费知识库中的确认内容。
+
+**输出追踪**：发布后通过 `output_log` 表记录哪些 entity 已被输出到哪个平台，避免重复消费。
 
 ## 流水线流程
 
 ```mermaid
 graph TD
-    A[KnowledgeStore] -->|search AUTO_CONFIRMED| B[IngestAdapter]
-    B --> C[ComposerState<br/>内容哈希去重]
+    A[KnowledgeStore<br/>已沉淀的知识] -->|search| B[KnowledgeAdapter]
+    B --> C[ComposerState<br/>去重 + output_log 检查]
     C --> D{distiller_use_llm?}
     D -->|是| E[LLMDistiller<br/>LLM 智能提炼]
     D -->|否| F[DailyAggregator<br/>规则聚合]
@@ -21,7 +27,8 @@ graph TD
     I --> J
     J -->|是| K[DispatchManager.publish]
     J -->|否| L[返回 ComposerResult]
-    K --> L
+    K --> M[写 output_log]
+    M --> L
 ```
 
 ## 组件列表
@@ -31,7 +38,7 @@ graph TD
 | `Composer` | `composer/composer.py` | 编排器 |
 | `DraftManager` | `composer/draft.py` | 草稿生命周期管理 |
 | `ComposerState` | `composer/state.py` | 内容哈希去重与状态持久化 |
-| `IngestAdapter` | `composer/ingest_adapter.py` | Entity → MemoryFragment 适配层 |
+| `KnowledgeAdapter` | `composer/knowledge_adapter.py` | Entity → MemoryFragment 适配层 |
 | `DailyAggregator` | `composer/distiller/aggregator.py` | 按天聚合记忆片段 |
 | `LLMDistiller` | `composer/distiller/llm_distiller.py` | LLM 智能提炼与主题合并 |
 | `BlogTemplate` | `composer/templates/blog.py` | Hexo 博客模板 |
@@ -44,9 +51,9 @@ graph TD
 
 ```bash
 # CLI
-linglong pipeline compose              # 正常运行
-linglong pipeline compose --dry-run    # 试运行（不保存）
-linglong pipeline compose --draft      # 草稿模式（保存待审核）
+linglong compose              # 正常运行
+linglong compose --dry-run    # 试运行（不保存）
+linglong compose --draft      # 草稿模式（保存待审核）
 ```
 
 ```python

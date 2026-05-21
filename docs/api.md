@@ -213,10 +213,8 @@ print(config.ingest.fetch_interval_minutes)
 
 ```python
 from linglong.ingest import RSSIngestor, RSSSource
-from linglong.knowledge.store import KnowledgeStore
 
-store = KnowledgeStore()
-ingestor = RSSIngestor(store)
+ingestor = RSSIngestor()
 
 # 添加源
 ingestor.add_source(
@@ -227,10 +225,10 @@ ingestor.add_source(
     )
 )
 
-# 获取
+# 获取（返回结果，不写知识库）
 import asyncio
 results = asyncio.run(ingestor.ingest_all())
-print(results)  # {"total": 50, "created": 10, "failed": 0}
+print(results)  # 返回采集结果列表
 ```
 
 ---

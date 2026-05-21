@@ -30,13 +30,18 @@ Linglong 是一个**跨 Agent 知识中枢**，采用模块化设计，支持从
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │              Linglong 知识中枢                               │   │
 │  │                                                              │   │
-│  │  ┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐  │   │
-│  │  │ ingest  │ → │ knowledge│ → │ composer │ → │ dispatch │  │   │
-│  │  │ 获取    │   │ 知识库   │   │ 编译     │   │ 分发     │  │   │
-│  │  └─────────┘   └──────────┘   └──────────┘   └──────────┘  │   │
-│  │       ↑             ↑             ↑              ↓         │   │
-│  │       └─────────────┴─────────────┴──────────────┘         │   │
-│  │                    feedback loop                            │   │
+│  │  ┌─────────┐                                                 │   │
+│  │  │ ingest  │ ← 信息采集工具（返回数据给对话，不写知识库）     │   │
+│  │  │ 获取    │                                                 │   │
+│  │  └─────────┘                                                 │   │
+│  │                                                              │   │
+│  │  ┌──────────┐   ┌──────────┐   ┌──────────┐                 │   │
+│  │  │ knowledge│ → │ composer │ → │ dispatch │                 │   │
+│  │  │ 知识库   │   │ 编译     │   │ 分发     │                 │   │
+│  │  └──────────┘   └──────────┘   └──────────┘                 │   │
+│  │       ↑             ↑              ↓                         │   │
+│  │       └─────────────┴──────────────┘                         │   │
+│  │                 output_log（已输出追踪）                       │   │
 │  │                                                              │   │
 │  │  ┌──────────────────────────────────────────────────────┐   │   │
 │  │  │ core（共享基础设施：模型、配置、工具）                │   │   │
@@ -49,24 +54,26 @@ Linglong 是一个**跨 Agent 知识中枢**，采用模块化设计，支持从
 
 ```mermaid
 graph LR
-    A[信息获取<br/>ingest] --> B[知识沉淀<br/>knowledge]
-    B --> C[内容生产<br/>composer]
-    C --> D[多平台分发<br/>dispatch]
+    A[信息采集<br/>ingest] -.->|返回数据给对话| B[人 + Agent 讨论]
+    B -->|讨论沉淀后写入| C[知识沉淀<br/>knowledge]
+    C --> D[内容生产<br/>composer]
+    D --> E[多平台分发<br/>dispatch]
+    E -->|output_log| C
 
-    B -.->|跨 Agent 同步| E[OpenClaw]
-    B -.->|跨 Agent 同步| F[Claude Code]
-    B -.->|跨 Agent 同步| G[Codex]
+    C -.->|跨 Agent 同步| F[OpenClaw]
+    C -.->|跨 Agent 同步| G[Claude Code]
+    C -.->|跨 Agent 同步| H[Codex]
 
-    H[core<br/>共享基础设施] --> A
-    H --> B
-    H --> C
-    H --> D
+    I[core<br/>共享基础设施] --> A
+    I --> C
+    I --> D
+    I --> E
 ```
 
 ```mermaid
 graph TD
     subgraph composer 流水线
-        A[KnowledgeStore] -->|search| B[IngestAdapter]
+        A[KnowledgeStore] -->|search| B[KnowledgeAdapter]
         B --> C[DailyAggregator]
         C --> D{distiller_use_llm?}
         D -->|是| E[LLMDistiller]
@@ -76,7 +83,7 @@ graph TD
         G --> H{auto_publish?}
         H -->|是| I[DispatchManager]
         H -->|否| J[ComposerResult]
-        I --> J
+        I -->|写 output_log| J
     end
 ```
 
@@ -102,13 +109,13 @@ graph TD
 - **API 调用**：GitHub API、Twitter API、自定义 REST API
 - **RSS 源**：RSS feed 获取（已有基础）
 - **爬虫**：Playwright / Scrapy 预留接口
-- **AI 任务输出**：接收 Agent 产出的结构化数据
 
 **设计要点**：
 - 可配置"信息源套餐"（YAML 定义），而非硬编码
 - 5 层真实性验证（多源交叉、数字合理性、时间有效性、源头权威、常识判断）
-- 支持 cron 定时调度 + 手动触发 + 事件驱动
-- 输出原始数据到 knowledge
+- **不写知识库**：ingest 是信息采集工具，结果返回给调用方（CLI 输出 / MCP 工具返回 / 对话中展示）
+- 人和 Agent 讨论筛选后，才有价值的内容通过 MCP/CLI 写入知识库
+- 支持 CLI 命令和 MCP 工具两种调用方式
 
 ### knowledge（跨 Agent 知识库）
 
@@ -171,19 +178,20 @@ storage:
 - **内容验证**：检查是否符合模板规范
 
 **设计要点**：
-- 输入：只从 knowledge 读取
+- 输入：只从 knowledge 读取（已沉淀的知识，非原始 ingest 数据）
 - 输出：写入 dispatch 队列
 - 不直接处理发布
 - 草稿模式支持人工审核
+- **输出追踪**：发布后记录 entity_id + publisher + published_at 到 output_log 表，避免重复消费
 
 **编译流程**：
 
 ```
-知识库碎片（多 Agent 产出）
+知识库（已沉淀的知识）
            │
            ▼
    ┌───────────────┐
-   │  IngestAdapter │  ← 统一读取接口
+   │KnowledgeAdapter│  ← 统一读取接口
    └───────┬───────┘
            │
    ┌───────┴───────┐
@@ -221,13 +229,23 @@ storage:
 
 ## 数据流
 
-### 正常流程
+### 信息采集流程（ingest）
 
 ```mermaid
 graph LR
-    A[ingest<br/>信息获取] --> B[knowledge<br/>知识沉淀]
-    B --> C[composer<br/>内容生产]
-    C --> D[dispatch<br/>多平台分发]
+    A[ingest<br/>信息采集] --> B[返回数据给对话]
+    B --> C[人 + Agent 讨论]
+    C -->|有价值| D[写入 knowledge]
+    C -->|无价值| E[丢弃]
+```
+
+### 内容生产流程（knowledge → dispatch）
+
+```mermaid
+graph LR
+    A[knowledge<br/>知识沉淀] --> B[composer<br/>内容生产]
+    B --> C[dispatch<br/>多平台分发]
+    C -->|output_log| A
 ```
 
 ### 反馈流程
@@ -235,19 +253,6 @@ graph LR
 ```mermaid
 graph LR
     A[dispatch] -->|反馈数据| B[knowledge<br/>更新实体状态]
-```
-
-### 审核流程
-
-```mermaid
-graph TD
-    A[ingest] --> B[Review 引擎]
-    B -->|高置信度| C[自动确认]
-    B -->|低置信度| D[标记待审]
-    B -->|敏感内容| D
-    C --> E[knowledge]
-    D --> F[人工确认]
-    F --> E
 ```
 
 ### 跨 Agent 同步流程
@@ -370,7 +375,8 @@ services:
 
 ### Phase 4（v0.9–v1.0：当前）
 - v0.9 ✅：CLI 入口、集成测试、auto-publish、配置外部化
-- **v1.0 进行中**：博客流水线端到端验证、image assets 集成、Playwright 解析
+- v1.0 知识库 ✅：MCP Server、RRF 混合搜索、lint 巡检、Agent 接入、277 测试
+- **v1.0 其他模块**：ingest 与知识库解耦、composer/dispatch 输出追踪、pipeline 概念移除
 
 ## 参考
 

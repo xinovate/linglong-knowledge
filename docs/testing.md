@@ -18,7 +18,7 @@ graph TD
 | `core.models` | Entity 构造、AgentID 验证、ConfidenceScore 边界 |
 | `composer.state` | 内容哈希计算、去重逻辑、状态流转 |
 | `composer.draft` | DraftManager 保存/列出/发布/废弃 |
-| `composer.distiller` | IngestAdapter、DailyAggregator、ArticleMaterial |
+| `composer.distiller` | KnowledgeAdapter、DailyAggregator、ArticleMaterial |
 
 ### 集成测试
 

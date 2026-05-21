@@ -64,8 +64,8 @@ git push origin vx.y.z
 ### DEBT-010: Composer State 使用内容哈希而非 entity_id
 
 - **严重程度**: 低
-- **状态**: 待解决
-- **说明**: 内容哈希在长期使用中的稳定性待验证
+- **状态**: 已解决（v1.0 新增 output_log 表，按 entity_id 追踪输出状态）
+- **说明**: 原先使用内容哈希去重，v1.0 改为基于 entity_id 的 output_log 追踪
 
 ### 已解决
 

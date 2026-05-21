@@ -5,7 +5,26 @@
 - **图片 CDN 上传**：发布前将本地图片上传到阿里云 OSS，替换为 CDN URL
 - **内容路由**：根据内容类型自动分发到不同平台
 - **发布队列**：待发布 / 发布中 / 已发布 / 失败（可重试）
+- **输出追踪**：发布后记录 entity_id + publisher + published_at 到 `output_log` 表
 - **反馈收集**：阅读量、点赞、评论回流到 knowledge
+
+## 输出追踪（output_log）
+
+发布后自动在知识库 SQLite 中记录一条日志，标记哪些知识已被输出到哪个平台。
+
+```sql
+CREATE TABLE output_log (
+    id INTEGER PRIMARY KEY,
+    entity_id TEXT NOT NULL,
+    article_title TEXT,
+    publisher TEXT NOT NULL,    -- hexo / local
+    published_at TEXT NOT NULL
+);
+```
+
+**作用**：
+- composer 读取知识库时可跳过已输出的 entity，避免重复消费
+- 可追溯"这篇文章用了哪些知识"
 
 ## 发布流程
 
@@ -97,7 +116,7 @@ export LL_OSS_ACCESS_KEY_SECRET=xxx
 
 ```bash
 # CLI
-linglong pipeline publish <draft_id>    # 发布指定草稿
+linglong publish <draft_id>    # 发布指定草稿
 
 # 自动发布（在 .linglong.yaml 中开启）
 composer:
