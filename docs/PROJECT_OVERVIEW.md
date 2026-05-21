@@ -94,6 +94,9 @@ Codex ──────┘         ↓
 | Agent 三方接入指南（快速/深度/移除） | v1.0 | ✅ | `0c79114` | 2026-05-21 |
 | OpenClawSyncAdapter 移除 memory 模式（只保留 wiki 同步） | v1.0 | ✅ | `e10403b` | 2026-05-21 |
 | index --rebuild 增加向量化重建 | v1.0 | ✅ | `e10403b` | 2026-05-21 |
+| v1.0 端到端验证（ingest → compose → publish 16 篇） | v1.0 | ✅ | — | 2026-05-21 |
+| write --force + update --from-file | v1.0 | ✅ | `b657ec3` | 2026-05-21 |
+| 设计文档审计对齐（D-03~D-10 全部 ✅） | v1.0 | ✅ | `b657ec3` | 2026-05-21 |
 
 ---
 
@@ -135,11 +138,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
+| `b657ec3` | feat(cli): write --force + update --from-file；设计文档审计对齐 | 2026-05-21 |
+| `343b698` | docs: 合并 tracking/ 到 journal + design，更新 PROJECT_OVERVIEW | 2026-05-21 |
 | `e10403b` | feat(search): RRF 混合搜索 + 自动模式，变动日志增强，SyncAdapter 精简 | 2026-05-21 |
 | `aab2cce` | docs(knowledge): 新增知识库定位与边界、Agent 接入概述 | 2026-05-21 |
 | `0c79114` | docs(agents): OpenClaw Phase 0+2 验证记录、三方接入指南、文档规整 | 2026-05-21 |
-| `2ab07ec` | feat(lint): 巡检增强 — 孤儿检测、语义去重、定期调度、--check 过滤 | 2026-05-21 |
-| `fa8e98d` | feat(mcp): 新增模板体系，9 个 facet 模板 + get_template/list_templates 工具 | 2026-05-20 |
 
 ---
 
@@ -147,7 +150,7 @@ Codex ──────┘         ↓
 
 按优先级排序：
 
-1. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish（管道已通，内容质量待改进）
+1. ✅ ~~**v1.0 端到端验证**~~ — ingest → compose → publish 16 篇文章输出正常
 2. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
 3. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
 
@@ -157,6 +160,8 @@ Codex ──────┘         ↓
 - 多模板（早报/周报/PPT/视频脚本）
 - AI 封面图生成
 - 跨 Agent 写入冲突解决
+- 多 Agent 更新合并（需交互式 UI）
+- Agent hooks 自动同步（需 Agent 侧配合）
 - API 冻结、mypy strict
 
 详细计划 → [版本路线图](roadmap.md)

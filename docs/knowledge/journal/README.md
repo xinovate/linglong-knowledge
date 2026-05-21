@@ -7,7 +7,7 @@
 
 | 日期 | 主题 | 关键结论 |
 |------|------|----------|
-| 2026-05-21 | lint 增强 + OpenClaw 接入 + 搜索增强 | lint 5 项补齐；OpenClaw Phase 0+2 完成，MCP 全链路通过；RRF 混合搜索 + 自动模式实现；SyncAdapter 移除 memory 模式 |
+| 2026-05-21 | lint 增强 + OpenClaw 接入 + 搜索增强 + 文档审计 + v1.0 验证 | lint 5 项补齐；OpenClaw MCP 全链路通过；RRF 混合搜索；tracking 合并；设计文档审计对齐；v1.0 端到端验证通过 |
 | 2026-05-20 | MCP Server + 模板体系 | 9 个 MCP 工具上线；search_and_read 截断控制；模板体系 9 facet |
 | 2026-05-18 | 知识库同步质量检查 | entity facet 缺失是正常状态；发现 614 个 lint 问题 |
 
