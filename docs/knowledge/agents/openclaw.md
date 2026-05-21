@@ -109,7 +109,7 @@
 HEARTBEAT #8 定期触发
        │
        ▼
-  linglong lint
+  linglong kb lint
        │
        ▼
   检查 5 项：索引一致性 / 死链 / 内容冲突 / 过期 / 孤儿
@@ -201,7 +201,7 @@ HEARTBEAT #8 定期触发
 | #1 记忆整理 | "提取到 memory/wiki/" → "通过 MCP 写入 Linglong"；"wiki/ 目录不清理"段落重写为 Linglong 说明 |
 | #4 成长检查 | "对比 wiki/user/communication-style.md" → `search_wiki(facet=personal)`；更新步骤改为 MCP 写入 |
 | #6 自动成长 | "记录到 wiki/user/growth-auto-log.md" → "Linglong personal 分面" |
-| #8 Wiki 健康检查 | 整项重写：手动扫描 wiki 目录 → `linglong lint`，频率改为由 Linglong 管理 |
+| #8 Wiki 健康检查 | 整项重写：手动扫描 wiki 目录 → `linglong kb lint`，频率改为由 Linglong 管理 |
 
 ### 3.4 growth-track 技能（5 处）
 

@@ -97,22 +97,22 @@ store.archive(entity_id)
 知识库提供完整的 CLI 命令集：
 
 ```bash
-linglong init                              # 初始化知识库
-linglong init --interactive                # 交互式配置向导
-linglong init --from-git URL               # 从 Git 仓库初始化
-linglong write --facet concept --title "标题" --content "内容" --yes
-linglong read <entity_id>
-linglong search "关键词" --facet concept --deep --format json
-linglong search "更新" --since 2026-05-01 --created-by agent:claude
-linglong update <entity_id> --append "补充内容"
-linglong update <entity_id> --history      # 查看版本历史
-linglong review --list-pending             # 审核管理
-linglong archive <entity_id>
-linglong lint                              # 巡检健康检查
-linglong lint --fix                        # 自动修复
-linglong index --rebuild                   # 生成索引
-linglong stats                             # 统计信息
-linglong migrate --from /path/to/wiki      # 从外部 wiki 迁移
+linglong kb init                              # 初始化知识库
+linglong kb init --interactive                # 交互式配置向导
+linglong kb init --from-git URL               # 从 Git 仓库初始化
+linglong kb write --facet concept --title "标题" --content "内容" --yes
+linglong kb read <entity_id>
+linglong kb search "关键词" --facet concept --deep --format json
+linglong kb search "更新" --since 2026-05-01 --created-by agent:claude
+linglong kb update <entity_id> --append "补充内容"
+linglong kb update <entity_id> --history      # 查看版本历史
+linglong kb review --list-pending             # 审核管理
+linglong kb archive <entity_id>
+linglong kb lint                              # 巡检健康检查
+linglong kb lint --fix                        # 自动修复
+linglong kb index --rebuild                   # 生成索引
+linglong kb stats                             # 统计信息
+linglong kb migrate --from /path/to/wiki      # 从外部 wiki 迁移
 ```
 
 ### 5. 配置管理
@@ -120,8 +120,8 @@ linglong migrate --from /path/to/wiki      # 从外部 wiki 迁移
 使用 `.linglong.yaml` 作为主配置文件（搜索路径：CWD → home）：
 
 ```bash
-linglong init              # 自动生成模板
-linglong init -i           # 交互式配置向导
+linglong kb init              # 自动生成模板
+linglong kb init -i           # 交互式配置向导
 ```
 
 也支持环境变量（前缀 `LL_`），但 `.linglong.yaml` 优先级更高。

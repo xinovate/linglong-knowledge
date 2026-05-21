@@ -259,7 +259,7 @@ flowchart TD
 ### 可借鉴点
 
 1. **Timeline 视图**：按锚点 ID 展开前后上下文，帮助 Agent 理解决策演进。可在 CLI 增加 `linglong timeline <id> --before 3 --after 3`。
-2. **Corpus 知识体**：从观测中构建专题知识集合并提供问答能力。Linglong 可在 `linglong search --deep` 中实现类似聚合效果，不建议引入独立 corpus 概念。
+2. **Corpus 知识体**：从观测中构建专题知识集合并提供问答能力。Linglong 可在 `linglong kb search --deep` 中实现类似聚合效果，不建议引入独立 corpus 概念。
 
 ---
 

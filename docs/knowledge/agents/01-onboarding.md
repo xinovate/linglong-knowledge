@@ -15,7 +15,7 @@ pip install linglong
 ### 2. 初始化知识库
 
 ```bash
-linglong init
+linglong kb init
 ```
 
 交互式向导会引导配置：
@@ -28,7 +28,7 @@ linglong init
 ### 3. 验证
 
 ```bash
-linglong stats
+linglong kb stats
 ```
 
 输出知识库状态即表示初始化成功。
@@ -149,7 +149,7 @@ rm -rf ~/linglong/  # 删除知识库数据
 
 ```bash
 pip install linglong
-linglong init
+linglong kb init
 ```
 
 **Step 2：注册 MCP Server**
@@ -203,7 +203,7 @@ openclaw gateway restart
 将涉及 `memory/wiki/` 的检查项改为 Linglong 命令：
 - 记忆整理 → 通过 MCP 写入 Linglong
 - 成长检查 → `search_wiki(facet=personal)`
-- Wiki 健康检查 → `linglong lint`
+- Wiki 健康检查 → `linglong kb lint`
 
 **Step 7：适配引用 wiki 路径的技能**
 
@@ -212,7 +212,7 @@ openclaw gateway restart
 **Step 8：验证**
 
 在 OpenClaw 中测试完整工作流：
-1. 说"记住 xxx" → 检查是否写入 Linglong（`linglong search "xxx"`）
+1. 说"记住 xxx" → 检查是否写入 Linglong（`linglong kb search "xxx"`）
 2. 说"我们之前讨论的 xxx" → 检查是否通过 MCP 搜索
 3. 触发 HEARTBEAT → 检查是否正常执行
 

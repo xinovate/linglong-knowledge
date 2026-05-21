@@ -44,9 +44,9 @@ graph TD
 
 ```bash
 # CLI
-linglong compose              # 正常运行
-linglong compose --dry-run    # 试运行（不保存）
-linglong compose --draft      # 草稿模式（保存待审核）
+linglong pipeline compose              # 正常运行
+linglong pipeline compose --dry-run    # 试运行（不保存）
+linglong pipeline compose --draft      # 草稿模式（保存待审核）
 ```
 
 ```python

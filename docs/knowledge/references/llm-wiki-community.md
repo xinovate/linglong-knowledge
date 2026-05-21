@@ -78,7 +78,7 @@ flowchart LR
 |------|-------|----------|------|
 | 实体消解 | 3 层（精确/模糊/语义） | 4 级（ID/内容/标题/语义） | ✅ Linglong 已覆盖且更强 |
 | NLP 预处理 | spaCy NER + keyphrase | 无 | ❌ 不引入，四级去重够用 |
-| 批量导入 | 支持 | `linglong migrate --no-index` | ✅ 已覆盖 |
+| 批量导入 | 支持 | `linglong kb migrate --no-index` | ✅ 已覆盖 |
 
 ---
 

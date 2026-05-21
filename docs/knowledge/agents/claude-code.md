@@ -95,7 +95,7 @@
 开发者主动执行
        │
        ▼
-  linglong lint [--check <项>] [--fix]
+  linglong kb lint [--check <项>] [--fix]
        │
        ▼
   检查 5 项：索引一致性 / 死链 / 内容冲突 / 过期 / 孤儿

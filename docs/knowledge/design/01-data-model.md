@@ -157,10 +157,10 @@ stateDiagram-v2
 |------|------|----------|
 | `RAW` | 刚采集，未审核 | Entity 创建时默认 |
 | `PENDING_REVIEW` | 等待审核 | 低置信度 / 敏感内容 / 内容过短 |
-| `CONFIRMED` | 人工确认 | 用户执行 `linglong review --approve` |
+| `CONFIRMED` | 人工确认 | 用户执行 `linglong kb review --approve` |
 | `AUTO_CONFIRMED` | 自动确认 | 高置信度 + 可信来源 |
-| `REJECTED` | 拒绝 | 用户执行 `linglong review --reject` |
-| `ARCHIVED` | 已归档 | 执行 `linglong archive` |
+| `REJECTED` | 拒绝 | 用户执行 `linglong kb review --reject` |
+| `ARCHIVED` | 已归档 | 执行 `linglong kb archive` |
 
 ---
 

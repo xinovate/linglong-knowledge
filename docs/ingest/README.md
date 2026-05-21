@@ -57,7 +57,7 @@ ingest:
 
 ```bash
 # CLI
-linglong ingest
+linglong pipeline ingest
 
 # Python
 from linglong.ingest import PackageExecutor, SourcePackage

@@ -97,7 +97,7 @@ export LL_OSS_ACCESS_KEY_SECRET=xxx
 
 ```bash
 # CLI
-linglong publish <draft_id>    # 发布指定草稿
+linglong pipeline publish <draft_id>    # 发布指定草稿
 
 # 自动发布（在 .linglong.yaml 中开启）
 composer:

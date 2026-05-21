@@ -126,7 +126,7 @@ Agent: 这个问题的解决方案值得记录到知识库吗？
 ### 跳过确认（--yes）
 
 ```bash
-linglong write --facet experience --title "..." --content "..." --yes
+linglong kb write --facet experience --title "..." --content "..." --yes
 ```
 
 适用于批量导入场景。
@@ -181,7 +181,7 @@ flowchart TD
 
 ```bash
 # 1. 标题去重
-linglong search "sqlite-vec 维度" --facet experience
+linglong kb search "sqlite-vec 维度" --facet experience
 
 # 2. 内容去重（MD5 hash）
 # ComposerState.filter_new() 已有 content hash 去重逻辑
@@ -204,16 +204,16 @@ linglong search "sqlite-vec 维度" --facet experience
 
 - Entity 状态为 CONFIRMED 或 AUTO_CONFIRMED
 - 超过 N 天未被任何其他 Entity 引用（可配置）
-- 用户手动执行 `linglong archive <id>`
+- 用户手动执行 `linglong kb archive <id>`
 
 ### 归档操作
 
 ```bash
 # 手动归档
-linglong archive <entity-id>
+linglong kb archive <entity-id>
 
 # 批量归档（超过 90 天未引用的）
-linglong archive --older-than 90d
+linglong kb archive --older-than 90d
 ```
 
 归档后：
@@ -238,7 +238,7 @@ linglong archive --older-than 90d
 
 ```bash
 # 写入前检查同 facet 同标题
-linglong search "支付系统架构" --facet concept --created-by agent:openclaw
+linglong kb search "支付系统架构" --facet concept --created-by agent:openclaw
 
 # 如果已存在
 # → 返回已有 Entity，提示用户是更新还是新建
@@ -255,24 +255,24 @@ linglong search "支付系统架构" --facet concept --created-by agent:openclaw
 
 ```bash
 # 写入（默认提示确认）
-linglong write --facet concept --title "微服务架构" --content "..."
+linglong kb write --facet concept --title "微服务架构" --content "..."
 
 # 写入（跳过确认）
-linglong write --facet experience --title "..." --content "..." --yes
+linglong kb write --facet experience --title "..." --content "..." --yes
 
 # 写入（跳过索引更新，批量场景）
-linglong write --facet entity --title "..." --content "..." --no-index
+linglong kb write --facet entity --title "..." --content "..." --no-index
 
 # 从文件写入
-linglong write --facet source --from-file article.md
+linglong kb write --facet source --from-file article.md
 
 # 模板
-linglong template list              # 列出所有模板
-linglong template get concept       # 查看 concept 模板
+linglong kb template list              # 列出所有模板
+linglong kb template get concept       # 查看 concept 模板
 
 # 归档
-linglong archive <entity-id>
-linglong archive --older-than 90d
+linglong kb archive <entity-id>
+linglong kb archive --older-than 90d
 ```
 
 ---

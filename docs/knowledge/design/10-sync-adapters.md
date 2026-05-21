@@ -55,12 +55,12 @@ graph LR
 
 ```bash
 # CLI
-linglong sync openclaw
-linglong sync claude
-linglong sync codex
+linglong kb sync openclaw
+linglong kb sync claude
+linglong kb sync codex
 
 # 指定路径
-linglong sync openclaw --path ~/.openclaw/workspace/memory/wiki
+linglong kb sync openclaw --path ~/.openclaw/workspace/memory/wiki
 ```
 
 ```python

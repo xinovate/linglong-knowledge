@@ -87,17 +87,17 @@ graph TD
 
 | 命令 | 用途 | 示例 |
 |------|------|------|
-| `search` | 搜索知识 | `linglong search "支付" --facet concept` |
-| `read` | 读取详情 | `linglong read <id>` |
-| `write` | 写入知识 | `linglong write --facet concept --title "..." --content "..."` |
-| `update` | 更新知识 | `linglong update <id> --append "补充内容"` |
-| `review` | 审核管理 | `linglong review --list-pending` |
-| `lint` | 健康巡检 | `linglong lint` |
-| `index` | 索引管理 | `linglong index --rebuild` |
-| `migrate` | 迁移工具 | `linglong migrate --from ~/.openclaw/workspace/memory/wiki/` |
-| `stats` | 统计信息 | `linglong stats` |
-| `template` | 模板管理 | `linglong template list` |
-| `archive` | 归档管理 | `linglong archive <id>` |
+| `search` | 搜索知识 | `linglong kb search "支付" --facet concept` |
+| `read` | 读取详情 | `linglong kb read <id>` |
+| `write` | 写入知识 | `linglong kb write --facet concept --title "..." --content "..."` |
+| `update` | 更新知识 | `linglong kb update <id> --append "补充内容"` |
+| `review` | 审核管理 | `linglong kb review --list-pending` |
+| `lint` | 健康巡检 | `linglong kb lint` |
+| `index` | 索引管理 | `linglong kb index --rebuild` |
+| `migrate` | 迁移工具 | `linglong kb migrate --from ~/.openclaw/workspace/memory/wiki/` |
+| `stats` | 统计信息 | `linglong kb stats` |
+| `template` | 模板管理 | `linglong kb template list` |
+| `archive` | 归档管理 | `linglong kb archive <id>` |
 
 ---
 
@@ -160,10 +160,10 @@ knowledge:
 ```mermaid
 flowchart TD
     Start([新电脑]) --> Install["pip install linglong"]
-    Install --> Init["linglong init --from-git &lt;repo&gt;<br/>或 linglong init --from-backup ~/backup/linglong/"]
-    Init --> Rebuild["linglong index --rebuild<br/>从 wiki 文件重建 SQLite + 向量索引"]
+    Install --> Init["linglong kb init --from-git &lt;repo&gt;<br/>或 linglong kb init --from-backup ~/backup/linglong/"]
+    Init --> Rebuild["linglong kb index --rebuild<br/>从 wiki 文件重建 SQLite + 向量索引"]
     Rebuild --> Setup["配置 MCP / CLI"]
-    Setup --> Verify["linglong stats<br/>验证知识库状态"]
+    Setup --> Verify["linglong kb stats<br/>验证知识库状态"]
     Verify --> Done([接入完成])
 
     style Start fill:#4CAF50,color:#fff
@@ -183,13 +183,13 @@ flowchart TD
 
 ```bash
 # 预览
-linglong migrate --from ~/.openclaw/workspace/memory/wiki/ --dry-run
+linglong kb migrate --from ~/.openclaw/workspace/memory/wiki/ --dry-run
 
 # 执行
-linglong migrate --from ~/.openclaw/workspace/memory/wiki/
+linglong kb migrate --from ~/.openclaw/workspace/memory/wiki/
 
 # 跳过索引更新（批量场景）
-linglong migrate --from ~/.openclaw/workspace/memory/wiki/ --no-index
+linglong kb migrate --from ~/.openclaw/workspace/memory/wiki/ --no-index
 ```
 
 ---

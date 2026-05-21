@@ -16,7 +16,7 @@
 ```mermaid
 graph TD
     subgraph CLI入口
-        CMD[linglong search]
+        CMD[linglong kb search]
     end
 
     subgraph 搜索路由
@@ -64,7 +64,7 @@ graph TD
 ### 模式 1：关键词搜索（默认）
 
 ```bash
-linglong search "支付系统"
+linglong kb search "支付系统"
 ```
 
 - **引擎**：SQLite FTS5
@@ -75,7 +75,7 @@ linglong search "支付系统"
 ### 模式 2：向量搜索
 
 ```bash
-linglong search "支付系统" --mode vector
+linglong kb search "支付系统" --mode vector
 ```
 
 - **引擎**：sqlite-vec + 远程 embedding 服务
@@ -86,7 +86,7 @@ linglong search "支付系统" --mode vector
 ### 模式 3：混合搜索
 
 ```bash
-linglong search "支付系统" --mode hybrid
+linglong kb search "支付系统" --mode hybrid
 ```
 
 - **引擎**：FTS5 + sqlite-vec + RRF (Reciprocal Rank Fusion)
@@ -97,7 +97,7 @@ linglong search "支付系统" --mode hybrid
 ### 自动模式（默认）
 
 ```bash
-linglong search "支付系统" --mode auto
+linglong kb search "支付系统" --mode auto
 ```
 
 逻辑：
@@ -111,16 +111,16 @@ linglong search "支付系统" --mode auto
 
 ```bash
 # 只搜概念
-linglong search "架构" --facet concept
+linglong kb search "架构" --facet concept
 
 # 只搜实体
-linglong search "OpenClaw" --facet entity
+linglong kb search "OpenClaw" --facet entity
 
 # 只搜经验
-linglong search "sqlite-vec" --facet experience
+linglong kb search "sqlite-vec" --facet experience
 
 # 组合过滤
-linglong search "支付" --facet concept --status auto_confirmed --created-by agent:openclaw
+linglong kb search "支付" --facet concept --status auto_confirmed --created-by agent:openclaw
 ```
 
 支持的过滤条件：
@@ -158,15 +158,15 @@ linglong search "支付" --facet concept --status auto_confirmed --created-by ag
 
 ```bash
 # 步骤 1：查看索引
-linglong index
+linglong kb index
 # → 返回 index.md 内容（各分类文件数 + 最近更新）
 
 # 步骤 2：查看分类索引
-linglong index --facet concept
+linglong kb index --facet concept
 # → 返回 index-concept.md 内容（概念列表 + 摘要）
 
 # 步骤 3：读取具体内容
-linglong read <entity-id>
+linglong kb read <entity-id>
 # → 返回完整 Entity 内容
 ```
 
@@ -177,7 +177,7 @@ linglong read <entity-id>
 ### 默认模式（on_demand）
 
 ```bash
-linglong search "支付系统"
+linglong kb search "支付系统"
 # → 返回：ID + 标题 + 摘要 + facet + 更新时间
 # 不自动加载完整内容
 ```
@@ -185,7 +185,7 @@ linglong search "支付系统"
 ### 深度模式（--deep）
 
 ```bash
-linglong search "支付系统" --deep
+linglong kb search "支付系统" --deep
 # → 返回：ID + 标题 + 摘要 + facet + 更新时间
 # + 自动加载 top 3 的完整内容
 ```
@@ -263,23 +263,23 @@ flowchart TD
 
 ```bash
 # 基本搜索
-linglong search "关键词"
+linglong kb search "关键词"
 
 # 指定 facet
-linglong search "架构" --facet concept
+linglong kb search "架构" --facet concept
 
 # 指定模式
-linglong search "支付" --mode hybrid
+linglong kb search "支付" --mode hybrid
 
 # 深度搜索（自动加载 top 3 完整内容）
-linglong search "支付" --deep
+linglong kb search "支付" --deep
 
 # 组合过滤
-linglong search "sqlite" --facet experience --status auto_confirmed --limit 5
+linglong kb search "sqlite" --facet experience --status auto_confirmed --limit 5
 
 # 查看索引
-linglong index
-linglong index --facet concept
+linglong kb index
+linglong kb index --facet concept
 ```
 
 ---

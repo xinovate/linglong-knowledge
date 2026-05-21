@@ -34,7 +34,7 @@ Codex CLI 的数据分布在多个位置：
 
 接入方式待定，取决于 Codex 的 MCP 支持情况：
 
-- **方案 A**：CLI 调用（`linglong search` / `linglong write`）
+- **方案 A**：CLI 调用（`linglong kb search` / `linglong kb write`）
 - **方案 B**：MCP 接入（如果 Codex 未来支持 MCP）
 
 ---

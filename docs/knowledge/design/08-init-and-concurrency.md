@@ -10,11 +10,11 @@
 
 ---
 
-## Part A：linglong init 初始化
+## Part A：linglong kb init 初始化
 
 ### 问题背景
 
-06-agent-integration 的"新电脑一键接入"流程提到了 `linglong init`，但没有详细设计。这是用户接触产品的**第一个命令**，必须可靠且清晰。
+06-agent-integration 的"新电脑一键接入"流程提到了 `linglong kb init`，但没有详细设计。这是用户接触产品的**第一个命令**，必须可靠且清晰。
 
 ---
 
@@ -22,12 +22,12 @@
 
 ```mermaid
 flowchart TD
-    Start([用户执行 linglong init]) --> Check{"已有<br/>~/linglong/?"}
+    Start([用户执行 linglong kb init]) --> Check{"已有<br/>~/linglong/?"}
 
     Check -->|"是"| Found["检测已有数据<br/>wiki/ + db/ + .linglong.yaml"]
     Found --> AskAction{"操作选择?"}
-    AskAction -->|"验证修复"| Verify["linglong init --repair<br/>检查并修复已有配置"]
-    AskAction -->|"重建索引"| Rebuild["linglong init --reindex<br/>从 wiki/ 重建 SQLite + 向量"]
+    AskAction -->|"验证修复"| Verify["linglong kb init --repair<br/>检查并修复已有配置"]
+    AskAction -->|"重建索引"| Rebuild["linglong kb init --reindex<br/>从 wiki/ 重建 SQLite + 向量"]
     AskAction -->|"中止"| Abort([退出])
 
     Check -->|"否"| Mode{"初始化模式?"}
@@ -61,7 +61,7 @@ flowchart TD
 #### 模式 1：裸初始化
 
 ```bash
-linglong init
+linglong kb init
 ```
 
 创建空知识库，适合从零开始。
@@ -104,7 +104,7 @@ linglong init
 #### 模式 2：从 Git 拉取
 
 ```bash
-linglong init --from-git https://github.com/user/my-wiki.git
+linglong kb init --from-git https://github.com/user/my-wiki.git
 ```
 
 适用场景：已有 wiki 文件托管在 Git 仓库。
@@ -131,7 +131,7 @@ my-wiki.git/
 #### 模式 3：从备份恢复
 
 ```bash
-linglong init --from-backup ~/backup/linglong-2026-05-10/
+linglong kb init --from-backup ~/backup/linglong-2026-05-10/
 ```
 
 适用场景：从 Time Machine / 手动备份恢复。
@@ -146,11 +146,11 @@ linglong init --from-backup ~/backup/linglong-2026-05-10/
 #### 模式 4：从 OpenClaw 迁移
 
 ```bash
-linglong init --from-openclaw
+linglong kb init --from-openclaw
 # 自动检测 ~/.openclaw/workspace/memory/wiki/
 ```
 
-等价于 `linglong migrate --from ~/.openclaw/workspace/memory/wiki/`。迁移逻辑见 06-agent-integration.md。
+等价于 `linglong kb migrate --from ~/.openclaw/workspace/memory/wiki/`。迁移逻辑见 06-agent-integration.md。
 
 ---
 
@@ -159,7 +159,7 @@ linglong init --from-openclaw
 首次初始化且无配置文件时，进入交互式配置：
 
 ```bash
-$ linglong init
+$ linglong kb init
 
 🔧 Linglong 知识库初始化
 
@@ -177,7 +177,7 @@ $ linglong init
 ✅ 索引已构建：0 条知识
 
 初始化完成。开始使用：
-  linglong write --facet concept --title "第一条知识" --content "Hello Linglong"
+  linglong kb write --facet concept --title "第一条知识" --content "Hello Linglong"
 ```
 
 ### 默认配置模板
@@ -219,7 +219,7 @@ knowledge:
 ### 初始化验证
 
 ```bash
-$ linglong init --verify
+$ linglong kb init --verify
 
 ✅ 目录结构：7 facet + archive
 ✅ 配置文件：~/linglong/.linglong.yaml
@@ -360,9 +360,9 @@ def update_entity(entity_id, new_content, expected_updated_at):
 Agent 工作流：
 
 ```
-1. Agent A: linglong read <id>        → 获得 content + updated_at
+1. Agent A: linglong kb read <id>        → 获得 content + updated_at
 2. Agent A: 基于内容生成更新
-3. Agent A: linglong update <id> --content "..." --expected-at "2026-05-14T10:30:00"
+3. Agent A: linglong kb update <id> --content "..." --expected-at "2026-05-14T10:30:00"
 4. 如果冲突 → 返回当前版本，Agent 决定合并或放弃
 ```
 
@@ -397,10 +397,10 @@ flowchart LR
 |------|----------|------|
 | wiki 文件 | 写了一半 | 检测 frontmatter 完整性，不完整则视为写入失败 |
 | SQLite | 事务回滚 | WAL 模式自动回滚未提交事务 |
-| 向量索引 | 可能不一致 | `linglong init --reindex` 重建 |
+| 向量索引 | 可能不一致 | `linglong kb init --reindex` 重建 |
 | 索引文件 | 可能过时 | lint 检测不一致并修复 |
 
-**降级处理**：如果索引更新失败（如进程中断），lint 会检测到"文件存在但未注册"的黄灯项，下次 `linglong lint --fix` 自动修复。
+**降级处理**：如果索引更新失败（如进程中断），lint 会检测到"文件存在但未注册"的黄灯项，下次 `linglong kb lint --fix` 自动修复。
 
 ---
 
@@ -408,15 +408,15 @@ flowchart LR
 
 ```bash
 # 初始化（四种模式）
-linglong init                              # 交互式裸初始化
-linglong init --from-git <repo>            # 从 Git 拉取
-linglong init --from-backup <dir>          # 从备份恢复
-linglong init --from-openclaw              # 从 OpenClaw 迁移
+linglong kb init                              # 交互式裸初始化
+linglong kb init --from-git <repo>            # 从 Git 拉取
+linglong kb init --from-backup <dir>          # 从备份恢复
+linglong kb init --from-openclaw              # 从 OpenClaw 迁移
 
 # 验证/修复
-linglong init --verify                     # 验证已有知识库状态
-linglong init --reindex                    # 从 wiki 文件重建 SQLite + 向量
-linglong init --repair                     # 修复损坏的配置/索引
+linglong kb init --verify                     # 验证已有知识库状态
+linglong kb init --reindex                    # 从 wiki 文件重建 SQLite + 向量
+linglong kb init --repair                     # 修复损坏的配置/索引
 
 # 并发相关配置
 # .linglong.yaml

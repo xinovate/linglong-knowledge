@@ -77,7 +77,7 @@ Codex ──────┘         ↓
 | PackageExecutor（并行执行） | v0.5 | ✅ | `5f6c43d` | 2026-05-12 |
 | Composer 自动发布（auto_publish → DispatchManager） | v0.8+ | ✅ | `be08313` | 2026-05-12 |
 | 全链路集成测试（ingest→knowledge→composer→dispatch） | v0.9 | ✅ | `b6281e6` | 2026-05-12 |
-| CLI 入口（linglong ingest/compose/publish/sync） | v0.9 | ✅ | `4ec1e16` | 2026-05-12 |
+| CLI 入口（linglong pipeline ingest/compose/publish/sync） | v0.9 | ✅ | `4ec1e16` | 2026-05-12 |
 | 多尺寸响应式图片（thumb/medium/large 变体生成） | v1.0 | ✅ | — | 2026-05-13 |
 | BlogTemplate 响应式 `<img srcset>` 输出 | v1.0 | ✅ | — | 2026-05-13 |
 | OSSUploader（阿里云 OSS 图片 CDN 上传） | v1.0 | ✅ | — | 2026-05-13 |

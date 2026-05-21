@@ -27,28 +27,28 @@
 
 ### 设计决策：write 检测重复时引导 update
 
-`linglong write` 保持**创建语义**。当检测到已存在相似 Entity 时，引导用户使用 `linglong update`：
+`linglong kb write` 保持**创建语义**。当检测到已存在相似 Entity 时，引导用户使用 `linglong kb update`：
 
 ```bash
 # 尝试写入
-linglong write --facet concept --title "微服务架构" --content "..."
+linglong kb write --facet concept --title "微服务架构" --content "..."
 
 # 如果检测到同名/相似 Entity，输出提示：
 ⚠️ 已存在相似条目：
   [concepts/microservice-arch.md] 微服务架构 (updated: 2026-05-10)
-  建议：linglong update concepts/microservice-arch.md --append "补充内容"
+  建议：linglong kb update concepts/microservice-arch.md --append "补充内容"
 
 # 如果确认要新建（不同角度）：
-linglong write --facet concept --title "微服务架构" --content "..." --force
+linglong kb write --facet concept --title "微服务架构" --content "..." --force
 ```
 
 ### 命令对比
 
 | 命令 | 语义 | 使用场景 |
 |------|------|----------|
-| `linglong write` | 创建新 Entity | 新知识、新主题 |
-| `linglong update` | 更新已有 Entity | 补充信息、修正内容、版本升级 |
-| `linglong write --force` | 强制创建（即使重复） | 同一主题的不同角度/来源 |
+| `linglong kb write` | 创建新 Entity | 新知识、新主题 |
+| `linglong kb update` | 更新已有 Entity | 补充信息、修正内容、版本升级 |
+| `linglong kb write --force` | 强制创建（即使重复） | 同一主题的不同角度/来源 |
 
 ---
 
@@ -57,7 +57,7 @@ linglong write --facet concept --title "微服务架构" --content "..." --force
 ```mermaid
 flowchart TD
     Start([触发更新]) --> Trigger{"触发方式?"}
-    Trigger -->|CLI 命令| CLI["linglong update &lt;id&gt;<br/>--content / --append / --metadata"]
+    Trigger -->|CLI 命令| CLI["linglong kb update &lt;id&gt;<br/>--content / --append / --metadata"]
     Trigger -->|"write 检测到重复"| Guide["提示使用 update"]
     Trigger -->|Agent 触发| Agent["Agent 按触发时机规则<br/>自动调用 update"]
 
@@ -99,7 +99,7 @@ flowchart TD
 整体替换 Entity 的 content 字段。适用于内容重写、重大修订。
 
 ```bash
-linglong update concepts/microservice-arch.md --content "# 微服务架构
+linglong kb update concepts/microservice-arch.md --content "# 微服务架构
 
 ## 更新后的完整内容
 ..."
@@ -116,7 +116,7 @@ linglong update concepts/microservice-arch.md --content "# 微服务架构
 在现有 content 末尾追加内容。适用于补充信息、添加章节。
 
 ```bash
-linglong update concepts/microservice-arch.md --append "
+linglong kb update concepts/microservice-arch.md --append "
 
 ## 2026-05-14 补充
 
@@ -135,13 +135,13 @@ linglong update concepts/microservice-arch.md --append "
 
 ```bash
 # 更新置信度
-linglong update <id> --metadata confidence=0.95
+linglong kb update <id> --metadata confidence=0.95
 
 # 添加标签
-linglong update <id> --metadata tags+=架构
+linglong kb update <id> --metadata tags+=架构
 
 # 修改状态
-linglong update <id> --metadata status=confirmed
+linglong kb update <id> --metadata status=confirmed
 ```
 
 ### 版本策略对比
@@ -205,7 +205,7 @@ flowchart TD
 
 ```bash
 # 查看版本历史
-linglong update <id> --history
+linglong kb update <id> --history
 
 # 输出：
 # v1 | 2026-05-10 | agent:openclaw | 初始创建
@@ -213,7 +213,7 @@ linglong update <id> --history
 # v3 | 2026-05-14 | agent:openclaw | 更新架构图（当前版本）
 
 # 查看特定版本内容
-linglong update <id> --show-version 2
+linglong kb update <id> --show-version 2
 ```
 
 ---
@@ -244,7 +244,7 @@ created_by: agent:openclaw
 ~/linglong/db/knowledge.db                        ← versions 表（历史版本，增值数据）
 ```
 
-`linglong index --rebuild` 时：
+`linglong kb index --rebuild` 时：
 - wiki 文件 → 重建 SQLite 主表 + 向量索引 ✅
 - versions 历史丢失 ⚠️（可接受，版本历史是增值数据，非核心）
 
@@ -299,26 +299,26 @@ def update(entity_id, new_content, expected_updated_at):
 
 ```bash
 # 替换内容（产生新版本）
-linglong update <id> --content "新内容"
-linglong update <id> --from-file updated.md
+linglong kb update <id> --content "新内容"
+linglong kb update <id> --from-file updated.md
 
 # 追加内容（不产生新版本）
-linglong update <id> --append "补充内容"
+linglong kb update <id> --append "补充内容"
 
 # 更新元数据
-linglong update <id> --metadata confidence=0.95
-linglong update <id> --metadata tags+=架构
-linglong update <id> --metadata status=confirmed
+linglong kb update <id> --metadata confidence=0.95
+linglong kb update <id> --metadata tags+=架构
+linglong kb update <id> --metadata status=confirmed
 
 # 查看版本历史
-linglong update <id> --history
-linglong update <id> --show-version 2
+linglong kb update <id> --history
+linglong kb update <id> --show-version 2
 
 # 跳过确认
-linglong update <id> --content "..." --yes
+linglong kb update <id> --content "..." --yes
 
 # 跳过索引更新
-linglong update <id> --content "..." --no-index
+linglong kb update <id> --content "..." --no-index
 ```
 
 ---

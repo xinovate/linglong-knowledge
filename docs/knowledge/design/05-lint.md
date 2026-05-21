@@ -17,9 +17,9 @@
 ```mermaid
 flowchart TD
     Start([触发巡检]) --> Trigger{"触发方式?"}
-    Trigger -->|手动| Manual["linglong lint"]
+    Trigger -->|手动| Manual["linglong kb lint"]
     Trigger -->|写入时| WriteHook["写入后自动检查<br/>（auto_lint）"]
-    Trigger -->|定期| Cron["linglong lint --daemon<br/>（lint_schedule）"]
+    Trigger -->|定期| Cron["linglong kb lint --daemon<br/>（lint_schedule）"]
 
     Manual --> Step1
     WriteHook --> Step1
@@ -146,13 +146,13 @@ flowchart TD
 ### 手动触发
 
 ```bash
-linglong lint                              # 完整巡检
-linglong lint --rule index_consistency     # 只检查索引一致性
-linglong lint --rule wikilinks             # 只检查 WikiLinks
-linglong lint --rule content_conflict      # 只检查内容冲突
-linglong lint --rule stale_content         # 只检查过期内容
-linglong lint --fix                        # 巡检 + 自动修复
-linglong lint --stale-days 30              # 自定义过期阈值（默认 90 天）
+linglong kb lint                              # 完整巡检
+linglong kb lint --rule index_consistency     # 只检查索引一致性
+linglong kb lint --rule wikilinks             # 只检查 WikiLinks
+linglong kb lint --rule content_conflict      # 只检查内容冲突
+linglong kb lint --rule stale_content         # 只检查过期内容
+linglong kb lint --fix                        # 巡检 + 自动修复
+linglong kb lint --stale-days 30              # 自定义过期阈值（默认 90 天）
 ```
 
 ### 写入时触发
@@ -164,7 +164,7 @@ knowledge:
   auto_lint: true
 ```
 
-开启后，每次 `linglong write` / `linglong update` 后会自动执行完整巡检，发现的问题通过日志输出。
+开启后，每次 `linglong kb write` / `linglong kb update` 后会自动执行完整巡检，发现的问题通过日志输出。
 
 ### 定期巡检
 
@@ -172,10 +172,10 @@ knowledge:
 
 ```bash
 # 方式 1：守护进程模式（常驻后台，按 lint_schedule 执行）
-linglong lint --daemon
+linglong kb lint --daemon
 
 # 方式 2：系统 cron 直接调用（执行一次后退出）
-linglong lint --run-scheduled
+linglong kb lint --run-scheduled
 ```
 
 ```yaml
@@ -228,19 +228,19 @@ knowledge:
 
 ```bash
 # 完整巡检
-linglong lint
+linglong kb lint
 
 # 只检查特定规则
-linglong lint --rule index_consistency  # 只检查索引一致性
-linglong lint --rule wikilinks          # 只检查 WikiLinks
-linglong lint --rule content_conflict   # 只检查内容冲突
-linglong lint --rule stale_content      # 只检查过期内容
+linglong kb lint --rule index_consistency  # 只检查索引一致性
+linglong kb lint --rule wikilinks          # 只检查 WikiLinks
+linglong kb lint --rule content_conflict   # 只检查内容冲突
+linglong kb lint --rule stale_content      # 只检查过期内容
 
 # 巡检 + 自动修复
-linglong lint --fix
+linglong kb lint --fix
 
 # 自定义过期阈值（默认 90 天）
-linglong lint --stale-days 30
+linglong kb lint --stale-days 30
 ```
 
 ---

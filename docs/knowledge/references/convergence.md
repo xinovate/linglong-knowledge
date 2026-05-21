@@ -78,7 +78,7 @@ flowchart LR
 | **来源哈希** | AKBP | 无 | Source 模型增加 content_hash，检测来源变更后触发重新审核 | **P3** |
 | **关系类型扩展** | ΩmegaWiki | 4 种 | 增加 `supersedes`、`derived_from`、`part_of` | **P3** |
 | **自动预加载** | MemGPT | `--deep` 手动 | 增加 `auto_deep_threshold` 配置，搜索置信度低时自动加载全文 | **P3** |
-| **知识体聚合** | claude-mem corpus | 无 | 在 `linglong search --deep` 中实现类似效果，不引入独立 corpus 概念 | **P3** |
+| **知识体聚合** | claude-mem corpus | 无 | 在 `linglong kb search --deep` 中实现类似效果，不引入独立 corpus 概念 | **P3** |
 
 ### P2 增强项详细说明
 
