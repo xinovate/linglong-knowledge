@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import functools
 import json
 import logging
 import sys
@@ -593,138 +594,212 @@ def cmd_template(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# Deprecated wrapper
+# ---------------------------------------------------------------------------
+
+
+def _deprecated(func, name, group):
+    """Wrap a command handler to print deprecation warning."""
+    @functools.wraps(func)
+    def wrapper(args):
+        print(f"⚠️  'linglong {name}' 已废弃，请使用 'linglong {group} {name}'", file=sys.stderr)
+        return func(args)
+    return wrapper
+
+
+# ---------------------------------------------------------------------------
+# Parser registration helpers
+# ---------------------------------------------------------------------------
+
+
+def _reg_write(sub):
+    p = sub.add_parser("write", help="写入知识条目")
+    p.add_argument("--facet", required=True,
+        choices=["source", "entity", "concept", "synthesis", "experience", "methodology", "personal"],
+        help="知识分类")
+    p.add_argument("--title", required=True, help="标题（用作文件名）")
+    p.add_argument("--content", default=None, help="内容文本")
+    p.add_argument("--from-file", default=None, help="从文件读取内容")
+    p.add_argument("--yes", action="store_true", help="跳过确认直接写入")
+    p.add_argument("--force", action="store_true", help="强制创建，即使存在相似条目")
+    p.add_argument("--no-index", action="store_true", help="跳过索引更新")
+    return p
+
+
+def _reg_read(sub):
+    p = sub.add_parser("read", help="读取知识条目")
+    p.add_argument("entity_id", help="Entity ID")
+    p.add_argument("--path", default=None, help="按文件路径读取")
+    p.add_argument("--format", choices=["json", "markdown"], default="markdown", help="输出格式")
+    return p
+
+
+def _reg_search(sub):
+    p = sub.add_parser("search", help="搜索知识条目")
+    p.add_argument("query", nargs="?", default=None, help="搜索关键词")
+    p.add_argument("--facet", default=None, help="按分类过滤")
+    p.add_argument("--mode", choices=["keyword", "vector", "hybrid", "auto"], default="auto", help="搜索模式")
+    p.add_argument("--deep", action="store_true", help="加载完整内容")
+    p.add_argument("--limit", type=int, default=10, help="结果数量")
+    p.add_argument("--status", default=None, help="按状态过滤")
+    p.add_argument("--created-by", default=None, help="按创建者过滤")
+    p.add_argument("--since", default=None, help="起始日期 (YYYY-MM-DD)")
+    p.add_argument("--format", choices=["table", "json"], default="table", help="输出格式")
+    return p
+
+
+def _reg_update(sub):
+    p = sub.add_parser("update", help="更新知识条目")
+    p.add_argument("entity_id", help="Entity ID")
+    p.add_argument("--content", default=None, help="替换内容")
+    p.add_argument("--from-file", default=None, help="从文件读取替换内容")
+    p.add_argument("--append", default=None, help="追加内容")
+    p.add_argument("--metadata", nargs="*", default=None, help="更新元数据 key=value")
+    p.add_argument("--history", action="store_true", help="查看版本历史")
+    p.add_argument("--show-version", type=int, default=None, help="查看指定版本")
+    p.add_argument("--yes", action="store_true", help="跳过确认")
+    p.add_argument("--no-index", action="store_true", help="跳过索引更新")
+    return p
+
+
+def _reg_archive(sub):
+    p = sub.add_parser("archive", help="归档知识条目")
+    p.add_argument("entity_id", nargs="?", default=None, help="Entity ID")
+    p.add_argument("--older-than", default=None, help="归档超过 N 天的条目 (如 90d)")
+    return p
+
+
+def _reg_review(sub):
+    p = sub.add_parser("review", help="审核管理")
+    p.add_argument("--list-pending", action="store_true", help="列出待审核条目")
+    p.add_argument("--approve", default=None, metavar="ID", help="批准条目")
+    p.add_argument("--reject", default=None, metavar="ID", help="拒绝条目")
+    return p
+
+
+def _reg_lint(sub):
+    p = sub.add_parser("lint", help="巡检知识库")
+    p.add_argument("--stale-days", type=int, default=90, help="过期天数阈值")
+    p.add_argument("--check", default=None,
+        choices=["index", "links", "conflicts", "stale", "orphans"],
+        help="指定检查项：index（索引一致性）、links（死链）、conflicts（内容冲突）、stale（过期内容）、orphans（孤儿资源）")
+    p.add_argument("--rule", default=None,
+        choices=["index_consistency", "wikilinks", "content_conflict", "stale_content"],
+        help="已废弃，请使用 --check")
+    p.add_argument("--fix", action="store_true", help="自动修复可修复的问题")
+    p.add_argument("--daemon", action="store_true", help="后台守护进程模式，按 lint_schedule 定时巡检")
+    p.add_argument("--run-scheduled", action="store_true", help="立即执行一次巡检并退出（用于系统 cron 调用）")
+    return p
+
+
+def _reg_index(sub):
+    p = sub.add_parser("index", help="生成知识库索引")
+    p.add_argument("--rebuild", action="store_true", help="重建所有索引")
+    p.add_argument("--facet", default=None, help="只生成指定分面的索引")
+    return p
+
+
+def _reg_stats(sub):
+    return sub.add_parser("stats", help="知识库统计")
+
+
+def _reg_template(sub):
+    p = sub.add_parser("template", help="管理知识条目模板")
+    p.add_argument("action", choices=["list", "get"], help="操作：list 列出模板，get 获取模板内容")
+    p.add_argument("facet", nargs="?", default=None, help="模板分类（get 时使用）")
+    return p
+
+
+def _reg_init(sub):
+    p = sub.add_parser("init", help="初始化知识库")
+    p.add_argument("--from-backup", default=None, help="从备份目录恢复")
+    p.add_argument("--from-openclaw", action="store_true", help="从 OpenClaw wiki 导入")
+    p.add_argument("--from-git", default=None, metavar="URL", dest="from_git", help="从 Git 仓库初始化")
+    p.add_argument("--interactive", "-i", action="store_true", help="交互式配置向导")
+    return p
+
+
+def _reg_migrate(sub):
+    p = sub.add_parser("migrate", help="从外部 wiki 迁移")
+    p.add_argument("--from", required=True, metavar="DIR", dest="source_dir", help="源 wiki 目录")
+    p.add_argument("--dry-run", action="store_true", help="预览不执行")
+    return p
+
+
+def _reg_sync(sub):
+    p = sub.add_parser("sync", help="同步 Agent 知识")
+    p.add_argument("source", choices=["openclaw", "claude", "codex"], help="Source to sync")
+    p.add_argument("--path", default=None, help="Override source path")
+    return p
+
+
+def _reg_ingest(sub):
+    return sub.add_parser("ingest", help="Run ingest packages")
+
+
+def _reg_compose(sub):
+    p = sub.add_parser("compose", help="Run composer pipeline")
+    p.add_argument("--dry-run", action="store_true", help="Dry run mode")
+    p.add_argument("--draft", action="store_true", help="Draft mode")
+    return p
+
+
+def _reg_publish(sub):
+    p = sub.add_parser("publish", help="Publish a draft")
+    p.add_argument("draft_id", help="Draft ID to publish")
+    p.add_argument("--publisher", default=None, help="Publisher name")
+    return p
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="linglong", description="Linglong cross-agent knowledge hub")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    # ingest
-    ingest_parser = sub.add_parser("ingest", help="Run ingest packages")
-    ingest_parser.set_defaults(func=cmd_ingest)
+    # ========== kb group ==========
+    kb_parser = sub.add_parser("kb", help="知识库管理")
+    kb_sp = kb_parser.add_subparsers(dest="kb_sub", required=True)
 
-    # compose
-    compose_parser = sub.add_parser("compose", help="Run composer pipeline")
-    compose_parser.add_argument("--dry-run", action="store_true", help="Dry run mode")
-    compose_parser.add_argument("--draft", action="store_true", help="Draft mode")
-    compose_parser.set_defaults(func=cmd_compose)
+    _reg_write(kb_sp).set_defaults(func=cmd_write)
+    _reg_read(kb_sp).set_defaults(func=cmd_read)
+    _reg_search(kb_sp).set_defaults(func=cmd_search)
+    _reg_update(kb_sp).set_defaults(func=cmd_update)
+    _reg_archive(kb_sp).set_defaults(func=cmd_archive)
+    _reg_review(kb_sp).set_defaults(func=cmd_review)
+    _reg_lint(kb_sp).set_defaults(func=cmd_lint)
+    _reg_index(kb_sp).set_defaults(func=cmd_index)
+    _reg_stats(kb_sp).set_defaults(func=cmd_stats)
+    _reg_template(kb_sp).set_defaults(func=cmd_template)
+    _reg_init(kb_sp).set_defaults(func=cmd_init)
+    _reg_migrate(kb_sp).set_defaults(func=cmd_migrate)
+    _reg_sync(kb_sp).set_defaults(func=cmd_sync)
 
-    # publish
-    publish_parser = sub.add_parser("publish", help="Publish a draft")
-    publish_parser.add_argument("draft_id", help="Draft ID to publish")
-    publish_parser.add_argument("--publisher", default=None, help="Publisher name")
-    publish_parser.set_defaults(func=cmd_publish)
+    # ========== pipeline group ==========
+    pipe_parser = sub.add_parser("pipeline", help="内容生产流水线")
+    pipe_sp = pipe_parser.add_subparsers(dest="pipe_sub", required=True)
 
-    # sync
-    sync_parser = sub.add_parser("sync", help="Sync agent knowledge")
-    sync_parser.add_argument("source", choices=["openclaw", "claude", "codex"], help="Source to sync")
-    sync_parser.add_argument("--path", default=None, help="Override source path")
-    sync_parser.set_defaults(func=cmd_sync)
+    _reg_ingest(pipe_sp).set_defaults(func=cmd_ingest)
+    _reg_compose(pipe_sp).set_defaults(func=cmd_compose)
+    _reg_publish(pipe_sp).set_defaults(func=cmd_publish)
 
-    # --- 知识库命令 ---
-
-    # write
-    write_parser = sub.add_parser("write", help="写入知识条目")
-    write_parser.add_argument("--facet", required=True,
-        choices=["source", "entity", "concept", "synthesis", "experience", "methodology", "personal"],
-        help="知识分类")
-    write_parser.add_argument("--title", required=True, help="标题（用作文件名）")
-    write_parser.add_argument("--content", default=None, help="内容文本")
-    write_parser.add_argument("--from-file", default=None, help="从文件读取内容")
-    write_parser.add_argument("--yes", action="store_true", help="跳过确认直接写入")
-    write_parser.add_argument("--force", action="store_true", help="强制创建，即使存在相似条目")
-    write_parser.add_argument("--no-index", action="store_true", help="跳过索引更新")
-    write_parser.set_defaults(func=cmd_write)
-
-    # read
-    read_parser = sub.add_parser("read", help="读取知识条目")
-    read_parser.add_argument("entity_id", help="Entity ID")
-    read_parser.add_argument("--path", default=None, help="按文件路径读取")
-    read_parser.add_argument("--format", choices=["json", "markdown"], default="markdown", help="输出格式")
-    read_parser.set_defaults(func=cmd_read)
-
-    # search
-    search_parser = sub.add_parser("search", help="搜索知识条目")
-    search_parser.add_argument("query", nargs="?", default=None, help="搜索关键词")
-    search_parser.add_argument("--facet", default=None, help="按分类过滤")
-    search_parser.add_argument("--mode", choices=["keyword", "vector", "hybrid", "auto"], default="auto", help="搜索模式")
-    search_parser.add_argument("--deep", action="store_true", help="加载完整内容")
-    search_parser.add_argument("--limit", type=int, default=10, help="结果数量")
-    search_parser.add_argument("--status", default=None, help="按状态过滤")
-    search_parser.add_argument("--created-by", default=None, help="按创建者过滤")
-    search_parser.add_argument("--since", default=None, help="起始日期 (YYYY-MM-DD)")
-    search_parser.add_argument("--format", choices=["table", "json"], default="table", help="输出格式")
-    search_parser.set_defaults(func=cmd_search)
-
-    # update
-    update_parser = sub.add_parser("update", help="更新知识条目")
-    update_parser.add_argument("entity_id", help="Entity ID")
-    update_parser.add_argument("--content", default=None, help="替换内容")
-    update_parser.add_argument("--from-file", default=None, help="从文件读取替换内容")
-    update_parser.add_argument("--append", default=None, help="追加内容")
-    update_parser.add_argument("--metadata", nargs="*", default=None, help="更新元数据 key=value")
-    update_parser.add_argument("--history", action="store_true", help="查看版本历史")
-    update_parser.add_argument("--show-version", type=int, default=None, help="查看指定版本")
-    update_parser.add_argument("--yes", action="store_true", help="跳过确认")
-    update_parser.add_argument("--no-index", action="store_true", help="跳过索引更新")
-    update_parser.set_defaults(func=cmd_update)
-
-    # review
-    review_parser = sub.add_parser("review", help="审核管理")
-    review_parser.add_argument("--list-pending", action="store_true", help="列出待审核条目")
-    review_parser.add_argument("--approve", default=None, metavar="ID", help="批准条目")
-    review_parser.add_argument("--reject", default=None, metavar="ID", help="拒绝条目")
-    review_parser.set_defaults(func=cmd_review)
-
-    # archive
-    archive_parser = sub.add_parser("archive", help="归档知识条目")
-    archive_parser.add_argument("entity_id", nargs="?", default=None, help="Entity ID")
-    archive_parser.add_argument("--older-than", default=None, help="归档超过 N 天的条目 (如 90d)")
-    archive_parser.set_defaults(func=cmd_archive)
-
-    # lint
-    lint_parser = sub.add_parser("lint", help="巡检知识库")
-    lint_parser.add_argument("--stale-days", type=int, default=90, help="过期天数阈值")
-    lint_parser.add_argument("--check", default=None,
-        choices=["index", "links", "conflicts", "stale", "orphans"],
-        help="指定检查项：index（索引一致性）、links（死链）、conflicts（内容冲突）、stale（过期内容）、orphans（孤儿资源）")
-    lint_parser.add_argument("--rule", default=None,
-        choices=["index_consistency", "wikilinks", "content_conflict", "stale_content"],
-        help="已废弃，请使用 --check")
-    lint_parser.add_argument("--fix", action="store_true", help="自动修复可修复的问题")
-    lint_parser.add_argument("--daemon", action="store_true", help="后台守护进程模式，按 lint_schedule 定时巡检")
-    lint_parser.add_argument("--run-scheduled", action="store_true", help="立即执行一次巡检并退出（用于系统 cron 调用）")
-    lint_parser.set_defaults(func=cmd_lint)
-
-    # index
-    index_parser = sub.add_parser("index", help="生成知识库索引")
-    index_parser.add_argument("--rebuild", action="store_true", help="重建所有索引")
-    index_parser.add_argument("--facet", default=None, help="只生成指定分面的索引")
-    index_parser.set_defaults(func=cmd_index)
-
-    # stats
-    stats_parser = sub.add_parser("stats", help="知识库统计")
-    stats_parser.set_defaults(func=cmd_stats)
-
-    # template
-    template_parser = sub.add_parser("template", help="管理知识条目模板")
-    template_parser.add_argument("action", choices=["list", "get"], help="操作：list 列出模板，get 获取模板内容")
-    template_parser.add_argument("facet", nargs="?", default=None, help="模板分类（get 时使用）")
-    template_parser.set_defaults(func=cmd_template)
-
-    # init
-    init_parser = sub.add_parser("init", help="初始化知识库")
-    init_parser.add_argument("--from-backup", default=None, help="从备份目录恢复")
-    init_parser.add_argument("--from-openclaw", action="store_true", help="从 OpenClaw wiki 导入")
-    init_parser.add_argument("--from-git", default=None, metavar="URL", dest="from_git", help="从 Git 仓库初始化")
-    init_parser.add_argument("--interactive", "-i", action="store_true", help="交互式配置向导")
-    init_parser.set_defaults(func=cmd_init)
-
-    # migrate
-    migrate_parser = sub.add_parser("migrate", help="从外部 wiki 迁移")
-    migrate_parser.add_argument("--from", required=True, metavar="DIR", dest="source_dir",
-                                help="源 wiki 目录")
-    migrate_parser.add_argument("--dry-run", action="store_true", help="预览不执行")
-    migrate_parser.set_defaults(func=cmd_migrate)
+    # ========== deprecated top-level aliases ==========
+    _reg_write(sub).set_defaults(func=_deprecated(cmd_write, "write", "kb"))
+    _reg_read(sub).set_defaults(func=_deprecated(cmd_read, "read", "kb"))
+    _reg_search(sub).set_defaults(func=_deprecated(cmd_search, "search", "kb"))
+    _reg_update(sub).set_defaults(func=_deprecated(cmd_update, "update", "kb"))
+    _reg_archive(sub).set_defaults(func=_deprecated(cmd_archive, "archive", "kb"))
+    _reg_review(sub).set_defaults(func=_deprecated(cmd_review, "review", "kb"))
+    _reg_lint(sub).set_defaults(func=_deprecated(cmd_lint, "lint", "kb"))
+    _reg_index(sub).set_defaults(func=_deprecated(cmd_index, "index", "kb"))
+    _reg_stats(sub).set_defaults(func=_deprecated(cmd_stats, "stats", "kb"))
+    _reg_template(sub).set_defaults(func=_deprecated(cmd_template, "template", "kb"))
+    _reg_init(sub).set_defaults(func=_deprecated(cmd_init, "init", "kb"))
+    _reg_migrate(sub).set_defaults(func=_deprecated(cmd_migrate, "migrate", "kb"))
+    _reg_sync(sub).set_defaults(func=_deprecated(cmd_sync, "sync", "kb"))
+    _reg_ingest(sub).set_defaults(func=_deprecated(cmd_ingest, "ingest", "pipeline"))
+    _reg_compose(sub).set_defaults(func=_deprecated(cmd_compose, "compose", "pipeline"))
+    _reg_publish(sub).set_defaults(func=_deprecated(cmd_publish, "publish", "pipeline"))
 
     args = parser.parse_args(argv)
     return args.func(args)
