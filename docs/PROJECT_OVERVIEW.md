@@ -97,6 +97,7 @@ Codex ──────┘         ↓
 | v1.0 端到端验证（ingest → compose → publish 16 篇） | v1.0 | ✅ | — | 2026-05-21 |
 | write --force + update --from-file | v1.0 | ✅ | `b657ec3` | 2026-05-21 |
 | 设计文档审计对齐（D-03~D-10 全部 ✅） | v1.0 | ✅ | `b657ec3` | 2026-05-21 |
+| CLI 子命令分组重构（kb + pipeline + deprecated 别名） | v1.0 | ✅ | `23fefcd` | 2026-05-21 |
 
 ---
 
@@ -138,11 +139,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
+| `47e3440` | docs: CLI 命令迁移到 kb/pipeline 分组格式（24 文件） | 2026-05-21 |
+| `23fefcd` | refactor(cli): 子命令分组重构 — kb + pipeline | 2026-05-21 |
+| `0023ec4` | docs: 更新日志、PROJECT_OVERVIEW（v1.0 验证通过、v2.0 延后项） | 2026-05-21 |
 | `b657ec3` | feat(cli): write --force + update --from-file；设计文档审计对齐 | 2026-05-21 |
 | `343b698` | docs: 合并 tracking/ 到 journal + design，更新 PROJECT_OVERVIEW | 2026-05-21 |
-| `e10403b` | feat(search): RRF 混合搜索 + 自动模式，变动日志增强，SyncAdapter 精简 | 2026-05-21 |
-| `aab2cce` | docs(knowledge): 新增知识库定位与边界、Agent 接入概述 | 2026-05-21 |
-| `0c79114` | docs(agents): OpenClaw Phase 0+2 验证记录、三方接入指南、文档规整 | 2026-05-21 |
 
 ---
 
