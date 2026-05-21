@@ -51,7 +51,7 @@
 | Agent | 接入方式 | 状态 |
 |-------|----------|------|
 | Claude Code | MCP | ✅ 已接入 |
-| OpenClaw (violet) | MCP | 🟡 接入中 |
+| OpenClaw (violet) | MCP | ✅ 已接入 |
 | Codex CLI | CLI | ⚪ 预留 |
 
 详细接入方案见 [三方接入指南](agents/01-onboarding.md)。

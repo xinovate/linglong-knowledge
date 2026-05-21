@@ -37,7 +37,7 @@ Codex ──────┘         ↓
 | v0.7 | composer 产品化 | 🟠 v2.0 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
 | v0.8 | **dispatch 正式化** | ✅ 已完成 | DispatchManager、LocalPublisher、HexoPublisher、集成测试 | 2026-05-12 |
 | v0.9 | 稳定化 | ✅ 已完成 | CLI 入口、全链路集成测试、composer→dispatch 流水线 | 2026-05-12 |
-| **v1.0** | **博客流水线** | 🟡 开发中 | 多尺寸响应式图片、OSS CDN 上传、URL 列表驱动、随机选择+去重 | — |
+| **v1.0** | **博客流水线 + 知识库成熟** | 🟡 收官中 | MCP Server 9 工具、RRF 混合搜索、lint 巡检增强、Agent 接入、图片管线、OSS CDN | — |
 | **v2.0** | **产品化** | 🔴 未开始 | WebSearchAdapter、发布队列与重试、多模板、AI 封面图、API 冻结 | — |
 
 ---
@@ -88,6 +88,12 @@ Codex ──────┘         ↓
 | MCP 搜索返回质量优化（summary 优先 + 500 字符） | v1.0 | ✅ | — | 2026-05-20 |
 | MCP 模板体系（9 个 facet 模板 + get_template） | v1.0 | ✅ | — | 2026-05-20 |
 | 文件名格式 slug-ID 后缀调整 | v1.0 | ✅ | `8b7a84f` | 2026-05-20 |
+| Lint 巡检增强（孤儿检测 + 语义去重 + 定期调度 + --check 过滤） | v1.0 | ✅ | `2ab07ec` | 2026-05-21 |
+| RRF 混合搜索 + 自动模式路由 + 变动日志增强 | v1.0 | ✅ | `e10403b` | 2026-05-21 |
+| OpenClaw MCP 集成 Phase 0-2（extraPaths + MCP CRUD + 配置迁移） | v1.0 | ✅ | `0c79114` | 2026-05-21 |
+| Agent 三方接入指南（快速/深度/移除） | v1.0 | ✅ | `0c79114` | 2026-05-21 |
+| OpenClawSyncAdapter 移除 memory 模式（只保留 wiki 同步） | v1.0 | ✅ | `e10403b` | 2026-05-21 |
+| index --rebuild 增加向量化重建 | v1.0 | ✅ | `e10403b` | 2026-05-21 |
 
 ---
 
@@ -95,13 +101,16 @@ Codex ──────┘         ↓
 
 | 模块 | 单元测试 | 集成测试 | E2E | 总评 |
 |------|---------|---------|-----|------|
-| `core/` | ✅ 10 个 | — | — | ✅ |
+| `core/` | ✅ 25 个 | — | — | ✅ |
 | `ingest/` | ✅ 20 个 | ✅ 1 个 | — | ✅ |
-| `knowledge/` | ✅ 36 个 | — | — | ✅ |
+| `knowledge/` | ✅ 102 个 | — | — | ✅ |
 | `composer/` | ✅ 63 个 | ✅ 1 个 | — | ✅ |
-| `dispatch/` | ✅ 20 个 | ✅ 1 个 | — | ✅ |
-| `mcp/` | ✅ 16 个 | — | — | ✅ |
-| `integration/` | — | — | ✅ 1 个 | ✅ |
+| `dispatch/` | ✅ 19 个 | ✅ 1 个 | — | ✅ |
+| `mcp/` | ✅ 20 个 | — | — | ✅ |
+| `cli/` | ✅ 26 个 | — | — | ✅ |
+| `integration/` | — | — | ✅ 2 个 | ✅ |
+
+**总计：277 个测试**
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
 
@@ -112,11 +121,11 @@ Codex ──────┘         ↓
 | 问题 | 严重度 | 状态 | 计划版本 | 详情 |
 |------|--------|------|----------|------|
 | WebSearchAdapter 未实现实际搜索 | 🟡 中 | 待实现 | v2.0 | DuckDuckGo/Bing CN 搜索需外部依赖 |
-| 短期→长期记忆转换未实现 | 🟡 中 | 待实现 | v2.0 | MEMORY.md 规则：任务完成后自动迁移到 wiki |
 | 发布队列与失败重试 | 🟡 中 | 待实现 | v2.0 | DispatchManager 当前直连发布，无队列和重试 |
-| 向量搜索增强（混合搜索/MMR/时间衰减） | 🟡 低 | 待实现 | v2.0 | 当前仅基础 cosine 相似度 |
-| `datetime.utcnow()` 已弃用 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 全局替换为 `datetime.now(UTC)`，237 测试通过 |
-| MCP Server 读写接入 | 🟡 中 | ✅ 已完成 | v1.0 | Claude Code 通过 MCP 工具查询/写入知识库 |
+| `datetime.utcnow()` 已弃用 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 全局替换为 `datetime.now(UTC)`，277 测试通过 |
+| MCP Server 读写接入 | ~~🟡 中~~ | ✅ 已完成 | v1.0 | 9 个 MCP 工具，Claude Code + OpenClaw 已接入 |
+| 向量搜索增强（混合搜索/自动模式） | ~~🟡 低~~ | ✅ 已完成 | v1.0 | RRF 混合搜索 + 自动模式路由，277 测试通过 |
+| OpenClaw MCP 集成 | ~~🟡 中~~ | ✅ 已完成 | v1.0 | Phase 0-2 验证通过，MCP CRUD 全链路可用 |
 
 完整债务清单 → [operations.md](operations.md)
 
@@ -126,13 +135,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
-| `715d3c6` | feat(composer): add image asset pipeline and .linglong.yaml config support | 2026-05-13 |
-| `7ce12fc` | docs: sync PROJECT_OVERVIEW, modules.md, v1.0 roadmap for pipeline completion | 2026-05-12 |
-| `4ec1e16` | feat(cli): add linglong CLI with ingest/compose/publish/sync commands | 2026-05-12 |
-| `b6281e6` | test(integration): add end-to-end ingest→knowledge→composer→dispatch test | 2026-05-12 |
-| `be08313` | feat(composer): auto-publish dispatch-ready articles via DispatchManager | 2026-05-12 |
-
-> 本地未提交变更：多尺寸图片管线、OSS CDN 上传、响应式 HTML 输出、命名一致性修复
+| `e10403b` | feat(search): RRF 混合搜索 + 自动模式，变动日志增强，SyncAdapter 精简 | 2026-05-21 |
+| `aab2cce` | docs(knowledge): 新增知识库定位与边界、Agent 接入概述 | 2026-05-21 |
+| `0c79114` | docs(agents): OpenClaw Phase 0+2 验证记录、三方接入指南、文档规整 | 2026-05-21 |
+| `2ab07ec` | feat(lint): 巡检增强 — 孤儿检测、语义去重、定期调度、--check 过滤 | 2026-05-21 |
+| `fa8e98d` | feat(mcp): 新增模板体系，9 个 facet 模板 + get_template/list_templates 工具 | 2026-05-20 |
 
 ---
 
@@ -140,11 +147,9 @@ Codex ──────┘         ↓
 
 按优先级排序：
 
-1. ✅ **v1.0 配图系统** — ImageAssetFetcher + ImageAssetSelector + PageImageResolver 已集成
-2. ✅ **v1.0 多尺寸图片** — thumb/medium/large 变体生成 + 响应式 srcset 输出
-3. ✅ **v1.0 OSS CDN** — OSSUploader 阿里云图片上传 + CDN URL 替换
-4. ✅ **v1.0 文档更新** — CLAUDE.md、README.md、docs 重组、tech-debt 等已同步
-5. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish（管道已通，内容质量待改进）
+1. 🟡 **v1.0 端到端验证** — 跑通完整链路：sync → ingest → compose → publish（管道已通，内容质量待改进）
+2. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
+3. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
 
 **v2.0 延后项**（非阻塞）：
 - WebSearchAdapter 实际搜索
@@ -152,7 +157,6 @@ Codex ──────┘         ↓
 - 多模板（早报/周报/PPT/视频脚本）
 - AI 封面图生成
 - 跨 Agent 写入冲突解决
-- API 冻结、mypy strict（datetime.utcnow() 已修复）
-- MCP Server 扩展更多工具（update_entity、delete_entity）
+- API 冻结、mypy strict
 
 详细计划 → [版本路线图](roadmap.md)
