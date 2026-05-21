@@ -18,7 +18,7 @@
 
 | Agent | 接入方式 | 状态 | 详细方案 |
 |-------|----------|------|----------|
-| OpenClaw (violet) | MCP 优先 | 🟡 规划中 | [agents/openclaw.md](../agents/openclaw.md) |
+| OpenClaw (violet) | MCP 优先 | 🟡 接入中 | [agents/openclaw.md](../agents/openclaw.md) |
 | Claude Code | MCP | ✅ 已接入 | [agents/claude-code.md](../agents/claude-code.md) |
 | Codex CLI | CLI | ⚪ 预留 | [agents/codex.md](../agents/codex.md) |
 
@@ -217,6 +217,7 @@ linglong migrate --from ~/.openclaw/workspace/memory/wiki/ --no-index
 | 文档 | 关系 |
 |------|------|
 | [Agent 接入总览](../agents/00-overview.md) | 各 Agent 接入方案的统一入口 |
+| [三方接入指南](../agents/01-onboarding.md) | 快速/深度/移除接入方案 |
 | [D-03 写入设计](03-write-path.md) | 写入流程、确认模式 |
 | [D-04 搜索设计](04-search.md) | 搜索命令、模式选择 |
 | [D-05 巡检设计](05-lint.md) | lint 命令、报告格式 |

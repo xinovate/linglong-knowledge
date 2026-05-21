@@ -5,6 +5,17 @@
 
 ---
 
+## 文档索引
+
+| 文档 | 内容 |
+|------|------|
+| [01-onboarding.md](01-onboarding.md) | 三方接入指南（快速/深度/移除） |
+| [claude-code.md](claude-code.md) | Claude Code 接入详情 |
+| [openclaw.md](openclaw.md) | OpenClaw 接入详情 |
+| [codex.md](codex.md) | Codex CLI 预留 |
+
+---
+
 ## 接入架构
 
 ```mermaid
@@ -46,7 +57,7 @@ graph TD
 
 | Agent | 接入方式 | 同步适配器 | 状态 | 方案 |
 |-------|----------|-----------|------|------|
-| OpenClaw (violet) | MCP 优先 | `OpenClawSyncAdapter` | 🟡 规划中 | [openclaw.md](openclaw.md) |
+| OpenClaw (violet) | MCP 优先 | `OpenClawSyncAdapter` | 🟡 接入中 | [openclaw.md](openclaw.md) |
 | Claude Code | MCP | `ClaudeCodeSyncAdapter` | ✅ 已接入 | [claude-code.md](claude-code.md) |
 | Codex CLI | CLI | `CodexSyncAdapter` | ⚪ 预留 | [codex.md](codex.md) |
 
