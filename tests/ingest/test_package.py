@@ -8,7 +8,7 @@ from linglong.ingest.package import SourcePackage, VerificationSettings
 
 def test_load_ai_morning_brief_package():
     """Load the example AI morning brief package."""
-    package = SourcePackage.from_yaml("examples/packages/ai-morning-brief.yaml")
+    package = SourcePackage.from_yaml("docs/examples/packages/ai-morning-brief.yaml")
     assert package.name == "AI Morning Brief"
     assert package.topic == "artificial-intelligence"
     assert len(package.sources) == 4

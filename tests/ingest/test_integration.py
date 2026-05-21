@@ -18,7 +18,7 @@ def mock_store():
 @pytest.mark.asyncio
 async def test_end_to_end_package_execution(mock_store):
     """Full flow: package YAML → executor → store calls."""
-    package = SourcePackage.from_yaml("examples/packages/ai-morning-brief.yaml")
+    package = SourcePackage.from_yaml("docs/examples/packages/ai-morning-brief.yaml")
     # 禁用 web_fetch 和 api 避免网络调用
     for source in package.sources:
         if source.type != "rss":
