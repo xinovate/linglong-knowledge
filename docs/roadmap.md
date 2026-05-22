@@ -32,13 +32,24 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 - ✅ CLI kb/pipeline 分组重构
 - ✅ 277 测试全通过
 
-### ingest v1.1（解耦 + MCP 化）
+### ingest v1.1（解耦 + MCP 化）— ✅ 已完成
 
-- 🔴 解耦 KnowledgeStore：移除 `rss.py`、`executor.py` 中的 store 参数，返回 `list[Entity]`
-- 🔴 移除 ReviewEngine 耦合：采集不做审核，原始数据返回给调用方
-- 🔴 移除 `agent:ingest` created_by
-- 🔴 新增 ingest MCP 工具：`fetch_rss`、`execute_package`
-- 🔴 CLI deprecated 残留清理
+- ✅ 解耦 KnowledgeStore：移除 `rss.py`、`executor.py` 中的 store 参数，返回 `list[Entity]`
+- ✅ 移除 ReviewEngine 耦合：采集不做审核，原始数据返回给调用方
+- ✅ 移除 `agent:ingest` created_by
+- ✅ 新增 ingest MCP 工具：`fetch_rss`、`execute_package`（共 11 个）
+- ✅ CLI 扁平化（ingest/compose/publish 顶级命令 + deprecated 全清）
+- ✅ 279 测试通过
+
+### ingest v1.2（早报能力对齐）
+
+- 🔴 WebSearchAdapter（Playwright + Google / web_fetch + 必应 CN）
+- 🔴 ingest_history 表 + 每日结果持久化
+- 🔴 消息去重（同天合并 + 跨天旧闻跳过）
+- 🔴 维度精选 filter（YAML 包按维度配置 max_results/max_age_days）
+- 🔴 格式化模板（早报 markdown 输出）
+- 🔴 YAML 包结构增强（dimensions/search/filter/output/dedup）
+- 设计文档：`docs/ingest/design/00-overview.md`
 
 ### composer v1.1（可用化）
 
