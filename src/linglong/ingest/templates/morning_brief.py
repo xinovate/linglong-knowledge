@@ -14,6 +14,7 @@ _DIMENSION_EMOJI: dict[str, str] = {
     "国家政策": "📋",
     "开源趋势": "⭐",
     "应用落地": "🚀",
+    "AI 动态": "🤖",
 }
 
 # Dimension → table column headers
@@ -125,7 +126,7 @@ def format_morning_brief(
     # Source footer
     lines.append("━━━━━━━━━━━━━━━━━━━━")
     lines.append("")
-    lines.append("📡 数据来源：必应CN搜索")
+    lines.append("📡 数据来源：AIHOT + SearXNG 搜索")
 
     return "\n".join(lines)
 

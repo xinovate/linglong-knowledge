@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class PackageExecutor:
-    """Execute a source package: fetch, verify, dedup, filter, interpret, format, persist."""
+    """Execute a source package: fetch all sources → aggregate → interpret → format."""
 
     def __init__(
         self,
@@ -37,26 +37,37 @@ class PackageExecutor:
             logger.info("Package %s is disabled, skipping", package.name)
             return _empty_result()
 
-        # Phase 1: Fetch from legacy sources (non-dimension)
+        # Phase 1: Fetch ALL sources in parallel (top-level + dimension searches)
         all_entities: list[Entity] = []
+        dimension_entities: dict[str, list[Entity]] = {}
+
+        # 1a. Top-level sources (AIHOT, RSS, API, etc.)
         if package.sources:
             source_entities = await self._fetch_sources(package.sources)
             all_entities.extend(source_entities)
+            # Tag top-level source entities with a generic dimension for display
+            dimension_entities["_sources"] = source_entities
 
-        # Phase 2: Fetch from dimensions (search + sources per dimension)
-        dimension_entities: dict[str, list[Entity]] = {}
+        # 1b. Dimension-based searches
         if package.dimensions:
-            dimension_entities = await self._fetch_dimensions(package.dimensions)
-            for dim_entities in dimension_entities.values():
-                all_entities.extend(dim_entities)
+            dim_results = await self._fetch_dimensions(package.dimensions)
+            dimension_entities.update(dim_results)
+            for dim_ents in dim_results.values():
+                all_entities.extend(dim_ents)
 
         total = len(all_entities)
 
-        # Phase 3: Verification
+        # Phase 2: Verification
         if self.verification_engine and package.verification.enabled:
             all_entities, _ = self._verify(all_entities)
+            # Re-sync dimension_entities after verification removes some
+            verified_ids = {e.id for e in all_entities}
+            for dim_name in dimension_entities:
+                dimension_entities[dim_name] = [
+                    e for e in dimension_entities[dim_name] if e.id in verified_ids
+                ]
 
-        # Phase 4: Cross-day dedup
+        # Phase 3: Cross-day dedup
         dedup_count = total
         if self.history and dimension_entities:
             deduped_dims: dict[str, list[Entity]] = {}
@@ -74,9 +85,9 @@ class PackageExecutor:
                 all_entities.extend(dim_ents)
             dedup_count = len(all_entities)
 
-        # Phase 5: Dimension-based filtering
+        # Phase 4: Dimension-based filtering
         filtered_count = dedup_count
-        if dimension_entities:
+        if dimension_entities and package.dimensions:
             dimension_entities = filter_by_dimensions(
                 dimension_entities, package.dimensions
             )
@@ -85,41 +96,51 @@ class PackageExecutor:
                 all_entities.extend(dim_ents)
             filtered_count = len(all_entities)
 
-        # Phase 6: LLM interpretation
+        # Phase 5: LLM interpretation — on ALL aggregated entities as one batch
         interpretations: dict[str, list[dict[str, str]]] = {}
         top5: list[dict[str, Any]] = []
-        if self.llm_config and package.output.format == "morning-brief":
+        if self.llm_config and package.output.format == "morning-brief" and all_entities:
             try:
                 from linglong.ingest.interpreter import generate_top5, interpret_dimension
 
-                all_items_for_top5: list[dict[str, str]] = []
-                for dim_name, dim_ents in dimension_entities.items():
-                    if dim_ents:
-                        dim_interps = interpret_dimension(dim_ents, self.llm_config)
-                        interpretations[dim_name] = dim_interps
-                        for interp in dim_interps:
-                            interp["dimension"] = dim_name
-                            all_items_for_top5.append(interp)
+                # Single batch interpretation on all aggregated entities
+                all_interps = interpret_dimension(all_entities, self.llm_config)
 
-                if all_items_for_top5:
-                    top5 = generate_top5(all_items_for_top5, self.llm_config)
+                # Map interpretations back to their dimensions for display
+                interp_idx = 0
+                for dim_name, dim_ents in dimension_entities.items():
+                    dim_interps = all_interps[interp_idx:interp_idx + len(dim_ents)]
+                    interp_idx += len(dim_ents)
+                    interpretations[dim_name] = dim_interps
+
+                if all_interps:
+                    top5 = generate_top5(all_interps, self.llm_config)
             except Exception as e:
                 logger.warning("LLM interpretation failed (non-fatal): %s", e)
 
-        # Phase 7: Persist to history
+        # Phase 6: Persist to history
         if self.history and package.output.persist:
             for dim_name, dim_ents in dimension_entities.items():
                 self.history.write_batch(dim_ents, dimension=dim_name)
 
-        # Phase 8: Formatting
+        # Phase 7: Formatting
         output_text: str | None = None
         if package.output.format and dimension_entities:
             template_fn = get_template(package.output.format)
             if template_fn:
+                # Remove _sources key from display — merge into first section
+                display_dims = {k: v for k, v in dimension_entities.items() if k != "_sources"}
+                display_interps = {k: v for k, v in interpretations.items() if k != "_sources"}
+
+                # If we have _sources entities with no other dimension, show them
+                if not display_dims and "_sources" in dimension_entities:
+                    display_dims["AI 动态"] = dimension_entities["_sources"]
+                    display_interps["AI 动态"] = interpretations.get("_sources", [])
+
                 output_text = template_fn(
-                    dimension_entities,
+                    display_dims,
                     title=package.topic,
-                    interpretations=interpretations or None,
+                    interpretations=display_interps or None,
                     top5=top5 or None,
                 )
 
@@ -134,7 +155,7 @@ class PackageExecutor:
     async def _fetch_sources(
         self, sources: list[Any]
     ) -> list[Entity]:
-        """Fetch from legacy source definitions."""
+        """Fetch from source definitions (top-level or within dimension)."""
         adapters: list[SourceAdapter] = []
         for source_def in sources:
             if not source_def.enabled:

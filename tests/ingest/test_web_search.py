@@ -185,8 +185,8 @@ class TestWebSearchAdapter:
         assert "https://example.com/ai-test" in entities[0].content
 
     @pytest.mark.asyncio
-    async def test_fetch_searxng_with_time_range(self):
-        """Test SearXNG passes time_range parameter correctly."""
+    async def test_fetch_searxng_no_time_range(self):
+        """Test SearXNG does NOT send time_range (removed due to reliability issues)."""
         adapter = _make_adapter(queries=["test"], engine="searxng")
 
         mock_response = MagicMock()
@@ -202,4 +202,5 @@ class TestWebSearchAdapter:
             await adapter._do_search("test", "searxng", 10, 3)
 
         call_args = mock_client.get.call_args
-        assert "time_range" in str(call_args)
+        params = call_args[1]["params"]
+        assert "time_range" not in params

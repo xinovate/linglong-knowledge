@@ -16,12 +16,11 @@ from linglong.ingest.package import (
 def test_load_ai_morning_brief_package():
     """Load the example AI morning brief package."""
     package = SourcePackage.from_yaml("docs/examples/packages/ai-morning-brief.yaml")
-    assert package.name == "AI Morning Brief"
-    assert package.topic == "artificial-intelligence"
-    assert len(package.sources) == 4
-    assert package.sources[0].type == "rss"
-    assert package.sources[2].type == "web_fetch"
-    assert package.verification.cross_reference_min == 2
+    assert package.name == "ai-morning-brief"
+    assert package.topic == "AI 早报"
+    assert len(package.sources) == 1
+    assert package.sources[0].type == "aihot"
+    assert len(package.dimensions) == 1
 
 
 def test_package_load_all_from_directory():
