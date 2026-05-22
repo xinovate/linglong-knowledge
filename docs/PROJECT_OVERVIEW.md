@@ -37,7 +37,7 @@ Codex ──────┘         ↓
 | v0.7 | composer 产品化 | 🟠 v2.0 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
 | v0.8 | **dispatch 正式化** | ✅ 已完成 | DispatchManager、LocalPublisher、HexoPublisher、集成测试 | 2026-05-12 |
 | v0.9 | 稳定化 | ✅ 已完成 | CLI 入口、全链路集成测试、composer→dispatch 流水线 | 2026-05-12 |
-| **v1.0** | **博客流水线 + 知识库成熟** | 🟡 收官中 | MCP Server 9 工具、RRF 混合搜索、lint 巡检增强、Agent 接入、图片管线、OSS CDN | — |
+| **v1.0** | **模块边界对齐 + 知识库封版** | 🟡 收官中 | 知识库封版 276 测试；ingest 解耦；模块边界设计重构；output_log 设计 | — |
 | **v2.0** | **产品化** | 🔴 未开始 | WebSearchAdapter、发布队列与重试、多模板、AI 封面图、API 冻结 | — |
 
 ---
@@ -98,6 +98,12 @@ Codex ──────┘         ↓
 | write --force + update --from-file | v1.0 | ✅ | `b657ec3` | 2026-05-21 |
 | 设计文档审计对齐（D-03~D-10 全部 ✅） | v1.0 | ✅ | `b657ec3` | 2026-05-21 |
 | CLI 子命令分组重构（kb + pipeline + deprecated 别名） | v1.0 | ✅ | `23fefcd` | 2026-05-21 |
+| 模块边界设计重构（ingest 不写知识库、output_log、pipeline 移除） | v1.0 | ✅ | `f50aef7` | 2026-05-21 |
+| journal 从 docs/knowledge/ 提升到项目根目录 | v1.0 | ✅ | `f50aef7` | 2026-05-21 |
+| 全量日志补齐（5/12–5/19 六天） | v1.0 | ✅ | `f50aef7` | 2026-05-21 |
+| LIMIT-001 修复（OpenClaw 2 个 frontmatter 文件） | v1.0 | ✅ | `3efed72` | 2026-05-21 |
+| 配置示例 .linglong.example.yaml | v1.0 | ✅ | `3efed72` | 2026-05-21 |
+| 删除 test_full_pipeline（ingest→knowledge 直连已废弃） | v1.0 | ✅ | `3efed72` | 2026-05-21 |
 
 ---
 
@@ -114,7 +120,7 @@ Codex ──────┘         ↓
 | `cli/` | ✅ 26 个 | — | — | ✅ |
 | `integration/` | — | — | ✅ 2 个 | ✅ |
 
-**总计：277 个测试**
+**总计：276 个测试**
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
 
@@ -126,10 +132,11 @@ Codex ──────┘         ↓
 |------|--------|------|----------|------|
 | WebSearchAdapter 未实现实际搜索 | 🟡 中 | 待实现 | v2.0 | DuckDuckGo/Bing CN 搜索需外部依赖 |
 | 发布队列与失败重试 | 🟡 中 | 待实现 | v2.0 | DispatchManager 当前直连发布，无队列和重试 |
-| `datetime.utcnow()` 已弃用 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 全局替换为 `datetime.now(UTC)`，277 测试通过 |
+| `datetime.utcnow()` 已弃用 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 全局替换为 `datetime.now(UTC)`，276 测试通过 |
 | MCP Server 读写接入 | ~~🟡 中~~ | ✅ 已完成 | v1.0 | 9 个 MCP 工具，Claude Code + OpenClaw 已接入 |
-| 向量搜索增强（混合搜索/自动模式） | ~~🟡 低~~ | ✅ 已完成 | v1.0 | RRF 混合搜索 + 自动模式路由，277 测试通过 |
+| 向量搜索增强（混合搜索/自动模式） | ~~🟡 低~~ | ✅ 已完成 | v1.0 | RRF 混合搜索 + 自动模式路由，276 测试通过 |
 | OpenClaw MCP 集成 | ~~🟡 中~~ | ✅ 已完成 | v1.0 | Phase 0-2 验证通过，MCP CRUD 全链路可用 |
+| LIMIT-001 frontmatter 解析失败 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 2 个文件修复为标准 frontmatter 格式 |
 
 完整债务清单 → [operations.md](operations.md)
 
@@ -139,11 +146,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
+| `3efed72` | chore: 配置示例 + 清理测试 + 待办更新 | 2026-05-21 |
+| `f50aef7` | docs: 模块边界设计重构 + journal 独立 + 全量日志补齐 | 2026-05-21 |
+| `06cf341` | docs: 日志 #17 CLI 重构，PROJECT_OVERVIEW 更新 | 2026-05-21 |
 | `47e3440` | docs: CLI 命令迁移到 kb/pipeline 分组格式（24 文件） | 2026-05-21 |
 | `23fefcd` | refactor(cli): 子命令分组重构 — kb + pipeline | 2026-05-21 |
-| `0023ec4` | docs: 更新日志、PROJECT_OVERVIEW（v1.0 验证通过、v2.0 延后项） | 2026-05-21 |
-| `b657ec3` | feat(cli): write --force + update --from-file；设计文档审计对齐 | 2026-05-21 |
-| `343b698` | docs: 合并 tracking/ 到 journal + design，更新 PROJECT_OVERVIEW | 2026-05-21 |
 
 ---
 
@@ -152,8 +159,10 @@ Codex ──────┘         ↓
 按优先级排序：
 
 1. ✅ ~~**v1.0 端到端验证**~~ — ingest → compose → publish 16 篇文章输出正常
-2. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
-3. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
+2. ✅ ~~**模块边界设计重构**~~ — ingest 不写知识库、output_log、pipeline 移除、9 份文档更新
+3. 🔴 **BACKLOG-005 source facet 批量重分类** — 94/142 条全在 source，需 LLM 辅助细分
+4. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
+5. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
 
 **v2.0 延后项**（非阻塞）：
 - WebSearchAdapter 实际搜索
