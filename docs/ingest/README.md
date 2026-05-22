@@ -67,8 +67,12 @@ ingest:
 # CLI — 返回采集结果到终端
 linglong ingest
 
+# CLI — 采集并写入知识库（讨论后决定）
+linglong ingest --write
+
 # MCP 工具 — 在对话中调用，Agent 讨论后决定是否写入知识库
-# search_wiki / search_and_read / write_entity
+# fetch_rss → 查看 → write_entity（手动写入）
+# execute_package → 查看 → write_entity（手动写入）
 ```
 
 ## 自定义 Adapter

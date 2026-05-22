@@ -62,8 +62,7 @@ async def test_rss_source_fetch(rss_source):
     entity = entities[0]
     assert entity.id == hashlib.sha256(b"https://example.com/article/1").hexdigest()[:16]
     assert "Test Article" in entity.content
-    assert entity.status == EntityStatus.AUTO_CONFIRMED
-    assert entity.created_by == "agent:ingest"
+    assert entity.created_by == "agent:rss"
     assert float(entity.confidence) == 0.7
     assert len(entity.sources) == 1
     assert entity.sources[0].type == SourceType.RSS
@@ -131,58 +130,30 @@ async def test_rss_source_respects_max_items():
 
 
 @pytest.mark.asyncio
-async def test_rss_ingestor_ingest_all():
-    """Test RSSIngestor ingests from multiple sources."""
+async def test_rss_ingestor_collects_all():
+    """Test RSSIngestor collects entities from multiple sources."""
     source1 = RSSSource(name="feed1", url="https://example.com/1.xml")
     source2 = RSSSource(name="feed2", url="https://example.com/2.xml")
 
-    mock_store = MagicMock()
-    mock_store.get = MagicMock(return_value=None)
-
-    ingestor = RSSIngestor(store=mock_store)
+    ingestor = RSSIngestor()
     ingestor.add_source(source1)
     ingestor.add_source(source2)
 
-    fake_entity = MagicMock()
-    fake_entity.id = "test-id-123"
+    fake_entity1 = MagicMock()
+    fake_entity1.id = "test-id-1"
+    fake_entity2 = MagicMock()
+    fake_entity2.id = "test-id-2"
 
     with (
         patch.object(source1, "fetch", new_callable=AsyncMock) as mock_fetch1,
         patch.object(source2, "fetch", new_callable=AsyncMock) as mock_fetch2,
     ):
-        mock_fetch1.return_value = [fake_entity]
-        mock_fetch2.return_value = [fake_entity]
+        mock_fetch1.return_value = [fake_entity1]
+        mock_fetch2.return_value = [fake_entity2]
 
-        results = await ingestor.ingest_all()
+        entities = await ingestor.ingest_all()
 
-    assert results["total"] == 2
-    assert results["created"] == 2
-    assert results["failed"] == 0
-    assert mock_store.create.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_rss_ingestor_skips_existing():
-    """Test RSSIngestor skips entities that already exist."""
-    source = RSSSource(name="feed1", url="https://example.com/1.xml")
-
-    mock_store = MagicMock()
-    mock_store.get = MagicMock(return_value=MagicMock())  # 已存在的实体
-
-    ingestor = RSSIngestor(store=mock_store)
-    ingestor.add_source(source)
-
-    fake_entity = MagicMock()
-    fake_entity.id = "existing-id"
-
-    with patch.object(source, "fetch", new_callable=AsyncMock) as mock_fetch:
-        mock_fetch.return_value = [fake_entity]
-
-        results = await ingestor.ingest_all()
-
-    assert results["total"] == 1
-    assert results["created"] == 0
-    assert mock_store.create.call_count == 0
+    assert len(entities) == 2
 
 
 @pytest.mark.asyncio
@@ -190,15 +161,12 @@ async def test_rss_ingestor_handles_failure():
     """Test RSSIngestor handles source fetch failures gracefully."""
     source = RSSSource(name="feed1", url="https://example.com/1.xml")
 
-    mock_store = MagicMock()
-    ingestor = RSSIngestor(store=mock_store)
+    ingestor = RSSIngestor()
     ingestor.add_source(source)
 
     with patch.object(source, "fetch", new_callable=AsyncMock) as mock_fetch:
         mock_fetch.side_effect = Exception("Network error")
 
-        results = await ingestor.ingest_all()
+        entities = await ingestor.ingest_all()
 
-    assert results["total"] == 0
-    assert results["created"] == 0
-    assert results["failed"] == 1
+    assert len(entities) == 0

@@ -7,7 +7,7 @@
 
 | 日期 | 主题 | 关键结论 |
 |------|------|----------|
-| 2026-05-22 | facet 重分类（7→6 + group 子目录）+ 拥挤检测 + v1.0 代码改动 | BACKLOG-005 完成；142 条 LLM 辅助迁移；6 分面 + 14 个 group |
+| 2026-05-22 | facet 重分类 + DB先行写入 + embedding守卫 + kb sync | BACKLOG-005 完成；create/update DB先行；content hash守卫；kb sync 双向校验 |
 | 2026-05-21 | lint 增强 + OpenClaw 接入 + 搜索增强 + 文档审计 + v1.0 验证 + CLI 重构 | lint 5 项补齐；OpenClaw MCP 全链路通过；RRF 混合搜索；tracking 合并；设计文档审计对齐；v1.0 端到端验证通过；CLI kb/pipeline 分组重构 |
 | 2026-05-20 | MCP Server + 模板体系 | 9 个 MCP 工具上线；search_and_read 截断控制；模板体系 8 facet；文件名 slug-ID 后缀调整；双层同步去重 |
 | 2026-05-19 | 同步去重策略 | BACKLOG-001 双层去重实现（ID 去重 + Content Hash 去重） |

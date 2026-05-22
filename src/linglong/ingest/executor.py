@@ -8,30 +8,24 @@ from linglong.core.models import Entity
 from linglong.ingest.adapter import AdapterRegistry, SourceAdapter
 from linglong.ingest.package import SourcePackage
 from linglong.ingest.verification import TruthVerificationEngine
-from linglong.knowledge.review import ReviewEngine
-from linglong.knowledge.store import KnowledgeStore
 
 logger = logging.getLogger(__name__)
 
 
 class PackageExecutor:
-    """Execute a source package: fetch all sources in parallel, verify, review, store."""
+    """Execute a source package: fetch all sources in parallel, verify, return entities."""
 
     def __init__(
         self,
-        store: KnowledgeStore,
-        review_engine: ReviewEngine | None = None,
         verification_engine: TruthVerificationEngine | None = None,
     ) -> None:
-        self.store = store
-        self.review_engine = review_engine or ReviewEngine()
         self.verification_engine = verification_engine
 
     async def execute(self, package: SourcePackage) -> dict[str, Any]:
         """Execute all enabled sources in a package concurrently."""
         if not package.enabled:
             logger.info("Package %s is disabled, skipping", package.name)
-            return {"total": 0, "created": 0, "failed": 0, "verified": 0, "rejected": 0}
+            return {"entities": [], "total": 0, "failed": 0, "verified": 0}
 
         adapters: list[SourceAdapter] = []
         for source_def in package.sources:
@@ -77,24 +71,11 @@ class PackageExecutor:
             verified_count = len(passed_entities)
             all_entities = passed_entities
 
-        created_count = 0
-        rejected_count = 0
-        for entity in all_entities:
-            entity = self.review_engine.review(entity)
-            if entity.status.value == "rejected":
-                rejected_count += 1
-                continue
-            existing = self.store.get(entity.id)
-            if existing is None:
-                self.store.create(entity)
-                created_count += 1
-
         return {
-            "total": len(all_entities) + rejected_count,
-            "created": created_count,
+            "entities": all_entities,
+            "total": len(all_entities),
             "failed": sum(1 for r in fetch_results if r is None),
             "verified": verified_count,
-            "rejected": rejected_count,
         }
 
     async def _fetch_with_error_handling(self, adapter: SourceAdapter) -> list[Entity]:

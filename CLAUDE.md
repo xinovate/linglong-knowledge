@@ -119,6 +119,8 @@ linglong kb review --list-pending             # 审核管理
 linglong kb archive <entity_id>
 linglong kb lint                              # 巡检健康检查
 linglong kb lint --fix                        # 自动修复
+linglong kb sync                               # DB↔文件一致性校验
+linglong kb sync --fix                         # 执行修复
 linglong kb index --rebuild                   # 生成索引
 linglong kb stats                             # 统计信息
 linglong kb migrate --from /path/to/wiki      # 从外部 wiki 迁移

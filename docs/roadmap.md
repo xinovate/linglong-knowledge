@@ -32,20 +32,25 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 - ✅ CLI kb/pipeline 分组重构
 - ✅ 277 测试全通过
 
-### ingest v1.0
+### ingest v1.1（解耦 + MCP 化）
 
-- 🟡 解耦 KnowledgeStore：ingest 不再写入知识库，结果返回给调用方
-- 🟡 CLI 和 MCP 两种调用方式
-- 🟡 清理 `agent:ingest` 数据
+- 🔴 解耦 KnowledgeStore：移除 `rss.py`、`executor.py` 中的 store 参数，返回 `list[Entity]`
+- 🔴 移除 ReviewEngine 耦合：采集不做审核，原始数据返回给调用方
+- 🔴 移除 `agent:ingest` created_by
+- 🔴 新增 ingest MCP 工具：`fetch_rss`、`execute_package`
+- 🔴 CLI deprecated 残留清理
 
-### composer v1.0
+### composer v1.1（可用化）
 
 - 🟡 IngestAdapter 改名为 KnowledgeAdapter
 - 🟡 新增 output_log 输出追踪
+- 🟡 多模板支持（周报/摘要）
+- 🟡 LLM Distiller 降级方案
 
-### dispatch v1.0
+### dispatch v1.1（可靠化）
 
 - 🟡 新增 output_log 表，发布后记录 entity_id + publisher + published_at
+- 🟡 发布队列 + 失败重试
 
 ## v2.0 延后项
 

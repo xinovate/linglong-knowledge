@@ -7,8 +7,6 @@ import httpx
 
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityFacet, Source, SourceType
-from linglong.knowledge.review import ReviewEngine
-from linglong.knowledge.store import KnowledgeStore
 
 
 class RSSSource:
@@ -25,7 +23,6 @@ class RSSSource:
         self.url = url
         self.category = category or "general"
         self.max_items = max_items
-        self.review_engine = ReviewEngine()
 
     async def fetch(self) -> list[Entity]:
         """Fetch and parse RSS feed."""
@@ -39,7 +36,6 @@ class RSSSource:
 
         for entry in feed.entries[: self.max_items]:
             entity = self._entry_to_entity(entry)
-            entity = self.review_engine.review(entity)
             entities.append(entity)
 
         return entities
@@ -70,7 +66,7 @@ class RSSSource:
             content=content,
             facet=EntityFacet.REFERENCE,
             summary=getattr(entry, "summary", None),
-            created_by="agent:ingest",
+            created_by="agent:rss",
             confidence=get_config().ingest.default_confidence.get("rss", 0.7),
             sources=[
                 Source(
@@ -101,30 +97,22 @@ class RSSSource:
 class RSSIngestor:
     """Manager for multiple RSS sources."""
 
-    def __init__(self, store: KnowledgeStore):
-        self.store = store
+    def __init__(self) -> None:
         self.sources: list[RSSSource] = []
 
     def add_source(self, source: RSSSource) -> None:
         """Add an RSS source."""
         self.sources.append(source)
 
-    async def ingest_all(self) -> dict:
-        """Ingest from all sources."""
-        results = {"total": 0, "created": 0, "failed": 0}
+    async def ingest_all(self) -> list[Entity]:
+        """Fetch from all sources and return collected entities."""
+        all_entities: list[Entity] = []
 
         for source in self.sources:
             try:
                 entities = await source.fetch()
-                for entity in entities:
-                    # 检查实体是否已存在
-                    existing = self.store.get(entity.id)
-                    if existing is None:
-                        self.store.create(entity)
-                        results["created"] += 1
-                    results["total"] += 1
+                all_entities.extend(entities)
             except Exception as e:
                 print(f"Failed to ingest from {source.name}: {e}")
-                results["failed"] += 1
 
-        return results
+        return all_entities

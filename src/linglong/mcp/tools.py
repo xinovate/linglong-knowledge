@@ -311,3 +311,60 @@ def list_templates() -> str:
     except Exception as exc:
         logger.exception("list_templates failed")
         return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def fetch_rss(url: str, name: str | None = None, max_items: int = 20) -> str:
+    """Fetch and parse an RSS feed. Returns entity previews for discussion.
+
+    Use this to collect information from RSS sources. Discuss with the user
+    before writing any results to the knowledge store via write_entity.
+    """
+    try:
+        import asyncio
+
+        from linglong.ingest.rss import RSSSource
+
+        source = RSSSource(name=name or url, url=url, max_items=max_items)
+        entities = asyncio.run(source.fetch())
+
+        previews = [_entity_to_preview(e) for e in entities]
+        return json.dumps(
+            {"results": previews, "count": len(previews)},
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("fetch_rss failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def execute_package(package_path: str) -> str:
+    """Execute an ingest package (YAML-defined collection of sources).
+
+    Returns collected entities for discussion. Use write_entity to save
+    selected results to the knowledge store.
+    """
+    try:
+        import asyncio
+
+        from linglong.ingest.executor import PackageExecutor
+        from linglong.ingest.package import SourcePackage
+
+        package = SourcePackage.from_yaml(package_path)
+        executor = PackageExecutor()
+        result = asyncio.run(executor.execute(package))
+
+        entities = result.get("entities", [])
+        previews = [_entity_to_preview(e) for e in entities]
+        return json.dumps(
+            {
+                "results": previews,
+                "count": len(previews),
+                "package": package.name,
+                "verified": result.get("verified", 0),
+                "failed": result.get("failed", 0),
+            },
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("execute_package failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)

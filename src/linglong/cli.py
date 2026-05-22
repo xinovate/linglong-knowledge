@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-import functools
 import json
 import logging
 import sys
@@ -36,23 +35,45 @@ def _setup_logging(verbose: bool = False) -> None:
 
 
 def cmd_ingest(args: argparse.Namespace) -> int:
-    """Run ingest packages."""
+    """Run ingest packages and return collected entities."""
     _setup_logging(args.verbose)
     config = get_config()
-    store = KnowledgeStore()
 
     packages = SourcePackage.load_all(config.ingest.package_paths)
     if not packages:
         logger.warning("No packages found in %s", config.ingest.package_paths)
         return 1
 
-    executor = PackageExecutor(store=store)
+    all_entities: list[Entity] = []
+    executor = PackageExecutor()
     for package in packages:
         if not package.enabled:
             continue
         logger.info("Executing package: %s", package.name)
         result = asyncio.run(executor.execute(package))
-        logger.info("Result: %s", result)
+        entities = result.get("entities", [])
+        all_entities.extend(entities)
+        logger.info("Package %s: %d entities collected", package.name, len(entities))
+
+    if not all_entities:
+        logger.info("No entities collected")
+        return 0
+
+    if getattr(args, "write", False):
+        store = KnowledgeStore()
+        written = 0
+        for entity in all_entities:
+            if store.get(entity.id) is None:
+                store.create(entity)
+                written += 1
+        logger.info("Written %d new entities to knowledge store", written)
+    else:
+        for entity in all_entities[:20]:
+            title = entity.content.split("\n")[0].lstrip("# ").strip()
+            print(f"  {entity.id[:12]}  {title[:60]}")
+        if len(all_entities) > 20:
+            print(f"  ... and {len(all_entities) - 20} more")
+        print(f"\nTotal: {len(all_entities)} entities. Use --write to save to knowledge store.")
 
     return 0
 
@@ -640,15 +661,6 @@ def cmd_template(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _deprecated(func, name, group):
-    """Wrap a command handler to print deprecation warning."""
-    @functools.wraps(func)
-    def wrapper(args):
-        print(f"⚠️  'linglong {name}' 已废弃，请使用 'linglong {group} {name}'", file=sys.stderr)
-        return func(args)
-    return wrapper
-
-
 # ---------------------------------------------------------------------------
 # Parser registration helpers
 # ---------------------------------------------------------------------------
@@ -783,7 +795,9 @@ def _reg_sync(sub):
 
 
 def _reg_ingest(sub):
-    return sub.add_parser("ingest", help="Run ingest packages")
+    p = sub.add_parser("ingest", help="Run ingest packages")
+    p.add_argument("--write", action="store_true", help="Write collected entities to knowledge store")
+    return p
 
 
 def _reg_compose(sub):
@@ -823,31 +837,14 @@ def main(argv: list[str] | None = None) -> int:
     _reg_migrate(kb_sp).set_defaults(func=cmd_migrate)
     _reg_kb_sync(kb_sp).set_defaults(func=cmd_kb_sync)
 
-    # ========== pipeline group ==========
-    pipe_parser = sub.add_parser("pipeline", help="内容生产流水线")
-    pipe_sp = pipe_parser.add_subparsers(dest="pipe_sub", required=True)
+    # ========== ingest（独立采集工具）==========
+    _reg_ingest(sub).set_defaults(func=cmd_ingest)
 
-    _reg_ingest(pipe_sp).set_defaults(func=cmd_ingest)
-    _reg_compose(pipe_sp).set_defaults(func=cmd_compose)
-    _reg_publish(pipe_sp).set_defaults(func=cmd_publish)
+    # ========== compose（内容生产）==========
+    _reg_compose(sub).set_defaults(func=cmd_compose)
 
-    # ========== deprecated top-level aliases ==========
-    _reg_write(sub).set_defaults(func=_deprecated(cmd_write, "write", "kb"))
-    _reg_read(sub).set_defaults(func=_deprecated(cmd_read, "read", "kb"))
-    _reg_search(sub).set_defaults(func=_deprecated(cmd_search, "search", "kb"))
-    _reg_update(sub).set_defaults(func=_deprecated(cmd_update, "update", "kb"))
-    _reg_archive(sub).set_defaults(func=_deprecated(cmd_archive, "archive", "kb"))
-    _reg_review(sub).set_defaults(func=_deprecated(cmd_review, "review", "kb"))
-    _reg_lint(sub).set_defaults(func=_deprecated(cmd_lint, "lint", "kb"))
-    _reg_index(sub).set_defaults(func=_deprecated(cmd_index, "index", "kb"))
-    _reg_stats(sub).set_defaults(func=_deprecated(cmd_stats, "stats", "kb"))
-    _reg_template(sub).set_defaults(func=_deprecated(cmd_template, "template", "kb"))
-    _reg_init(sub).set_defaults(func=_deprecated(cmd_init, "init", "kb"))
-    _reg_migrate(sub).set_defaults(func=_deprecated(cmd_migrate, "migrate", "kb"))
-    _reg_sync(sub).set_defaults(func=_deprecated(cmd_sync, "sync", "kb"))
-    _reg_ingest(sub).set_defaults(func=_deprecated(cmd_ingest, "ingest", "pipeline"))
-    _reg_compose(sub).set_defaults(func=_deprecated(cmd_compose, "compose", "pipeline"))
-    _reg_publish(sub).set_defaults(func=_deprecated(cmd_publish, "publish", "pipeline"))
+    # ========== publish（发布）==========
+    _reg_publish(sub).set_defaults(func=cmd_publish)
 
     args = parser.parse_args(argv)
     return args.func(args)

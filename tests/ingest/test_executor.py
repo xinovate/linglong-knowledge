@@ -1,7 +1,5 @@
 """Tests for PackageExecutor."""
 
-from unittest.mock import MagicMock
-
 import pytest
 
 from linglong.core.models import Entity, EntityFacet
@@ -33,15 +31,8 @@ def _register_mock():
     AdapterRegistry.register(MockAdapter)
 
 
-@pytest.fixture
-def mock_store():
-    store = MagicMock()
-    store.get = MagicMock(return_value=None)
-    return store
-
-
 @pytest.mark.asyncio
-async def test_executor_runs_all_sources(mock_store):
+async def test_executor_runs_all_sources():
     """Executor fetches from all sources in a package."""
     package = SourcePackage(
         name="Test",
@@ -51,14 +42,14 @@ async def test_executor_runs_all_sources(mock_store):
             SourceDefinition(id="s2", type="mock"),
         ],
     )
-    executor = PackageExecutor(store=mock_store)
+    executor = PackageExecutor()
     result = await executor.execute(package)
-    assert result["created"] == 2
+    assert len(result["entities"]) == 2
     assert result["total"] == 2
 
 
 @pytest.mark.asyncio
-async def test_executor_skips_disabled_sources(mock_store):
+async def test_executor_skips_disabled_sources():
     """Disabled sources are not fetched."""
     package = SourcePackage(
         name="Test",
@@ -68,15 +59,15 @@ async def test_executor_skips_disabled_sources(mock_store):
             SourceDefinition(id="s2", type="mock", enabled=False),
         ],
     )
-    executor = PackageExecutor(store=mock_store)
+    executor = PackageExecutor()
     result = await executor.execute(package)
-    assert result["created"] == 1
+    assert len(result["entities"]) == 1
 
 
 @pytest.mark.asyncio
-async def test_executor_skips_disabled_package(mock_store):
-    """Disabled package returns zeros."""
+async def test_executor_skips_disabled_package():
+    """Disabled package returns empty entities."""
     package = SourcePackage(name="Test", topic="test", enabled=False)
-    executor = PackageExecutor(store=mock_store)
+    executor = PackageExecutor()
     result = await executor.execute(package)
-    assert result["created"] == 0
+    assert len(result["entities"]) == 0

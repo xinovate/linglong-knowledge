@@ -53,7 +53,7 @@ class APIAdapter(SourceAdapter):
         return Entity(
             content=f"```json\n{item}\n```",
             facet=EntityFacet.REFERENCE,
-            created_by="agent:ingest",
+            created_by="agent:api",
             confidence=get_config().ingest.default_confidence.get("api", 0.75),
             sources=[
                 Source(

@@ -26,87 +26,19 @@ Codex ──────┘         ↓
 
 ## 版本进度
 
-| 版本 | 目标 | 状态 | 关键交付 | 完成时间 |
-|------|------|------|---------|----------|
-| v0.1 | MVP 骨架 | ✅ 已完成 | core + ingest + knowledge 三模块骨架 | 2025-04 |
-| v0.2 | Composer 迁移 | ✅ 已完成 | Composer 从 linglong-pipeline 迁移并入，32 个测试通过 | 2026-05-12 |
-| v0.3 | 人工审核层 | ✅ 已完成 | Draft Mode、Git Workflow Publisher、frontmatter YAML list | 2026-05-12 |
-| v0.4 | **知识库统一** | ✅ 已完成 | OpenClaw/Claude Code/Codex 同步、向量搜索落地 | 2026-05-12 |
-| v0.5 | **ingest 通用化** | ✅ 已完成 | SourceAdapter、SourcePackage YAML、TruthVerificationEngine、PackageExecutor | 2026-05-12 |
-| v0.6 | **多 Agent 接入** | ✅ 已完成 | OpenClaw/Claude Code/Codex 三种 SyncAdapter 已实现 | 2026-05-12 |
-| v0.7 | composer 产品化 | 🟠 v2.0 | 多模板（早报/周报/PPT）、AI 封面图、内容验证 | — |
-| v0.8 | **dispatch 正式化** | ✅ 已完成 | DispatchManager、LocalPublisher、HexoPublisher、集成测试 | 2026-05-12 |
-| v0.9 | 稳定化 | ✅ 已完成 | CLI 入口、全链路集成测试、composer→dispatch 流水线 | 2026-05-12 |
-| **v1.0** | **模块边界对齐 + 知识库封版** | 🟡 收官中 | 知识库封版 276 测试；ingest 解耦；模块边界设计重构；output_log 设计 | — |
-| **v2.0** | **产品化** | 🔴 未开始 | WebSearchAdapter、发布队列与重试、多模板、AI 封面图、API 冻结 | — |
-
----
-
-## 功能开发时间线
-
-| 功能 | 所属版本 | 状态 | 关联提交 | 完成时间 |
-|------|---------|------|---------|----------|
-| core（共享模型 + 配置） | v0.1 | ✅ | — | 2025-04 |
-| ingest（RSS 获取） | v0.1 | ✅ | — | 2025-04 |
-| knowledge（三层存储 + Review） | v0.1 | ✅ | — | 2025-04 |
-| Composer 迁移入 monorepo | v0.2 | ✅ | — | 2026-05-12 |
-| IngestAdapter（Entity → MemoryFragment） | v0.2 | ✅ | — | 2026-05-12 |
-| LLM Distiller（LLM 智能提炼） | v0.2 | ✅ | — | 2026-05-12 |
-| DailyAggregator（按天聚合） | v0.2 | ✅ | — | 2026-05-12 |
-| BlogTemplate（博客模板） | v0.2 | ✅ | — | 2026-05-12 |
-| TextAssetGenerator（文本资产） | v0.2 | ✅ | — | 2026-05-12 |
-| ComposerState（内容哈希去重） | v0.2 | ✅ | — | 2026-05-12 |
-| Draft Mode（草稿审核） | v0.2 | ✅ | — | 2026-05-12 |
-| Git Workflow Publisher | v0.3 | ✅ | — | 2026-05-11 |
-| pytest 测试骨架 | v0.2 | ✅ | — | 2026-05-12 |
-| ruff/black 格式化 | v0.3 | ✅ | — | 2026-05-12 |
-| tests/core/ + tests/ingest/ 补齐 | v0.3 | ✅ | — | 2026-05-12 |
-| OpenClawSyncAdapter（wiki → KnowledgeStore） | v0.4 | ✅ | `ccd2011` | 2026-05-12 |
-| ClaudeCodeSyncAdapter（memory → KnowledgeStore） | v0.4 | ✅ | `ffb7c10` | 2026-05-12 |
-| CodexSyncAdapter（`~/.codex/` → KnowledgeStore） | v0.4 | ✅ | `a11b013` | 2026-05-12 |
-| EmbeddingGenerator（OpenClaw 远程 embedding） | v0.4 | ✅ | `8548815` | 2026-05-12 |
-| 向量搜索 `search_similar()`（sqlite-vec） | v0.4 | ✅ | `8548815` | 2026-05-12 |
-| DispatchManager（发布器注册/路由/执行） | v0.8 | ✅ | `6b9fc97` | 2026-05-12 |
-| LocalPublisher（本地文件输出） | v0.8 | ✅ | `6b9fc97` | 2026-05-12 |
-| HexoPublisher（Git/Local 工作流） | v0.8 | ✅ | `6b9fc97` | 2026-05-12 |
-| composer → dispatch 集成测试 | v0.8 | ✅ | `6b9fc97` | 2026-05-12 |
-| SourceAdapter ABC + AdapterRegistry | v0.5 | ✅ | `4721ec9` | 2026-05-12 |
-| SourcePackage YAML 模型 | v0.5 | ✅ | `6b4fab4` | 2026-05-12 |
-| TruthVerificationEngine（5 层验证） | v0.5 | ✅ | `e554106` | 2026-05-12 |
-| RSS/WebFetch/WebSearch/API Adapters | v0.5 | ✅ | `257cc7e` | 2026-05-12 |
-| PackageExecutor（并行执行） | v0.5 | ✅ | `5f6c43d` | 2026-05-12 |
-| Composer 自动发布（auto_publish → DispatchManager） | v0.8+ | ✅ | `be08313` | 2026-05-12 |
-| 全链路集成测试（ingest→knowledge→composer→dispatch） | v0.9 | ✅ | `b6281e6` | 2026-05-12 |
-| CLI 入口（linglong pipeline ingest/compose/publish/sync） | v0.9 | ✅ | `4ec1e16` | 2026-05-12 |
-| 多尺寸响应式图片（thumb/medium/large 变体生成） | v1.0 | ✅ | — | 2026-05-13 |
-| BlogTemplate 响应式 `<img srcset>` 输出 | v1.0 | ✅ | — | 2026-05-13 |
-| OSSUploader（阿里云 OSS 图片 CDN 上传） | v1.0 | ✅ | — | 2026-05-13 |
-| DispatchManager OSS 上传集成 | v1.0 | ✅ | — | 2026-05-13 |
-| background/background_image 命名一致性修复 | v1.0 | ✅ | — | 2026-05-13 |
-| MCP Server（Claude Code 读写接入） | v1.0 | ✅ | `0c285f2` | 2026-05-20 |
-| MCP search_and_read + update_entity 工具 | v1.0 | ✅ | — | 2026-05-20 |
-| MCP 搜索返回质量优化（summary 优先 + 500 字符） | v1.0 | ✅ | — | 2026-05-20 |
-| MCP 模板体系（9 个 facet 模板 + get_template） | v1.0 | ✅ | — | 2026-05-20 |
-| 文件名格式 slug-ID 后缀调整 | v1.0 | ✅ | `8b7a84f` | 2026-05-20 |
-| Lint 巡检增强（孤儿检测 + 语义去重 + 定期调度 + --check 过滤） | v1.0 | ✅ | `2ab07ec` | 2026-05-21 |
-| RRF 混合搜索 + 自动模式路由 + 变动日志增强 | v1.0 | ✅ | `e10403b` | 2026-05-21 |
-| OpenClaw MCP 集成 Phase 0-2（extraPaths + MCP CRUD + 配置迁移） | v1.0 | ✅ | `0c79114` | 2026-05-21 |
-| Agent 三方接入指南（快速/深度/移除） | v1.0 | ✅ | `0c79114` | 2026-05-21 |
-| OpenClawSyncAdapter 移除 memory 模式（只保留 wiki 同步） | v1.0 | ✅ | `e10403b` | 2026-05-21 |
-| index --rebuild 增加向量化重建 | v1.0 | ✅ | `e10403b` | 2026-05-21 |
-| v1.0 端到端验证（ingest → compose → publish 16 篇） | v1.0 | ✅ | — | 2026-05-21 |
-| write --force + update --from-file | v1.0 | ✅ | `b657ec3` | 2026-05-21 |
-| 设计文档审计对齐（D-03~D-10 全部 ✅） | v1.0 | ✅ | `b657ec3` | 2026-05-21 |
-| CLI 子命令分组重构（kb + pipeline + deprecated 别名） | v1.0 | ✅ | `23fefcd` | 2026-05-21 |
-| 模块边界设计重构（ingest 不写知识库、output_log、pipeline 移除） | v1.0 | ✅ | `f50aef7` | 2026-05-21 |
-| journal 从 docs/knowledge/ 提升到项目根目录 | v1.0 | ✅ | `f50aef7` | 2026-05-21 |
-| 全量日志补齐（5/12–5/19 六天） | v1.0 | ✅ | `f50aef7` | 2026-05-21 |
-| LIMIT-001 修复（OpenClaw 2 个 frontmatter 文件） | v1.0 | ✅ | `3efed72` | 2026-05-21 |
-| 配置示例 .linglong.example.yaml | v1.0 | ✅ | `3efed72` | 2026-05-21 |
-| 删除 test_full_pipeline（ingest→knowledge 直连已废弃） | v1.0 | ✅ | `3efed72` | 2026-05-21 |
-| BACKLOG-005 facet 重分类（7→6 分面 + group 子目录） | v1.0 | ✅ | — | 2026-05-22 |
-| Entity.group 字段 + 子目录文件组织 | v1.0 | ✅ | — | 2026-05-22 |
-| 拥挤 facet 自动检测（lint + MCP + CLI 提示） | v1.0 | ✅ | — | 2026-05-22 |
+| 版本 | 目标 | 关键交付 | 状态 | 完成时间 |
+|------|------|---------|------|----------|
+| v0.1 | MVP 骨架 | core + ingest + knowledge 三模块 | ✅ | 2025-04 |
+| v0.2 | Composer 迁移 | Composer + LLM Distiller + DailyAggregator + Draft Mode | ✅ | 2026-05-12 |
+| v0.3 | 人工审核层 | Git Workflow Publisher + frontmatter YAML | ✅ | 2026-05-12 |
+| v0.4 | 知识库统一 | 三 Agent SyncAdapter + 向量搜索 + embedding | ✅ | 2026-05-12 |
+| v0.5 | ingest 通用化 | SourceAdapter + SourcePackage + 真值验证 + 多源适配器 | ✅ | 2026-05-12 |
+| v0.6 | 多 Agent 接入 | OpenClaw/Claude Code/Codex 三种适配器 | ✅ | 2026-05-12 |
+| v0.7 | composer 产品化 | 多模板/封面图/内容验证 | 🟠 延后至 v2.0 | — |
+| v0.8 | dispatch 正式化 | DispatchManager + LocalPublisher + HexoPublisher | ✅ | 2026-05-12 |
+| v0.9 | 稳定化 | CLI 入口 + 全链路集成测试 | ✅ | 2026-05-12 |
+| **v1.0** | **知识库封版** | MCP 9 工具 + RRF 混合搜索 + lint 巡检 + 6 facet + group + DB 先行 + kb sync（276 测试） | 🟡 收官中 | — |
+| **v2.0** | **产品化** | WebSearch + 发布队列 + 多模板 + API 冻结 | 🔴 未开始 | — |
 
 ---
 
@@ -149,8 +81,9 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
+| `898a343` | feat(knowledge): DB先行写入 + embedding hash守卫 + kb sync | 2026-05-22 |
+| `1dc5070` | refactor(knowledge): facet 重分类 7→6 + Entity.group 子目录 | 2026-05-22 |
 | `3efed72` | chore: 配置示例 + 清理测试 + 待办更新 | 2026-05-21 |
-| `f50aef7` | docs: 模块边界设计重构 + journal 独立 + 全量日志补齐 | 2026-05-21 |
 | `06cf341` | docs: 日志 #17 CLI 重构，PROJECT_OVERVIEW 更新 | 2026-05-21 |
 | `47e3440` | docs: CLI 命令迁移到 kb/pipeline 分组格式（24 文件） | 2026-05-21 |
 | `23fefcd` | refactor(cli): 子命令分组重构 — kb + pipeline | 2026-05-21 |

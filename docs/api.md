@@ -207,28 +207,51 @@ print(config.ingest.fetch_interval_minutes)
 
 ---
 
-## RSS 获取 API
+## Ingest 采集 API
 
-### RSSIngestor
+### RSSSource
 
 ```python
-from linglong.ingest import RSSIngestor, RSSSource
+from linglong.ingest.rss import RSSSource
 
-ingestor = RSSIngestor()
-
-# 添加源
-ingestor.add_source(
-    RSSSource(
-        name="techcrunch",
-        url="https://techcrunch.com/feed/",
-        category="tech",
-    )
+source = RSSSource(
+    name="techcrunch",
+    url="https://techcrunch.com/feed/",
+    category="tech",
 )
 
-# 获取（返回结果，不写知识库）
+# 采集（返回 Entity 列表，不写知识库）
 import asyncio
-results = asyncio.run(ingestor.ingest_all())
-print(results)  # 返回采集结果列表
+entities = asyncio.run(source.fetch())
+for entity in entities:
+    print(entity.id, entity.content[:80])
+```
+
+### PackageExecutor
+
+```python
+from linglong.ingest.executor import PackageExecutor
+from linglong.ingest.package import SourcePackage
+
+executor = PackageExecutor()
+packages = SourcePackage.load_all(config.ingest.package_paths)
+
+for package in packages:
+    # 执行采集包（返回 Entity 列表，不写知识库）
+    result = asyncio.run(executor.execute(package))
+    print(f"采集到 {len(result['entities'])} 条，验证通过 {result['verified']}")
+    for entity in result["entities"]:
+        print(entity.id, entity.content[:80])
+```
+
+### CLI
+
+```bash
+# 采集并输出到终端
+linglong ingest
+
+# 采集并写入知识库（讨论后决定）
+linglong ingest --write
 ```
 
 ---
@@ -321,6 +344,15 @@ Linglong 提供 MCP Server，支持 Claude Code 等 MCP Client 通过标准协�
 - `methodology` — 方法论类（流程、检查清单、常见误区）
 - `reference` — 参考资料类（外部参考、资料链接、摘录、待验证）
 - `personal` — 个人类（偏好、规则、历史变化）
+
+### Ingest 采集工具
+
+| 工具 | 功能 | 参数 |
+|------|------|------|
+| `fetch_rss` | 采集 RSS feed | `url`, `name?`, `max_items?` |
+| `execute_package` | 执行采集包 | `package_path` |
+
+采集工具返回 Entity 列表，Agent 讨论后可通过 `write_entity` 写入知识库。
 
 ### 启动 MCP Server
 

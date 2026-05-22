@@ -3,6 +3,8 @@
 from mcp.server.fastmcp import FastMCP
 
 from linglong.mcp.tools import (
+    execute_package,
+    fetch_rss,
     get_template,
     list_entities,
     list_templates,
@@ -25,3 +27,5 @@ mcp.tool()(update_entity)
 mcp.tool()(list_entities)
 mcp.tool()(get_template)
 mcp.tool()(list_templates)
+mcp.tool()(fetch_rss)
+mcp.tool()(execute_package)
