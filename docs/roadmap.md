@@ -17,11 +17,11 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | v0.7 | composer 产品化（LLM 提炼、Prompt 外部化） | ✅ |
 | v0.8 | dispatch 正式化（DispatchManager、HexoPublisher、LocalPublisher） | ✅ |
 | v0.9 | 稳定化（CLI、集成测试、auto-publish、配置外部化） | ✅ |
-| **v1.0** | **模块边界对齐 + 知识库封版** | **进行中** |
+| v1.0 | 模块边界对齐 + 知识库封版 | ✅ |
+| **v1.2** | **ingest 早报能力（SearXNG + AIHOT + LLM 解读 + 晨报）** | **✅** |
+| **v2.0** | **产品化（多模板 + 发布队列 + Codex 接入）** | **🔴 未开始** |
 
-## v1.0 目标
-
-各模块按新设计思想对齐边界，知识库封版，其他模块轻量调整。
+## v1.0 已完成
 
 ### 知识库（已封版）
 
@@ -30,47 +30,54 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 - ✅ lint 巡检增强（孤儿检测 + 语义去重 + 定期调度）
 - ✅ Agent 接入（OpenClaw MCP + Claude Code MCP）
 - ✅ CLI kb/pipeline 分组重构
-- ✅ 277 测试全通过
+- ✅ facet 重分类 7→6 + Entity.group 子目录
+- ✅ DB 先行写入 + embedding hash 守卫 + kb sync
+- ✅ 276 测试全通过
 
-### ingest v1.1（解耦 + MCP 化）— ✅ 已完成
+### ingest v1.1（解耦 + MCP 化）
 
-- ✅ 解耦 KnowledgeStore：移除 `rss.py`、`executor.py` 中的 store 参数，返回 `list[Entity]`
-- ✅ 移除 ReviewEngine 耦合：采集不做审核，原始数据返回给调用方
-- ✅ 移除 `agent:ingest` created_by
-- ✅ 新增 ingest MCP 工具：`fetch_rss`、`execute_package`（共 11 个）
-- ✅ CLI 扁平化（ingest/compose/publish 顶级命令 + deprecated 全清）
-- ✅ 279 测试通过
+- ✅ 解耦 KnowledgeStore
+- ✅ 新增 ingest MCP 工具（共 11 个）
+- ✅ CLI 扁平化
 
-### ingest v1.2（早报能力对齐）
+## v1.2 已完成（ingest 早报）
 
-- 🔴 WebSearchAdapter（Playwright + Google / web_fetch + 必应 CN）
-- 🔴 ingest_history 表 + 每日结果持久化
-- 🔴 消息去重（同天合并 + 跨天旧闻跳过）
-- 🔴 维度精选 filter（YAML 包按维度配置 max_results/max_age_days）
-- 🔴 格式化模板（早报 markdown 输出）
-- 🔴 YAML 包结构增强（dimensions/search/filter/output/dedup）
-- 设计文档：`docs/ingest/design/00-overview.md`
+- ✅ SearXNG 自托管搜索（Docker 部署，JSON API）
+- ✅ WebSearchAdapter 四后端（SearXNG/ZhiPu/Google/Bing CN）
+- ✅ AIHOT 适配器（daily digest + items API）
+- ✅ 多源聚合架构（所有源聚合后统一 LLM 解读）
+- ✅ LLM 批量解读（glm-5.1, Anthropic Messages API）
+- ✅ Top 5 四维精选（公司/战略/技术/启示）
+- ✅ ingest_history 持久化 + 跨天去重
+- ✅ 晨报 Markdown 模板
+- ✅ 包配置合并到 .linglong.yaml（ingest.packages）
+- ✅ 搜索关键词优化（英文关键词效果远好于中文）
+- ✅ 端到端实测通过（AIHOT 26 条 + SearXNG 116 条 → 47 条精选 → LLM 解读 → Top 5）
+- ✅ 339 测试全通过
 
-### composer v1.1（可用化）
+## 下一步工作
 
-- 🟡 IngestAdapter 改名为 KnowledgeAdapter
-- 🟡 新增 output_log 输出追踪
-- 🟡 多模板支持（周报/摘要）
-- 🟡 LLM Distiller 降级方案
+### v2.0 收尾项
 
-### dispatch v1.1（可靠化）
+| # | 任务 | 模块 | 优先级 | 说明 |
+|---|------|------|--------|------|
+| 1 | OpenClaw 观察期收尾 | agent | 🟡 | 确认 MCP 写入质量，禁用 wiki-maintainer |
+| 2 | Codex CLI 接入 | agent | 🔴 | 当前仅预留，未实际接入 |
+| 3 | 拥挤 facet 根目录清理 | knowledge | 🟡 | concept/methodology/project 根目录未分组条目 |
+| 4 | IngestAdapter → KnowledgeAdapter 重命名 | composer | 低 | 名称与 ingest 模块混淆 |
+| 5 | output_log 输出追踪 | knowledge | 中 | 发布后记录 entity_id + publisher |
+| 6 | 发布队列 + 失败重试 | dispatch | 中 | DispatchManager 当前直连发布 |
+| 7 | 多模板（周报/PPT/视频脚本） | composer | 中 | 当前只有博客模板 |
+| 8 | AI 封面图生成 | composer | 低 | 图片资产管线已搭建，缺 AI 生成 |
+| 9 | 跨 Agent 写入冲突解决 | knowledge | 低 | 多 Agent 同时修改同一 wiki |
+| 10 | API 冻结 + mypy strict | core | 低 | 稳定公开接口 |
 
-- 🟡 新增 output_log 表，发布后记录 entity_id + publisher + published_at
-- 🟡 发布队列 + 失败重试
+### ingest 已知问题（非阻塞）
 
-## v2.0 延后项
-
-- WebSearchAdapter 实际搜索
-- 发布队列与失败重试
-- 多模板（早报/周报/PPT/视频脚本）
-- AI 封面图生成
-- 跨 Agent 写入冲突解决
-- API 冻结、mypy strict
+- Top5 偶发 JSON 解析失败（LLM 返回格式不标准）
+- 晨报模板列名硬编码（投资方/金额），实际数据无这些字段
+- AIHOT + SearXNG 重复新闻较多（去重已处理但消耗 token）
+- LLM 无分批机制，超过 50 条可能超 token 限制
 
 ---
 
@@ -98,42 +105,26 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 
 ### ADR-006: ingest 不写知识库（v1.0）
 
-**决策**: ingest 是信息采集工具，采集结果返回给调用方（CLI/MCP/对话），不直接写入 KnowledgeStore。只有人和 Agent 讨论沉淀后的内容才写入知识库。
-- **原因**: 知识库的价值在于经过思考沉淀的知识。原始 RSS/API 数据未经验证，直接入库会稀释知识库质量。
-- **影响**: `agent:ingest` 作为 created_by 不再存在。数据进入知识库的唯一途径是 Agent 写入（MCP/CLI）或从其他知识库迁移。
+**决策**: ingest 是信息采集工具，采集结果返回给调用方，不直接写入 KnowledgeStore。
+- **原因**: 知识库的价值在于经过思考沉淀的知识。原始数据未经验证，直接入库会稀释质量。
 
 ### ADR-007: entity 输出追踪 output_log（v1.0）
 
-**决策**: composer + dispatch 发布后，在知识库 SQLite 的 `output_log` 表中记录 entity_id + publisher + published_at。
-- **原因**: 避免 composer 重复消费同一批知识产出重复内容。
-- **影响**: composer 读取知识库时可跳过已输出的 entity。支持追溯"这篇文章用了哪些知识"。
+**决策**: composer + dispatch 发布后记录 entity_id + publisher + published_at，避免重复消费。
 
 ### ADR-008: 移除 pipeline 子命令分组（v1.0）
 
 **决策**: 移除 `linglong pipeline` 子命令分组。`ingest`、`compose`、`publish` 改为顶层命令。
-- **原因**: ingest 与知识库解耦后不再是流水线的一环，中间环节需要人为介入，pipeline 概念不再适用。
-- **影响**: `linglong pipeline ingest` → `linglong ingest`，`linglong pipeline compose` → `linglong compose`，`linglong pipeline publish` → `linglong publish`。
+- **原因**: ingest 与知识库解耦后不再是流水线的一环，pipeline 概念不再适用。
 
----
+### ADR-009: 多源聚合架构（v1.2）
 
-## 关键架构决策
+**决策**: 所有数据源（AIHOT、SearXNG、RSS）采集后聚合到一个池子，再统一调用 LLM 解读。
+- **原因**: 按维度分别解读会丢失跨源关联。聚合后一次 LLM 调用能识别重复、综合判断价值。
+- **影响**: interpret_dimension 接收全部 Entity 而非单维度 Entity。
 
-### ADR-001: Linglong 作为跨 Agent 知识中枢
+### ADR-010: 包配置内联到 .linglong.yaml（v1.2）
 
-**决策**: 所有 Agent 通过 KnowledgeStore 统一读写，各自维护独立知识库但通过 Linglong 同步。
-
-### ADR-002: 知识库同步方向
-
-**决策**: 采用 Pull 模式 — Linglong 主动从各 Agent 知识库拉取，而非 Agent 推送到 Linglong。
-
-### ADR-003: 向量搜索双模式
-
-**决策**: 远程 embedding 服务（OpenClaw）+ 本地 sqlite-vec fallback。
-
-### ADR-004: Agent 命名空间前缀
-
-**决策**: Entity 的 `created_by` 字段使用 `agent:xxx` 前缀标识来源。
-
-### ADR-005: Memory 类型映射
-
-**决策**: 各 Agent 的 memory 类型统一映射为 Linglong Entity，保留原始类型信息在 metadata 中。
+**决策**: 采集包定义从独立 YAML 文件合并到 `.linglong.yaml` 的 `ingest.packages` 字段。
+- **原因**: 单一配置文件管理所有设置，减少维护成本。clone 即可用。
+- **影响**: `package_paths` 字段移除，CLI 从 `config.ingest.packages` 直接加载。
