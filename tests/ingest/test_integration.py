@@ -1,4 +1,4 @@
-"""Integration test: YAML package → PackageExecutor → entities."""
+"""Integration test: inline package → PackageExecutor → entities."""
 
 import pytest
 
@@ -8,11 +8,15 @@ from linglong.ingest.package import SourcePackage
 
 @pytest.mark.asyncio
 async def test_end_to_end_package_execution():
-    """Full flow: package YAML → executor → entities returned."""
-    package = SourcePackage.from_yaml("packages/ai-morning-brief.yaml")
-    # 禁用 aihot 避免网络调用
-    for source in package.sources:
-        source.enabled = False
+    """Full flow: inline package config → executor → entities returned."""
+    package = SourcePackage(
+        name="test-integration",
+        topic="test",
+        sources=[
+            {"id": "aihot", "type": "aihot", "enabled": False, "config": {"endpoint": "daily"}},
+        ],
+        dimensions=[],
+    )
 
     executor = PackageExecutor()
     result = await executor.execute(package)

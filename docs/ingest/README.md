@@ -118,13 +118,26 @@ AdapterRegistry.register(MyAdapter)
 ingest:
   fetch_interval_minutes: 30
   max_items_per_source: 50
-  package_paths:
-    - ~/linglong/data/packages
-  verification_enabled: true
-  verification_pass_threshold: 0.6
   search_engine: searxng       # searxng | zhipu | google | bing_cn | auto
   searxng_url: http://localhost:8088  # SearXNG 实例地址
   search_timeout: 30.0
+  packages:
+    - name: ai-morning-brief
+      topic: AI 早报
+      output:
+        format: morning-brief
+        persist: true
+      sources:
+        - id: aihot-daily
+          type: aihot
+          config:
+            endpoint: daily
+      dimensions:
+        - name: 公司决策
+          search:
+            keywords: ["OpenAI 最新", "Anthropic 最新"]
+          filter:
+            max_results: 5
 ```
 
 ## 搜索引擎

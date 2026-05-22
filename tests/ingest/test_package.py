@@ -13,14 +13,26 @@ from linglong.ingest.package import (
 )
 
 
-def test_load_ai_morning_brief_package():
-    """Load the example AI morning brief package."""
-    package = SourcePackage.from_yaml("packages/ai-morning-brief.yaml")
-    assert package.name == "ai-morning-brief"
-    assert package.topic == "AI 早报"
+def test_load_package_inline():
+    """Load a package from inline config (as in .linglong.yaml ingest.packages)."""
+    package = SourcePackage(
+        name="test-inline",
+        topic="AI 测试",
+        sources=[
+            {"id": "aihot", "type": "aihot", "config": {"endpoint": "daily"}},
+        ],
+        dimensions=[
+            DimensionConfig(
+                name="公司决策",
+                search=SearchConfig(keywords=["OpenAI"]),
+                filter=FilterConfig(max_results=5),
+            ),
+        ],
+    )
+    assert package.name == "test-inline"
     assert len(package.sources) == 1
     assert package.sources[0].type == "aihot"
-    assert len(package.dimensions) == 6
+    assert len(package.dimensions) == 1
 
 
 def test_package_load_all_from_directory():

@@ -234,7 +234,7 @@ from linglong.ingest.executor import PackageExecutor
 from linglong.ingest.package import SourcePackage
 
 executor = PackageExecutor()
-packages = SourcePackage.load_all(config.ingest.package_paths)
+packages = [SourcePackage(**p) for p in config.ingest.packages]
 
 for package in packages:
     # 执行采集包（返回 Entity 列表，不写知识库）

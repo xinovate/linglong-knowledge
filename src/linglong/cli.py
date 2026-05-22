@@ -39,9 +39,9 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     _setup_logging(args.verbose)
     config = get_config()
 
-    packages = SourcePackage.load_all(config.ingest.package_paths)
+    packages = [SourcePackage(**p) for p in config.ingest.packages]
     if not packages:
-        logger.warning("No packages found in %s", config.ingest.package_paths)
+        logger.warning("No packages defined in ingest.packages")
         return 1
 
     all_entities: list[Entity] = []
