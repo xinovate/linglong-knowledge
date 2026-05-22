@@ -1,6 +1,7 @@
 """Configuration management for Linglong."""
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -284,9 +285,28 @@ class IngestConfig(BaseSettings):
             "rss": 0.7,
             "web_fetch": 0.65,
             "api": 0.75,
+            "web_search": 0.6,
             "sync": 0.95,
         },
         description="Default confidence by source type",
+    )
+
+    # 搜索设置
+    proxy: str | None = Field(
+        default=None,
+        description="HTTP proxy for Playwright+Google (e.g. http://127.0.0.1:7890). "
+        "Set to enable Google search; leave empty to use Bing CN.",
+    )
+    search_engine: str = Field(
+        default="auto",
+        description="Search engine: auto (searxng→zhipu→bing_cn), google, bing_cn, zhipu, searxng",
+    )
+    searxng_url: str = Field(
+        default="http://localhost:8088",
+        description="SearXNG instance URL for JSON API search",
+    )
+    search_timeout: float = Field(
+        default=30.0, description="Search request timeout in seconds"
     )
 
 
@@ -404,13 +424,32 @@ def _find_yaml_config() -> Path | None:
     return None
 
 
+def _interpolate_env(data: Any) -> Any:
+    """Recursively interpolate ${ENV_VAR} references in config values."""
+    if isinstance(data, str):
+        if data.startswith("${") and data.endswith("}"):
+            env_var = data[2:-1]
+            value = os.environ.get(env_var, "")
+            if not value:
+                logger.warning("Environment variable %s not set", env_var)
+            return value
+        return data
+    if isinstance(data, dict):
+        return {k: _interpolate_env(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_interpolate_env(v) for v in data]
+    return data
+
+
 def _load_yaml_to_config(yaml_path: Path) -> LinglongConfig:
     """从 YAML 文件构造 LinglongConfig。
 
     YAML 值作为 init 参数传入（Pydantic 优先级最高），
     未在 YAML 中指定的字段回退到环境变量/默认值。
+    支持 ${ENV_VAR} 语法引用环境变量。
     """
     data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+    data = _interpolate_env(data)
     return LinglongConfig(**data)
 
 

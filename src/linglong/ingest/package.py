@@ -17,6 +17,38 @@ class SourceDefinition(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class SearchConfig(BaseModel):
+    """Search configuration within a dimension."""
+
+    keywords: list[str] = Field(default_factory=list)
+    engine: str = "auto"  # auto | google | bing_cn | zhipu
+    concurrent: bool = False  # fetch all keywords in parallel
+
+
+class FilterConfig(BaseModel):
+    """Filter configuration within a dimension."""
+
+    max_results: int = 5
+    max_age_days: int = 7
+    min_stars: int = 0
+
+
+class DimensionConfig(BaseModel):
+    """A single dimension (topic) within a package."""
+
+    name: str
+    search: SearchConfig = Field(default_factory=SearchConfig)
+    sources: list[SourceDefinition] = Field(default_factory=list)
+    filter: FilterConfig = Field(default_factory=FilterConfig)
+
+
+class OutputConfig(BaseModel):
+    """Output configuration for a package."""
+
+    format: str = ""  # morning-brief | weekly | empty = no formatting
+    persist: bool = False
+
+
 class VerificationSettings(BaseModel):
     """Truth verification configuration for a package."""
 
@@ -37,8 +69,9 @@ class SourcePackage(BaseModel):
     schedule: str = "0 7 * * *"
     enabled: bool = True
     sources: list[SourceDefinition] = Field(default_factory=list)
+    dimensions: list[DimensionConfig] = Field(default_factory=list)
     verification: VerificationSettings = Field(default_factory=VerificationSettings)
-    output: dict[str, Any] = Field(default_factory=dict)
+    output: OutputConfig = Field(default_factory=OutputConfig)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "SourcePackage":

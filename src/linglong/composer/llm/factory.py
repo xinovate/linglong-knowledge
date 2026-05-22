@@ -39,7 +39,7 @@ def create_llm_client(config: dict[str, Any]) -> LLMClient:
 
     # 当前所有已知 provider 都走 OpenAI-compatible 协议
     # 未来如果有非兼容协议（如 Claude 原生 SDK），在此处分支
-    if provider in ("openai", "deepseek", "mimo", "openai_compatible"):
+    if provider in ("openai", "deepseek", "mimo", "zhipu", "openai_compatible"):
         return OpenAICompatibleClient(config)
 
     # 默认兜底

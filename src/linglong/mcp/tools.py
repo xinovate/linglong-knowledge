@@ -347,24 +347,43 @@ def execute_package(package_path: str) -> str:
         import asyncio
 
         from linglong.ingest.executor import PackageExecutor
+        from linglong.ingest.history import IngestHistory
         from linglong.ingest.package import SourcePackage
 
         package = SourcePackage.from_yaml(package_path)
-        executor = PackageExecutor()
+
+        config = get_config()
+        history = None
+        if package.output.persist:
+            history = IngestHistory()
+
+        llm_config = None
+        if config.composer.llm_api_key:
+            llm_config = {
+                "provider": config.composer.llm_provider,
+                "api_key": config.composer.llm_api_key,
+                "model": config.composer.llm_model,
+                "base_url": config.composer.llm_base_url,
+                "temperature": config.composer.llm_temperature,
+                "max_tokens": config.composer.llm_max_tokens,
+            }
+
+        executor = PackageExecutor(history=history, llm_config=llm_config)
         result = asyncio.run(executor.execute(package))
 
         entities = result.get("entities", [])
         previews = [_entity_to_preview(e) for e in entities]
-        return json.dumps(
-            {
-                "results": previews,
-                "count": len(previews),
-                "package": package.name,
-                "verified": result.get("verified", 0),
-                "failed": result.get("failed", 0),
-            },
-            ensure_ascii=False,
-        )
+        response: dict[str, Any] = {
+            "results": previews,
+            "count": len(previews),
+            "total": result.get("total", 0),
+            "filtered": result.get("filtered", 0),
+            "package": package.name,
+            "failed": result.get("failed", 0),
+        }
+        if result.get("output"):
+            response["output"] = result["output"]
+        return json.dumps(response, ensure_ascii=False)
     except Exception as exc:
         logger.exception("execute_package failed")
         return json.dumps({"error": str(exc)}, ensure_ascii=False)

@@ -9,6 +9,7 @@
 
 import logging
 import os
+import re
 from typing import Any
 
 import requests
@@ -46,7 +47,12 @@ class OpenAICompatibleClient(LLMClient):
         max_tokens: int | None = None,
     ) -> str:
         """调用 OpenAI-compatible Chat Completions API"""
-        url = f"{self.base_url}/v1/chat/completions"
+        if self.base_url.endswith("/chat/completions"):
+            url = self.base_url
+        elif re.search(r"/v\d+$", self.base_url):
+            url = f"{self.base_url}/chat/completions"
+        else:
+            url = f"{self.base_url}/v1/chat/completions"
 
         headers = {
             "Content-Type": "application/json",
