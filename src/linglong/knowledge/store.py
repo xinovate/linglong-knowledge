@@ -247,6 +247,27 @@ class KnowledgeStore:
             (embedding_id, json.dumps(embedding)),
         )
 
+    def _write_embedding_with_hash_guard(
+        self, entity_id: str, expected_hash: str, embedding_id: str
+    ) -> None:
+        """Write embedding_id only if content_hash hasn't changed (lock-free guard)."""
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT content_hash FROM entities WHERE id = ?", (entity_id,)
+            ).fetchone()
+            if row and row[0] == expected_hash:
+                conn.execute(
+                    "UPDATE entities SET embedding_id = ? WHERE id = ?",
+                    (embedding_id, entity_id),
+                )
+                conn.commit()
+                logger.debug("Embedding written for %s", entity_id)
+            else:
+                logger.info(
+                    "Skipping embedding for %s: content changed since generation",
+                    entity_id,
+                )
+
     def _delete_embedding(self, conn: sqlite3.Connection, embedding_id: str | None) -> None:
         """Remove embedding vector from the sqlite-vec virtual table."""
         if embedding_id:
@@ -320,10 +341,7 @@ class KnowledgeStore:
             # 解析 [[wikilinks]] 并自动填充 relations
             self._resolve_wikilinks(entity)
 
-            # 保存到文件系统
-            self._save_to_filesystem(entity)
-
-            # 保存到 SQLite
+            # ① 保存到 SQLite（DB 先行）
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
@@ -358,17 +376,15 @@ class KnowledgeStore:
                 )
                 conn.commit()
 
-            # 实体持久化后生成嵌入向量
+            # ② 保存到文件系统
+            self._save_to_filesystem(entity)
+
+            # ③ 实体持久化后生成嵌入向量（锁外，content hash 守卫）
             self._generate_and_store_embedding(entity)
 
-            # 如果生成了嵌入，更新 embedding_id
+            # 如果生成了嵌入，用 content hash 守卫写入
             if entity.embedding_id:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.execute(
-                        "UPDATE entities SET embedding_id = ? WHERE id = ?",
-                        (entity.embedding_id, entity.id),
-                    )
-                    conn.commit()
+                self._write_embedding_with_hash_guard(entity.id, content_hash, entity.embedding_id)
 
             self._log_operation("create", entity.id, entity=entity)
 
@@ -741,22 +757,18 @@ class KnowledgeStore:
                 )
                 conn.commit()
 
-            # 如果内容变更且向量搜索可用，重新生成嵌入
+            # 如果内容变更且向量搜索可用，重新生成嵌入（锁外，content hash 守卫）
             if self._vector_available and self.config.generate_embeddings:
                 old_entity = self.get(entity.id)
                 if old_entity is None or old_entity.content != entity.content:
+                    new_hash = self._content_hash(entity.content)
                     if entity.embedding_id:
                         with sqlite3.connect(self.db_path) as conn:
                             self._delete_embedding(conn, entity.embedding_id)
                             conn.commit()
                     self._generate_and_store_embedding(entity)
-                    # 重新更新 entities 表中的 embedding_id
-                    with sqlite3.connect(self.db_path) as conn:
-                        conn.execute(
-                            "UPDATE entities SET embedding_id = ? WHERE id = ?",
-                            (entity.embedding_id, entity.id),
-                        )
-                        conn.commit()
+                    if entity.embedding_id:
+                        self._write_embedding_with_hash_guard(entity.id, new_hash, entity.embedding_id)
 
             self._log_operation("update", entity.id, details=f"v{entity.current_version}", entity=entity)
 
@@ -772,6 +784,119 @@ class KnowledgeStore:
                     logger.warning("Auto-lint failed: %s", e)
 
             return entity
+
+    def sync(self, fix: bool = False) -> list[dict]:
+        """Check and fix consistency between DB and filesystem.
+
+        Returns list of issues found. If fix=True, also repairs them.
+        """
+        issues: list[dict] = []
+
+        # Build maps
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute("SELECT * FROM entities WHERE archived_at IS NULL").fetchall()
+        db_entities = {}
+        for row in rows:
+            entity = self._row_to_entity(row)
+            db_entities[entity.id] = entity
+
+        # Phase 1: DB → File (ensure every entity has correct file)
+        for entity in db_entities.values():
+            expected = self._get_entity_path(
+                entity.id, entity.facet.value,
+                content=entity.content, subdir=entity.group or "",
+            )
+            actual = self._find_entity_file(entity.id, entity.facet.value)
+
+            if not actual:
+                issues.append({
+                    "type": "missing_file", "entity_id": entity.id,
+                    "facet": entity.facet.value, "group": entity.group,
+                    "expected_path": str(expected.relative_to(self.wiki_path)),
+                })
+                if fix:
+                    self._save_to_filesystem(entity)
+            elif actual != expected:
+                issues.append({
+                    "type": "wrong_path", "entity_id": entity.id,
+                    "facet": entity.facet.value, "group": entity.group,
+                    "actual_path": str(actual.relative_to(self.wiki_path)),
+                    "expected_path": str(expected.relative_to(self.wiki_path)),
+                })
+                if fix:
+                    expected.parent.mkdir(parents=True, exist_ok=True)
+                    actual.rename(expected)
+
+        # Phase 2: File → DB (find orphans and duplicates)
+        short_id_to_entity: dict[str, Entity] = {}
+        for eid, entity in db_entities.items():
+            short_id_to_entity[eid[:8]] = entity
+
+        files_by_short_id: dict[str, list[Path]] = {}
+        files_by_full_id: dict[str, list[Path]] = {}
+        all_db_ids = set(db_entities.keys())
+
+        for facet_dir in self.wiki_path.iterdir():
+            if not facet_dir.is_dir() or facet_dir.name in ("archive", "_staging"):
+                continue
+            for md_file in facet_dir.rglob("*.md"):
+                if md_file.name.startswith("index") or md_file.name == "log.md":
+                    continue
+                stem = md_file.stem
+                parts = stem.rsplit("-", 1)
+                short_id = parts[1] if len(parts) == 2 and len(parts[1]) == 8 else stem
+                files_by_short_id.setdefault(short_id, []).append(md_file)
+                # Also index by full stem for exact ID match
+                files_by_full_id.setdefault(stem, []).append(md_file)
+
+        for short_id, files in files_by_short_id.items():
+            entity = short_id_to_entity.get(short_id)
+            if not entity:
+                # Check if any file matches a full DB ID (non-standard ID format)
+                matched = False
+                for f in files:
+                    if f.stem in all_db_ids:
+                        matched = True
+                        break
+                if matched:
+                    continue
+                # Truly orphan files
+                for f in files:
+                    issues.append({
+                        "type": "orphan_file",
+                        "path": str(f.relative_to(self.wiki_path)),
+                    })
+                    if fix:
+                        staging = self.wiki_path / "_staging"
+                        staging.mkdir(parents=True, exist_ok=True)
+                        f.rename(staging / f.name)
+            elif len(files) > 1:
+                # Duplicate: keep correct path, remove others
+                expected = self._get_entity_path(
+                    entity.id, entity.facet.value,
+                    content=entity.content, subdir=entity.group or "",
+                )
+                for f in files:
+                    if f != expected:
+                        issues.append({
+                            "type": "duplicate_file", "entity_id": entity.id,
+                            "path": str(f.relative_to(self.wiki_path)),
+                            "keep_path": str(expected.relative_to(self.wiki_path)),
+                        })
+                        if fix:
+                            f.unlink()
+
+        # Phase 3: Clean empty directories
+        if fix:
+            for facet_dir in self.wiki_path.iterdir():
+                if not facet_dir.is_dir():
+                    continue
+                for sub in sorted(facet_dir.rglob("*"), reverse=True):
+                    if sub.is_dir() and not any(sub.iterdir()):
+                        sub.rmdir()
+
+        return issues
 
     def archive(self, entity_id: str) -> Entity:
         """Archive an entity: mark archived_at and move file to archive/."""

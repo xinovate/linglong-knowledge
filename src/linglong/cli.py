@@ -89,6 +89,36 @@ def cmd_publish(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_kb_sync(args: argparse.Namespace) -> int:
+    """Check and fix DB↔filesystem consistency."""
+    _setup_logging(args.verbose)
+    store = KnowledgeStore()
+    issues = store.sync(fix=args.fix)
+
+    if not issues:
+        print("✅ DB 与文件系统一致，无问题")
+        return 0
+
+    print(f"发现 {len(issues)} 个问题：")
+    for issue in issues:
+        t = issue["type"]
+        if t == "missing_file":
+            print(f"  ❌ 缺失文件：{issue['entity_id'][:12]}... → {issue['expected_path']}")
+        elif t == "wrong_path":
+            print(f"  ⚠️ 路径不对：{issue['entity_id'][:12]}... {issue['actual_path']} → {issue['expected_path']}")
+        elif t == "orphan_file":
+            print(f"  🔍 孤儿文件：{issue['path']}")
+        elif t == "duplicate_file":
+            print(f"  📄 重复文件：{issue['path']}（保留 {issue['keep_path']}）")
+
+    if args.fix:
+        print(f"\n✅ 已修复 {len(issues)} 个问题")
+    else:
+        print(f"\n使用 --fix 执行修复")
+
+    return 0
+
+
 def cmd_sync(args: argparse.Namespace) -> int:
     """Sync external agent knowledge into Linglong."""
     _setup_logging(args.verbose)
@@ -716,6 +746,12 @@ def _reg_stats(sub):
     return sub.add_parser("stats", help="知识库统计")
 
 
+def _reg_kb_sync(sub):
+    p = sub.add_parser("sync", help="DB↔文件一致性校验")
+    p.add_argument("--fix", action="store_true", help="执行修复（默认仅预览）")
+    return p
+
+
 def _reg_template(sub):
     p = sub.add_parser("template", help="管理知识条目模板")
     p.add_argument("action", choices=["list", "get"], help="操作：list 列出模板，get 获取模板内容")
@@ -785,7 +821,7 @@ def main(argv: list[str] | None = None) -> int:
     _reg_template(kb_sp).set_defaults(func=cmd_template)
     _reg_init(kb_sp).set_defaults(func=cmd_init)
     _reg_migrate(kb_sp).set_defaults(func=cmd_migrate)
-    _reg_sync(kb_sp).set_defaults(func=cmd_sync)
+    _reg_kb_sync(kb_sp).set_defaults(func=cmd_kb_sync)
 
     # ========== pipeline group ==========
     pipe_parser = sub.add_parser("pipeline", help="内容生产流水线")

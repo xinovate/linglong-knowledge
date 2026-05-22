@@ -161,17 +161,42 @@ flowchart TD
     Modify --> Review
 
     Review["ReviewEngine 审核<br/>置信度 + 敏感内容 + 长度"]
-    Review --> Store["KnowledgeStore 写入<br/>文件系统 + SQLite + 向量"]
+    Review --> Lock["🔒 获取文件锁"]
 
-    Store --> Index["更新索引<br/>index.md + index-*.md"]
-    Index --> Log["记录日志<br/>log.md"]
+    Lock --> DB["① SQLite 写入<br/>INSERT/UPDATE + commit"]
+    DB --> File["② 文件系统写入<br/>wiki/facet/group/slug-id.md"]
+    File --> ReleaseLock["🔓 释放文件锁"]
+
+    ReleaseLock --> EmbedGuard{embedding hash 校验}
+    EmbedGuard -->|content_hash 一致| Embed["③ 向量嵌入生成 + 写入"]
+    EmbedGuard -->|content_hash 已变| EmbedSkip["跳过 embedding<br/>下次更新时重新生成"]
+
+    Embed --> Index["④ 更新索引<br/>index.md + index-*.md"]
+    EmbedSkip --> Index
+    Index --> Log["⑤ 记录日志<br/>log.md"]
     Log --> Done([写入完成])
 
     style Start fill:#4CAF50,color:#fff
     style Done fill:#4CAF50,color:#fff
     style Skip fill:#FF9800,color:#fff
     style Cancel fill:#F44336,color:#fff
+    style Lock fill:#FF9800,color:#fff
+    style ReleaseLock fill:#FF9800,color:#fff
+    style EmbedSkip fill:#FF9800,color:#fff
 ```
+
+### 写入顺序原则
+
+**DB 先行**：SQLite → 文件系统。DB 写入失败不留痕，文件系统无事务无法回滚。锁内只做 DB + 文件操作，embedding 在锁外用 content hash 守卫。
+
+### Embedding Content Hash 守卫
+
+embedding 生成是网络请求（调用远程 embedding 服务），耗时长。如果在锁内执行会阻塞并发写入。采用 hash 守卫方案：
+
+1. 生成 embedding 前，记录当前 `content_hash`
+2. 生成完成后（锁外），读 DB 检查 `content_hash` 是否变化
+3. 未变化 → 写入 embedding_id 安全
+4. 已变化 → 跳过，下次 update 时基于新内容重新生成
 
 ---
 
@@ -251,6 +276,77 @@ linglong kb search "支付系统架构" --facet concept --created-by agent:openc
 
 ---
 
+## 数据一致性校验（kb sync）
+
+当 Agent 直接操作文件系统（移动/重命名/删除文件）导致 DB 与文件不一致时，用 `kb sync` 修复。
+
+### 原则
+
+**DB 是唯一真相源，文件系统是 DB 的投影。**
+
+### 执行流程
+
+```mermaid
+flowchart TD
+    Start([kb sync]) --> Scan["扫描 DB + 文件系统<br/>构建映射表"]
+
+    Scan --> Phase1["Phase 1: DB → 文件"]
+    Phase1 --> P1A{文件存在?}
+    P1A -->|不存在| Fix1["重新生成文件"]
+    P1A -->|路径不对| Fix2["移动到正确路径"]
+    P1A -->|路径正确| P1B{frontmatter 一致?}
+    P1B -->|不一致| Fix3["重写 frontmatter"]
+    P1B -->|一致| Phase2
+
+    Phase2["Phase 2: 文件 → DB"]
+    Phase2 --> P2A{匹配 DB entity?}
+    P2A -->|匹配| Phase3
+    P2A -->|不匹配| P2B{同一 entity 多文件?}
+    P2B -->|是| Fix4["保留正确路径<br/>删除其余"]
+    P2B -->|否| Fix5["移入 _staging/"]
+
+    Phase3["Phase 3: 清理"]
+    Phase3 --> Fix6["删除空目录"]
+    Fix6 --> Done([完成])
+
+    style Fix1 fill:#FF9800,color:#fff
+    style Fix2 fill:#FF9800,color:#fff
+    style Fix3 fill:#FF9800,color:#fff
+    style Fix4 fill:#FF9800,color:#fff
+    style Fix5 fill:#FF9800,color:#fff
+    style Fix6 fill:#FF9800,color:#fff
+```
+
+### CLI
+
+```bash
+# 预览差异（不执行）
+linglong kb sync
+
+# 执行修复
+linglong kb sync --fix
+```
+
+### 修复动作
+
+| 问题 | 检测方式 | --fix 动作 |
+|------|---------|-----------|
+| DB 有，文件不存在 | entity ID 递归查找无文件 | `_save_to_filesystem()` 重新生成 |
+| 文件路径不对 | 实际路径 ≠ 预期路径（facet/group/slug） | `rename` 到正确路径 |
+| 同 entity 多文件 | 同一 short ID 多个文件 | 保留正确路径的，删其余 |
+| frontmatter 过期 | 文件内 facet/group ≠ DB | 用 DB 数据重写文件 |
+| 孤儿文件 | 文件存在但 DB 无对应 | 移入 `wiki/_staging/` |
+| 空目录 | 子目录无文件 | `rmdir` |
+
+### 孤儿文件处理
+
+不直接删除也不自动导入，放入 `_staging/`：
+- 直接删可能丢数据（Agent 手写的重要文件）
+- 自动导入需要确定 facet/group，信息不足会分错
+- 用户可手动审查 `_staging/` 后决定导入或删除
+
+---
+
 ## CLI 命令
 
 ```bash
@@ -273,6 +369,10 @@ linglong kb template get concept       # 查看 concept 模板
 # 归档
 linglong kb archive <entity-id>
 linglong kb archive --older-than 90d
+
+# 一致性校验
+linglong kb sync                    # 预览差异
+linglong kb sync --fix              # 执行修复
 ```
 
 ---
@@ -284,6 +384,9 @@ linglong kb archive --older-than 90d
 | D-03a | 确认模式 | confirm/auto 双模式 | 批量导入跳过确认，日常使用保留 | 仅 confirm |
 | D-03b | 去重优先级 | ID > 内容hash > 标题 > 语义 | 多层防护 | 仅标题去重 |
 | D-03c | 同步方向 | Pull（Linglong 拉取） | Agent 无需适配 API | Push（Agent 推送） |
+| D-03d | 写入顺序 | DB 先行（SQLite → 文件系统） | DB 事务有原子性，文件系统没有 | 文件先行（旧版） |
+| D-03e | embedding 一致性 | content hash 守卫（锁外） | 不延长锁时间，hash 不匹配则跳过 | embedding 移入锁内（持锁时间长） |
+| D-03f | DB↔文件同步 | kb sync 双向校验 | Agent 直接操作文件系统后修复不一致 | 仅 index --rebuild（不修路径） |
 
 ## 版本变动历史
 
@@ -291,6 +394,7 @@ linglong kb archive --older-than 90d
 |------|------|----------|----------|
 | v1.0 | 2026-05-14 | 初始设计 | 全文 |
 | v1.1 | 2026-05-21 | 语义去重已实现（向量相似度 >0.95），归档批量操作已实现（`--older-than`），未实现项缩减为多 Agent 更新合并 | 去重策略、归档机制、未实现项 |
+| v1.2 | 2026-05-22 | 写入顺序改为 DB 先行；embedding content hash 守卫；新增 kb sync 双向校验设计 | 写入流程、embedding 守卫、sync 设计 |
 
 ## 关联文档
 
