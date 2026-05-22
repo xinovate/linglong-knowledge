@@ -135,7 +135,7 @@ ingest:
       dimensions:
         - name: 公司决策
           search:
-            keywords: ["OpenAI 最新", "Anthropic 最新"]
+            keywords: ["OpenAI news May 2026", "Anthropic Claude latest"]
           filter:
             max_results: 5
 ```

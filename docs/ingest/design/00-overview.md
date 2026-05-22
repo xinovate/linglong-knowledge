@@ -107,6 +107,8 @@ WebSearchAdapter 支持 4 个搜索后端：
 
 `auto` 模式优先级：searxng → zhipu → google（有代理）→ bing_cn
 
+> **关键词建议**：SearXNG 底层走 Bing 引擎，英文关键词效果远好于中文。建议使用 `"OpenAI news May 2026"` 而非 `"OpenAI 最新 新闻"`。
+
 ### AIHOT 数据源
 
 [AIHOT](https://aihot.virxact.com/agent) 是免费 AI 新闻聚合服务，提供两个端点：
@@ -184,7 +186,7 @@ ingest:
       dimensions:                 # 维度搜索（按关键词分组）
         - name: 公司决策
           search:
-            keywords: ["OpenAI 最新", "Anthropic 最新"]
+            keywords: ["OpenAI news May 2026", "Anthropic Claude latest"]
             engine: auto
             concurrent: true
           filter:
