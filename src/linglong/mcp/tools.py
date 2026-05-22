@@ -43,6 +43,7 @@ def _entity_to_preview(entity: Entity) -> dict[str, Any]:
     return {
         "id": entity.id,
         "facet": entity.facet.value,
+        "group": entity.group,
         "status": entity.status.value,
         "confidence": float(entity.confidence) if entity.confidence else None,
         "updated_at": entity.updated_at.isoformat() if entity.updated_at else None,
@@ -193,6 +194,7 @@ def write_entity(
     title: str,
     content: str,
     facet: str,
+    group: str | None = None,
     tags: list[str] | None = None,
     reference_entity_ids: list[str] | None = None,
 ) -> str:
@@ -217,20 +219,32 @@ def write_entity(
         entity = Entity(
             content=full_content,
             facet=facet_enum,
+            group=group,
             created_by="agent:mcp",
             confidence=0.9,
             metadata=metadata,
         )
         created = store.create(entity)
-        return json.dumps(
-            {
-                "id": created.id,
-                "facet": created.facet.value,
-                "status": created.status.value,
-                "message": "Entity created successfully",
-            },
-            ensure_ascii=False,
-        )
+
+        result: dict[str, Any] = {
+            "id": created.id,
+            "facet": created.facet.value,
+            "group": created.group,
+            "status": created.status.value,
+            "message": "Entity created successfully",
+        }
+
+        # Warn if facet root is getting crowded and no group was specified
+        if not group:
+            crowding = store.check_facet_crowding(facet_enum)
+            if crowding:
+                result["warning"] = (
+                    f"Facet '{facet.value}' has {crowding['root_count']} ungrouped entities "
+                    f"(threshold: {crowding['threshold']}). "
+                    f"Consider specifying a group. Existing groups: {list(crowding['existing_groups'].keys())}"
+                )
+
+        return json.dumps(result, ensure_ascii=False)
     except Exception as exc:
         logger.exception("write_entity failed")
         return json.dumps({"error": str(exc)}, ensure_ascii=False)

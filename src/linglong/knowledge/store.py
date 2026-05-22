@@ -175,6 +175,12 @@ class KnowledgeStore:
             except sqlite3.OperationalError:
                 pass  # 列已存在
 
+            # 迁移：旧数据库可能没有 group 列
+            try:
+                conn.execute("ALTER TABLE entities ADD COLUMN `group` TEXT")
+            except sqlite3.OperationalError:
+                pass  # 列已存在
+
             # FTS5 全文搜索虚拟表
             conn.execute("""
                 CREATE VIRTUAL TABLE IF NOT EXISTS entity_fts USING fts5(
@@ -322,10 +328,10 @@ class KnowledgeStore:
                 conn.execute(
                     """
                     INSERT INTO entities
-                    (id, content, content_hash, summary, facet, created_by, confirmed_by, confirmed_at,
+                    (id, content, content_hash, summary, facet, `group`, created_by, confirmed_by, confirmed_at,
                      confidence, status, sources, relations, versions, current_version,
                      created_at, updated_at, archived_at, embedding_id, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         entity.id,
@@ -333,6 +339,7 @@ class KnowledgeStore:
                         content_hash,
                         entity.summary,
                         entity.facet.value,
+                        entity.group,
                         entity.created_by,
                         entity.confirmed_by,
                         entity.confirmed_at.isoformat() if entity.confirmed_at else None,
@@ -377,6 +384,34 @@ class KnowledgeStore:
                     logger.warning("Auto-lint failed: %s", e)
 
             return entity
+
+    def check_facet_crowding(self, facet: EntityFacet, threshold: int = 10) -> dict | None:
+        """Check if a facet root has too many ungrouped entities.
+
+        Returns a warning dict if crowded, None otherwise.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM entities WHERE facet = ? AND (`group` IS NULL OR `group` = '')",
+                (facet.value,),
+            ).fetchone()
+            root_count = row[0]
+
+        if root_count >= threshold:
+            # List existing groups for suggestion
+            with sqlite3.connect(self.db_path) as conn:
+                rows = conn.execute(
+                    "SELECT `group`, COUNT(*) FROM entities WHERE facet = ? AND `group` IS NOT NULL AND `group` != '' GROUP BY `group` ORDER BY COUNT(*) DESC",
+                    (facet.value,),
+                ).fetchall()
+            existing_groups = {r[0]: r[1] for r in rows}
+            return {
+                "facet": facet.value,
+                "root_count": root_count,
+                "threshold": threshold,
+                "existing_groups": existing_groups,
+            }
+        return None
 
     def get(self, entity_id: str) -> Entity | None:
         """Get entity by ID."""
@@ -665,6 +700,7 @@ class KnowledgeStore:
                         content_hash = ?,
                         summary = ?,
                         facet = ?,
+                        `group` = ?,
                         confirmed_by = ?,
                         confirmed_at = ?,
                         confidence = ?,
@@ -684,6 +720,7 @@ class KnowledgeStore:
                         content_hash,
                         entity.summary,
                         entity.facet.value,
+                        entity.group,
                         entity.confirmed_by,
                         entity.confirmed_at.isoformat() if entity.confirmed_at else None,
                         float(entity.confidence),
@@ -870,17 +907,30 @@ class KnowledgeStore:
             return base / f"{slug}-{entity_id[:8]}.md"
         return base / f"{entity_id}.md"
 
+    def _find_entity_file(self, entity_id: str, facet: str) -> Path | None:
+        """Find existing entity file in facet directory (including subdirs)."""
+        facet_dir = self.wiki_path / facet
+        if not facet_dir.exists():
+            return None
+        short_id = entity_id[:8]
+        for md_file in facet_dir.rglob("*.md"):
+            name = md_file.stem
+            if name == entity_id or name.endswith(f"-{short_id}"):
+                return md_file
+        return None
+
     def _save_to_filesystem(self, entity: Entity) -> None:
         """Save entity as Markdown file with YAML frontmatter."""
-        subdir = entity.metadata.get("_subdir", "")
-        old_path = self._get_entity_path(entity.id, entity.facet.value)
+        subdir = entity.group or ""
+        # Find old file across all possible locations
+        old_path = self._find_entity_file(entity.id, entity.facet.value)
         entity_path = self._get_entity_path(
             entity.id, entity.facet.value, content=entity.content, subdir=subdir
         )
         entity_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # 删除旧文件（文件名变更时路径不同）
-        if old_path != entity_path and old_path.exists():
+        # Remove old file if path changed (facet/group/filename shift)
+        if old_path and old_path != entity_path:
             old_path.unlink()
 
         # 构建 YAML frontmatter（兼容 OpenClaw）
@@ -893,6 +943,8 @@ class KnowledgeStore:
             fm_lines.append(f"confirmed_by: {entity.confirmed_by}")
         fm_lines.append(f"confidence: {float(entity.confidence)}")
         fm_lines.append(f"status: {entity.status.value}")
+        if entity.group:
+            fm_lines.append(f"group: {entity.group}")
         fm_lines.append(f"created_at: {entity.created_at.isoformat()}")
         fm_lines.append(f"updated_at: {entity.updated_at.isoformat()}")
         if entity.summary:
@@ -905,15 +957,18 @@ class KnowledgeStore:
         """Convert database row to Entity."""
         # facet 列可能尚不存在于旧 schema 中，使用 SOURCE 作为默认值
         facet_str = row["facet"] if "facet" in row.keys() else None
-        facet = EntityFacet(facet_str) if facet_str else EntityFacet.SOURCE
+        facet = EntityFacet(facet_str) if facet_str else EntityFacet.CONCEPT
 
         # archived_at 列可能尚不存在于旧 schema 中
         archived_at_raw = row["archived_at"] if "archived_at" in row.keys() else None
+
+        group = row["group"] if "group" in row.keys() else None
 
         return Entity(
             id=row["id"],
             content=row["content"],
             facet=facet,
+            group=group,
             summary=row["summary"],
             created_by=row["created_by"],
             confirmed_by=row["confirmed_by"],

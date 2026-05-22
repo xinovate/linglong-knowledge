@@ -10,12 +10,11 @@ from linglong.core.models import EntityFacet
 logger = logging.getLogger(__name__)
 
 _FACET_LABELS = {
-    EntityFacet.SOURCE: "原始资料",
-    EntityFacet.ENTITY: "专有名词",
     EntityFacet.CONCEPT: "抽象知识",
-    EntityFacet.SYNTHESIS: "跨源综合",
     EntityFacet.EXPERIENCE: "实战经验",
     EntityFacet.METHODOLOGY: "方法论",
+    EntityFacet.PROJECT: "项目记录",
+    EntityFacet.REFERENCE: "外部参考",
     EntityFacet.PERSONAL: "个人数据",
 }
 
@@ -51,17 +50,22 @@ class IndexGenerator:
         return self._write_facet_index(facet, entries)
 
     def _scan_facet_dir(self, facet_dir: Path) -> list[dict]:
-        """Scan a facet directory and extract entry metadata."""
+        """Scan a facet directory (including group subdirs) and extract entry metadata."""
         if not facet_dir.exists():
             return []
 
         entries = []
-        for md_file in sorted(facet_dir.glob("*.md")):
+        for md_file in sorted(facet_dir.rglob("*.md")):
             meta = self._parse_frontmatter(md_file)
+            # Derive group from subdirectory depth
+            rel = md_file.relative_to(facet_dir)
+            parts = rel.parts
+            group = parts[0] if len(parts) > 1 else None
             entries.append({
                 "id": meta.get("id", md_file.stem),
                 "title": self._extract_title(md_file),
                 "facet": meta.get("type", "concept"),
+                "group": meta.get("group") or group,
                 "status": meta.get("status", "raw"),
                 "created_by": meta.get("created_by", "unknown"),
                 "updated_at": meta.get("updated_at", ""),
@@ -92,7 +96,9 @@ class IndexGenerator:
         return path.stem
 
     def _write_facet_index(self, facet: EntityFacet, entries: list[dict]) -> int:
-        """Write per-facet index file."""
+        """Write per-facet index file, grouped by group."""
+        from collections import OrderedDict
+
         label = _FACET_LABELS.get(facet, facet.value)
         lines = [
             f"# {label}索引",
@@ -101,14 +107,32 @@ class IndexGenerator:
             "",
         ]
 
+        # Group entries
+        grouped: OrderedDict[str | None, list[dict]] = OrderedDict()
         for e in entries:
-            lines.append(
-                f"- [[{e['title']}]] ({e['status']}) — "
-                f"{e['updated_at'][:10] if e['updated_at'] else 'N/A'}"
-            )
+            g = e.get("group")
+            grouped.setdefault(g, []).append(e)
 
         if not entries:
             lines.append("（暂无条目）")
+        elif len(grouped) == 1 and None in grouped:
+            # No groups, flat list
+            for e in entries:
+                lines.append(
+                    f"- [[{e['title']}]] ({e['status']}) — "
+                    f"{e['updated_at'][:10] if e['updated_at'] else 'N/A'}"
+                )
+        else:
+            for group_name, group_entries in grouped.items():
+                if group_name:
+                    lines.append(f"### {group_name} ({len(group_entries)})")
+                    lines.append("")
+                for e in group_entries:
+                    lines.append(
+                        f"- [[{e['title']}]] ({e['status']}) — "
+                        f"{e['updated_at'][:10] if e['updated_at'] else 'N/A'}"
+                    )
+                lines.append("")
 
         lines.append("")
         output_path = self.wiki_path / f"index-{facet.value}.md"

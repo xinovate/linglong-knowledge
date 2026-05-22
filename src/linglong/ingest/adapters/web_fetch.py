@@ -43,7 +43,7 @@ class WebFetchAdapter(SourceAdapter):
     def _content_to_entity(self, content: str, url: str) -> Entity:
         return Entity(
             content=f"# Fetched Content\n\n{content}\n\n[Source]({url})",
-            facet=EntityFacet.SOURCE,
+            facet=EntityFacet.REFERENCE,
             created_by="agent:ingest",
             confidence=get_config().ingest.default_confidence.get("web_fetch", 0.65),
             sources=[

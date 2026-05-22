@@ -88,12 +88,12 @@ def test_personal_facet_requires_human():
     assert reviewed.status == EntityStatus.PENDING_REVIEW
 
 
-def test_source_facet_auto_confirm():
-    """source 分面高置信度自动确认。"""
+def test_reference_facet_auto_confirm():
+    """reference 分面高置信度自动确认。"""
     engine = ReviewEngine()
     entity = Entity(
         content="原始资料",
-        facet=EntityFacet.SOURCE,
+        facet=EntityFacet.REFERENCE,
         created_by="agent:openclaw",
         confidence=0.8,
     )

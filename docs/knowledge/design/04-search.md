@@ -113,8 +113,8 @@ linglong kb search "支付系统" --mode auto
 # 只搜概念
 linglong kb search "架构" --facet concept
 
-# 只搜实体
-linglong kb search "OpenClaw" --facet entity
+# 只搜项目记录
+linglong kb search "OpenClaw" --facet project
 
 # 只搜经验
 linglong kb search "sqlite-vec" --facet experience

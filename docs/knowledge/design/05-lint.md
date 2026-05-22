@@ -46,10 +46,15 @@ flowchart TD
     R4 -->|有过期| I2["ℹ️ 信息：内容已 N 天未更新"]
     R4 -->|无| Step5
 
-    Step5["检查 5：孤儿资源<br/>--check orphans（仅 concept/entity）"]
+    Step5["检查 5：孤儿资源<br/>--check orphans（仅 concept）"]
     Step5 --> R5{"孤儿?"}
     R5 -->|有孤儿| I3["ℹ️ 信息：未被引用 + 引用建议"]
-    R5 -->|无| Report
+    R5 -->|无| Step6
+
+    Step6["检查 6：拥挤 Facet<br/>--check crowded_facets"]
+    Step6 --> R6{"根目录超阈值?"}
+    R6 -->|有拥挤| W3["⚠️ 警告：建议分组"]
+    R6 -->|无| Report
 
     Report["生成报告<br/>❌ 红灯 / ⚠️ 黄灯 / ℹ️ 信息"]
     Report --> Fix{自动修复?}
@@ -260,6 +265,7 @@ linglong kb lint --stale-days 30
 | v1.0 | 2026-05-14 | 初始设计 | 全文 |
 | v1.1 | 2026-05-20 | 同步代码实现：补充 stale_content、更新 --fix / --rule / --stale-days CLI、auto_lint 配置 | 检测项、CLI、触发方式、修复策略 |
 | v1.2 | 2026-05-21 | 全部设计项已实现：孤儿资源检测（concept/entity）、向量语义去重、定期巡检（--daemon）、--check 子项过滤。状态升级为✅已实现 | 全文 |
+| v1.3 | 2026-05-22 | facet 重分类（7→6）；孤儿检测改为仅 concept；新增拥挤 facet 检测（check_crowded_facets）；group 子目录支持 | 全文 |
 
 ## 关联文档
 

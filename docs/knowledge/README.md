@@ -18,7 +18,7 @@
 ## 职责
 
 - **统一存储**：文件系统（Markdown + YAML frontmatter）+ SQLite（结构化元数据 + FTS5）+ sqlite-vec（向量索引）
-- **七分面分类**：source / entity / concept / synthesis / experience / methodology / personal
+- **六分面分类 + group 子目录**：concept / experience / methodology / project / reference / personal
 - **智能搜索**：FTS5 关键词 + 向量语义 + RRF 混合搜索 + 自动模式路由
 - **Agent 接入**：MCP Server（9 个工具）+ CLI + SyncAdapter，支持任意 MCP 客户端接入
 - **自动审核**：ReviewEngine 规则驱动，高置信度自动确认、低置信度标记待审
@@ -31,7 +31,7 @@
 | `KnowledgeStore`  | `knowledge/store.py` | 统一存储接口（CRUD + 搜索 + 向量） |
 | `ReviewEngine`    | `knowledge/review.py` | 自动审核引擎（facet 差异化规则） |
 | `LintEngine`      | `knowledge/lint.py` | 巡检引擎（索引/WikiLinks/冲突/过期） |
-| `Indexer`         | `knowledge/indexer.py` | 索引生成器（主索引 + 7 分面子索引） |
+| `Indexer`         | `knowledge/indexer.py` | 索引生成器（主索引 + 6 分面子索引） |
 | `WikiLinks`       | `knowledge/wikilinks.py` | WikiLinks 解析器 |
 | `EmbeddingService` | `knowledge/embeddings.py` | 向量嵌入服务（远程 embedding） |
 | `init`            | `knowledge/init.py` | 知识库初始化（裸初始化/Git/备份/OpenClaw 迁移） |

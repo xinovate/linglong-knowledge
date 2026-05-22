@@ -110,7 +110,7 @@ def _sync_agents_md(codex_path: Path, store: KnowledgeStore, stats: dict) -> Non
         entity = Entity(
             id=entity_id,
             content=raw_content,
-            facet=EntityFacet.SOURCE,
+            facet=EntityFacet.REFERENCE,
             created_by="agent:codex",
             status=EntityStatus.AUTO_CONFIRMED,
             sources=[source],
@@ -192,7 +192,7 @@ def _sync_state_sqlite(codex_path: Path, store: KnowledgeStore, stats: dict) -> 
             entity = Entity(
                 id=entity_id,
                 content=content,
-                facet=EntityFacet.SOURCE,
+                facet=EntityFacet.REFERENCE,
                 created_by="agent:codex",
                 status=EntityStatus.AUTO_CONFIRMED,
                 sources=[source],
@@ -273,7 +273,7 @@ def _sync_history_jsonl(codex_path: Path, store: KnowledgeStore, stats: dict) ->
             entity = Entity(
                 id=entity_id,
                 content=content,
-                facet=EntityFacet.SOURCE,
+                facet=EntityFacet.REFERENCE,
                 created_by="agent:codex",
                 status=EntityStatus.AUTO_CONFIRMED,
                 sources=[source],

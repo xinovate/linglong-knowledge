@@ -53,36 +53,36 @@ _DIR_FACET_OVERRIDE: dict[str, EntityFacet] = {
     "concepts": EntityFacet.CONCEPT,
     "experiences": EntityFacet.EXPERIENCE,
     "methodologies": EntityFacet.METHODOLOGY,
-    "projects": EntityFacet.SOURCE,
-    "references": EntityFacet.SOURCE,
-    "problems": EntityFacet.SOURCE,
+    "projects": EntityFacet.PROJECT,
+    "references": EntityFacet.REFERENCE,
+    "problems": EntityFacet.EXPERIENCE,
 }
 
 TYPE_TO_FACET: dict[str, EntityFacet] = {
     # 标准分面
     "concept": EntityFacet.CONCEPT,
-    "entity": EntityFacet.ENTITY,
+    "entity": EntityFacet.CONCEPT,
     "experience": EntityFacet.EXPERIENCE,
     "methodology": EntityFacet.METHODOLOGY,
     "personal": EntityFacet.PERSONAL,
-    "source": EntityFacet.SOURCE,
-    "synthesis": EntityFacet.SYNTHESIS,
+    "source": EntityFacet.REFERENCE,
+    "synthesis": EntityFacet.CONCEPT,
     # OpenClaw 特有类型 — 内容类
-    "article": EntityFacet.SOURCE,
+    "article": EntityFacet.REFERENCE,
     "tutorial": EntityFacet.METHODOLOGY,
     "debug-log": EntityFacet.EXPERIENCE,
-    "decision": EntityFacet.SYNTHESIS,
+    "decision": EntityFacet.CONCEPT,
     "tip": EntityFacet.EXPERIENCE,
-    "reference": EntityFacet.SOURCE,
+    "reference": EntityFacet.REFERENCE,
     "howto": EntityFacet.METHODOLOGY,
     "note": EntityFacet.EXPERIENCE,
-    "project": EntityFacet.SYNTHESIS,
+    "project": EntityFacet.PROJECT,
     "area": EntityFacet.CONCEPT,
-    "moc": EntityFacet.SYNTHESIS,
+    "moc": EntityFacet.CONCEPT,
     "daily": EntityFacet.PERSONAL,
     "meeting": EntityFacet.PERSONAL,
     "idea": EntityFacet.CONCEPT,
-    "bookmark": EntityFacet.SOURCE,
+    "bookmark": EntityFacet.REFERENCE,
     # OpenClaw 特有类型 — 补充
     "skill": EntityFacet.EXPERIENCE,
     "template": EntityFacet.METHODOLOGY,
@@ -91,27 +91,27 @@ TYPE_TO_FACET: dict[str, EntityFacet] = {
     "todo": EntityFacet.PERSONAL,
     "feedback": EntityFacet.EXPERIENCE,
     "problem": EntityFacet.CONCEPT,
-    "dashboard": EntityFacet.SYNTHESIS,
+    "dashboard": EntityFacet.CONCEPT,
     # OpenClaw 特有类型 — 源码分析
-    "source-code-note": EntityFacet.SOURCE,
-    "source-code-analysis": EntityFacet.SOURCE,
+    "source-code-note": EntityFacet.REFERENCE,
+    "source-code-analysis": EntityFacet.REFERENCE,
     # OpenClaw 特有类型 — 项目子文档
-    "test-report": EntityFacet.SOURCE,
-    "dependency-map": EntityFacet.SOURCE,
-    "design-spec": EntityFacet.SOURCE,
-    "change-list": EntityFacet.SOURCE,
-    "validation-report": EntityFacet.SOURCE,
-    "task-anchor": EntityFacet.SOURCE,
+    "test-report": EntityFacet.PROJECT,
+    "dependency-map": EntityFacet.PROJECT,
+    "design-spec": EntityFacet.PROJECT,
+    "change-list": EntityFacet.PROJECT,
+    "validation-report": EntityFacet.PROJECT,
+    "task-anchor": EntityFacet.PROJECT,
     "integration-guide": EntityFacet.METHODOLOGY,
-    "project-development": EntityFacet.SYNTHESIS,
-    "project-history": EntityFacet.SYNTHESIS,
-    "orchestrator-spec": EntityFacet.SYNTHESIS,
-    "agent-coordination": EntityFacet.SYNTHESIS,
+    "project-development": EntityFacet.PROJECT,
+    "project-history": EntityFacet.PROJECT,
+    "orchestrator-spec": EntityFacet.PROJECT,
+    "agent-coordination": EntityFacet.PROJECT,
     "quality-gate": EntityFacet.METHODOLOGY,
     "task-decomposition": EntityFacet.METHODOLOGY,
     "knowledge-flow": EntityFacet.CONCEPT,
-    "comprehensive-report": EntityFacet.SYNTHESIS,
-    "final-summary": EntityFacet.SYNTHESIS,
+    "comprehensive-report": EntityFacet.PROJECT,
+    "final-summary": EntityFacet.PROJECT,
     "feedback-log": EntityFacet.EXPERIENCE,
 }
 
@@ -155,8 +155,8 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
     if wikilinks:
         metadata["wikilinks"] = wikilinks
 
-    file_type = post.get("type", "source")
-    facet = TYPE_TO_FACET.get(file_type, EntityFacet.SOURCE)
+    file_type = post.get("type", "reference")
+    facet = TYPE_TO_FACET.get(file_type, EntityFacet.REFERENCE)
 
     # 推导子目录：取 relative_path 的前两级
     parts = Path(relative_path).parts
@@ -190,6 +190,7 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
         id=entity_id,
         content=post.content,
         facet=facet,
+        group=subdir if subdir else None,
         created_by="agent:openclaw",
         status=EntityStatus.AUTO_CONFIRMED,
         sources=[source],

@@ -104,6 +104,9 @@ Codex ──────┘         ↓
 | LIMIT-001 修复（OpenClaw 2 个 frontmatter 文件） | v1.0 | ✅ | `3efed72` | 2026-05-21 |
 | 配置示例 .linglong.example.yaml | v1.0 | ✅ | `3efed72` | 2026-05-21 |
 | 删除 test_full_pipeline（ingest→knowledge 直连已废弃） | v1.0 | ✅ | `3efed72` | 2026-05-21 |
+| BACKLOG-005 facet 重分类（7→6 分面 + group 子目录） | v1.0 | ✅ | — | 2026-05-22 |
+| Entity.group 字段 + 子目录文件组织 | v1.0 | ✅ | — | 2026-05-22 |
+| 拥挤 facet 自动检测（lint + MCP + CLI 提示） | v1.0 | ✅ | — | 2026-05-22 |
 
 ---
 
@@ -160,9 +163,10 @@ Codex ──────┘         ↓
 
 1. ✅ ~~**v1.0 端到端验证**~~ — ingest → compose → publish 16 篇文章输出正常
 2. ✅ ~~**模块边界设计重构**~~ — ingest 不写知识库、output_log、pipeline 移除、9 份文档更新
-3. 🔴 **BACKLOG-005 source facet 批量重分类** — 94/142 条全在 source，需 LLM 辅助细分
+3. ✅ ~~**BACKLOG-005 facet 重分类**~~ — 7→6 分面 + group 子目录，142 条 LLM 辅助迁移，276 测试通过
 4. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
 5. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
+6. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
 
 **v2.0 延后项**（非阻塞）：
 - WebSearchAdapter 实际搜索

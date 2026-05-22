@@ -46,6 +46,7 @@ class LintEngine:
         results.extend(self.check_content_conflicts())
         results.extend(self.check_stale_content(stale_days))
         results.extend(self.check_orphans())
+        results.extend(self.check_crowded_facets())
         return results
 
     def fix_all(self, results: list[LintResult] | None = None, stale_days: int = 90) -> list[LintResult]:
@@ -338,8 +339,8 @@ class LintEngine:
                     break
 
         for e in entities:
-            # Only check concept and entity facets — other facets are standalone documents
-            if e.facet not in (EntityFacet.CONCEPT, EntityFacet.ENTITY):
+            # Only check concept facet — other facets are standalone documents
+            if e.facet != EntityFacet.CONCEPT:
                 continue
 
             if ref_counts.get(e.id, 0) == 0:
@@ -367,5 +368,48 @@ class LintEngine:
                     facet=e.facet.value,
                     details=details,
                 ))
+
+        return results
+
+    def check_crowded_facets(self, threshold: int = 10) -> list[LintResult]:
+        """Check if any facet has too many ungrouped entities at root level."""
+        import sqlite3
+
+        results = []
+        with sqlite3.connect(self.store.db_path) as conn:
+            rows = conn.execute(
+                "SELECT facet, COUNT(*) FROM entities "
+                "WHERE (`group` IS NULL OR `group` = '') "
+                "GROUP BY facet HAVING COUNT(*) >= ?",
+                (threshold,),
+            ).fetchall()
+
+        for facet_str, count in rows:
+            try:
+                facet = EntityFacet(facet_str)
+            except ValueError:
+                continue
+
+            with sqlite3.connect(self.store.db_path) as conn:
+                group_rows = conn.execute(
+                    "SELECT `group`, COUNT(*) FROM entities "
+                    "WHERE facet = ? AND `group` IS NOT NULL AND `group` != '' "
+                    "GROUP BY `group` ORDER BY COUNT(*) DESC",
+                    (facet_str,),
+                ).fetchall()
+            existing = [f"{g}({c})" for g, c in group_rows]
+
+            results.append(LintResult(
+                rule="crowded_facet",
+                severity="warning",
+                entity_id=None,
+                message=f"Facet '{facet_str}' has {count} ungrouped entities (threshold: {threshold})",
+                details={
+                    "facet": facet_str,
+                    "root_count": count,
+                    "threshold": threshold,
+                    "existing_groups": existing,
+                },
+            ))
 
         return results

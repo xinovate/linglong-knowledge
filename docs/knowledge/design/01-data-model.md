@@ -52,37 +52,51 @@ class EntityFacet(StrEnum):
 
 ---
 
-## 七分面体系
+## 六分面体系 + group 子目录
 
 ### 分面定义
 
 | 分面 | 英文 | 定义 | 典型内容 | 文件规模 |
 |------|------|------|----------|----------|
-| **Source** | source | 原始资料的主题汇编 | 项目文档、技术博客、论文摘要 | 大量 |
-| **Entity** | entity | 专有名词卡片 | 产品（OpenClaw）、工具（sqlite-vec）、人物 | 中等 |
-| **Concept** | concept | 抽象知识/理论 | 架构模式、设计原则、技术概念 | 大量 |
-| **Synthesis** | synthesis | 跨源综合分析 | 多篇文章的交叉洞察 | 少量 |
+| **Concept** | concept | 抽象知识/理论 | 架构模式、设计原则、技术概念、名词卡片 | 大量 |
 | **Experience** | experience | 实战经验 | 踩坑记录、最佳实践、调试经验 | 中等 |
-| **Methodology** | methodology | 方法论/工作流 | 分析框架、执行流程、工作规范 | 少量 |
+| **Methodology** | methodology | 方法论/工作流 | 分析框架、执行流程、工作规范 | 中等 |
+| **Project** | project | 项目记录 | 开发日志、里程碑、需求文档 | 大量 |
+| **Reference** | reference | 外部参考 | API 文档、工具推荐、资料链接 | 少量 |
 | **Personal** | personal | 个人数据 | 用户画像、偏好、情感记忆 | 少量 |
+
+### group 子目录
+
+每个 facet 下可按语义建子目录，通过 `Entity.group` 字段指定：
+
+```
+wiki/
+├── concept/
+│   ├── openclaw-architecture/   # group: openclaw-architecture
+│   ├── agent-system/            # group: agent-system
+│   └── knowledge-mgmt/          # group: knowledge-mgmt
+├── project/
+│   ├── linglong/                # group: linglong
+│   ├── openclaw/                # group: openclaw
+│   └── codex/                   # group: codex
+└── ...
+```
 
 ### 分面边界判断
 
 ```
-问：这个东西是 entity 还是 concept？
+问：这个东西属于哪个 facet？
 
-entity = "这是什么"（名词卡片，3-10 行属性）
-  例：OpenClaw、sqlite-vec、Stripe、Pydantic
+project = "哪个项目的"（开发记录、里程碑、进度）
+  例：linglong v1.0 开发日志、OpenClaw 迁移记录
 
-concept = "这怎么理解"（理论文章，1-3 页）
-  例：微服务架构、事件驱动设计、LLM Wiki 模式
+concept = "这怎么理解"（理论文章、概念解释、名词卡片）
+  例：微服务架构、事件驱动设计、LLM Wiki 模式、OpenClaw
 
-问：这个东西是 source 还是 experience？
+reference = "从哪来的"（外部链接、资料汇编）
+  例：一篇 RSS 文章、API 文档链接、工具推荐
 
-source = "这从哪来的"（资料汇编，原始内容）
-  例：一篇 RSS 文章的整理、一个项目的设计文档
-
-experience = "这踩过什么坑"（实战记录，问题→原因→解决）
+experience = "踩过什么坑"（实战记录，问题→原因→解决）
   例：sqlite-vec 维度不匹配的修复、Hexo 部署失败排查
 ```
 
@@ -97,6 +111,7 @@ graph TD
         E_CONTENT[content: str]
         E_SUMMARY[summary: str]
         E_FACET[facet: EntityFacet]
+        E_GROUP[group: str|None]
         E_STATUS[status: EntityStatus]
         E_CONF[confidence: float]
         E_META[metadata: dict]
@@ -194,12 +209,12 @@ relations:                       # 关联实体（可选）
 | OpenClaw type | Linglong facet | 说明 |
 |---------------|----------------|------|
 | `concept` | `concept` | 直接映射 |
-| `project` | `source` | 项目资料归入 source |
+| `project` | `project` | 项目记录 |
 | `experience` | `experience` | 直接映射 |
 | `methodology` | `methodology` | 直接映射 |
-| `reference` | `source` | 外部引用归入 source |
+| `reference` | `reference` | 外部参考 |
 | `user` | `personal` | 用户画像归入 personal |
-| `problem` | `source` | 问题解决记录归入 source |
+| `problem` | `experience` | 问题解决记录归入 experience |
 | `emotion` | `personal` | 情感记忆归入 personal |
 | `soul` | `personal` | 灵魂日记归入 personal |
 | `dashboard` | （不迁移） | 仪表盘是视图，不是知识 |
@@ -243,7 +258,7 @@ class Relation(BaseModel):
 
 | 编号 | 决策 | 选择 | 原因 | 替代方案 |
 |------|------|------|------|----------|
-| D-01a | 分类体系 | 七分面（7 Facet） | 覆盖原始资料到个人数据全场景 | 四分面（LLM-Wiki） |
+| D-01a | 分类体系 | 六分面（6 Facet）+ group 子目录 | 精简分类 + 灵活分组，避免单一 facet 过重 | 四分面（LLM-Wiki）、七分面（旧版） |
 | D-01b | ID 生成 | SHA-256 路径哈希前 16 位 | 稳定、确定性、无冲突 | UUID v4 |
 | D-01c | 关系表达 | WikiLinks + Relation 字段 | 兼顾人类可读和机器查询 | 仅 Relation 字段 |
 | D-01d | Frontmatter 格式 | YAML key-value | 兼容 OpenClaw、人类可读 | JSON |

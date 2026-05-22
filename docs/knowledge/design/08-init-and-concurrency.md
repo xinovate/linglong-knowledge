@@ -68,7 +68,7 @@ linglong kb init
 
 | 步骤 | 操作 | 产物 |
 |------|------|------|
-| 1. 创建目录 | `~/linglong/wiki/` 7 个 facet 子目录 + `archive/` | 目录结构 |
+| 1. 创建目录 | `~/linglong/wiki/` 6 个 facet 子目录 + `archive/` | 目录结构 |
 | 2. 生成配置 | 交互式问答 → `.linglong.yaml` | 配置文件 |
 | 3. 创建索引文件 | `index.md` + `index-*.md` + `log.md` | 索引骨架 |
 | 4. 初始化数据库 | `~/linglong/db/knowledge.db`（空表结构） | SQLite |
@@ -81,20 +81,18 @@ linglong kb init
 ├── .linglong.yaml              # 配置文件
 ├── wiki/
 │   ├── index.md                # 总索引（空骨架）
-│   ├── index-source.md         # Source 索引（空）
-│   ├── index-entity.md         # Entity 索引（空）
 │   ├── index-concept.md        # Concept 索引（空）
-│   ├── index-synthesis.md      # Synthesis 索引（空）
 │   ├── index-experience.md     # Experience 索引（空）
 │   ├── index-methodology.md    # Methodology 索引（空）
+│   ├── index-project.md        # Project 索引（空）
+│   ├── index-reference.md      # Reference 索引（空）
 │   ├── index-personal.md       # Personal 索引（空）
 │   ├── log.md                  # 操作日志（空）
-│   ├── source/
-│   ├── entity/
 │   ├── concept/
-│   ├── synthesis/
 │   ├── experience/
 │   ├── methodology/
+│   ├── project/
+│   ├── reference/
 │   ├── personal/
 │   └── archive/
 └── db/
@@ -122,9 +120,11 @@ my-wiki.git/
 ├── .linglong.yaml    # 可选，配置文件
 ├── index.md
 ├── index-*.md
-├── source/
-├── entity/
 ├── concept/
+├── experience/
+├── methodology/
+├── project/
+├── reference/
 └── ...
 ```
 
@@ -171,7 +171,7 @@ $ linglong kb init
 ? 自动索引更新 (true/false) [true]:
 
 ✅ 配置已生成：~/linglong/.linglong.yaml
-✅ 目录已创建：~/linglong/wiki/ (7 facet + archive)
+✅ 目录已创建：~/linglong/wiki/ (6 facet + archive)
 ✅ 数据库已初始化：~/linglong/db/knowledge.db
 ✅ embedding 服务连通性：可用
 ✅ 索引已构建：0 条知识
@@ -221,11 +221,11 @@ knowledge:
 ```bash
 $ linglong kb init --verify
 
-✅ 目录结构：7 facet + archive
+✅ 目录结构：6 facet + archive
 ✅ 配置文件：~/linglong/.linglong.yaml
 ✅ SQLite 数据库：~/linglong/db/knowledge.db (WAL mode)
 ✅ embedding 服务：可达 (http://localhost:7997)
-✅ 索引文件：index.md + 7 index-*.md
+✅ 索引文件：index.md + 6 index-*.md
 ✅ 操作日志：log.md
 ```
 

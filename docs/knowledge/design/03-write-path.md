@@ -75,8 +75,8 @@ graph TD
 | 用户说"记住" | 显式指令 | 用户指定的内容 | 根据内容判断 |
 | 解决 bug 后 | 问题解决 | 问题 + 原因 + 解决方案 | `experience` |
 | 学到新知识 | 对话中获得新认知 | 概念解释 + 例子 | `concept` |
-| 完成项目任务 | 任务完成 | 任务描述 + 结果 | `source` |
-| 发现新实体 | 提到新产品/工具/人物 | 实体卡片 | `entity` |
+| 完成项目任务 | 任务完成 | 任务描述 + 结果 | `project` |
+| 发现新实体 | 提到新产品/工具/人物 | 实体卡片 | `concept` |
 | 做出架构决策 | ADR 时刻 | 决策 + 原因 + 备选 | `concept` |
 | 踩坑记录 | 遇到并解决技术问题 | 坑 → 原因 → 解决 | `experience` |
 
@@ -145,7 +145,7 @@ knowledge:
 
 ```mermaid
 flowchart TD
-    Start([触发写入]) --> Build["构建 Entity<br/>content + facet + metadata"]
+    Start([触发写入]) --> Build["构建 Entity<br/>content + facet + group + metadata"]
 
     Build --> Check{去重检查}
     Check -->|search 发现重复| Skip["跳写：已存在"]
@@ -261,10 +261,10 @@ linglong kb write --facet concept --title "微服务架构" --content "..."
 linglong kb write --facet experience --title "..." --content "..." --yes
 
 # 写入（跳过索引更新，批量场景）
-linglong kb write --facet entity --title "..." --content "..." --no-index
+linglong kb write --facet concept --group openclaw --title "..." --content "..." --no-index
 
 # 从文件写入
-linglong kb write --facet source --from-file article.md
+linglong kb write --facet reference --from-file article.md
 
 # 模板
 linglong kb template list              # 列出所有模板

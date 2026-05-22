@@ -144,7 +144,7 @@ def init_from_openclaw(openclaw_path: Path | None = None, target_dir: Path | Non
 
         entity = Entity(
             content=content,
-            facet=EntityFacet.SOURCE,
+            facet=EntityFacet.REFERENCE,
             created_by="agent:openclaw-import",
             confidence=0.7,
         )
@@ -191,8 +191,8 @@ def init_from_git(repo_url: str, target_dir: Path | None = None) -> Path:
     # 初始化目录结构
     init_bare(target_dir=base)
 
-    # 复制 md 文件到 source 分面
-    source_dir = wiki_path / "source"
+    # 复制 md 文件到 reference 分面
+    source_dir = wiki_path / "reference"
     source_dir.mkdir(parents=True, exist_ok=True)
     count = 0
     for md_file in tmp_dir.rglob("*.md"):

@@ -21,7 +21,7 @@ def test_full_knowledge_lifecycle():
         assert wiki_path.exists()
         assert (wiki_path / "archive").exists()
         assert (wiki_path / "concept").exists()
-        assert (wiki_path / "entity").exists()
+        assert (wiki_path / "project").exists()
 
         # Set up config for KnowledgeStore
         knowledge_cfg = KnowledgeConfig(
@@ -50,7 +50,7 @@ def test_full_knowledge_lifecycle():
 
         e2 = store.create(Entity(
             content="# OpenClaw\n\n跨 Agent 知识同步工具",
-            facet=EntityFacet.ENTITY,
+            facet=EntityFacet.CONCEPT,
             created_by="agent:claude",
             confidence=0.95,
         ))

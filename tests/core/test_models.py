@@ -18,12 +18,12 @@ def test_entity_creation():
     assert float(entity.confidence) == 0.9
 
 
-def test_entity_with_source():
+def test_entity_with_reference():
     """Test entity with source information."""
     entity = Entity(
         id="test-456",
         content="Test content",
-        facet=EntityFacet.SOURCE,
+        facet=EntityFacet.REFERENCE,
         created_by="agent:violet",
         sources=[
             Source(
@@ -39,8 +39,8 @@ def test_entity_with_source():
 
 
 def test_entity_facet_values():
-    """EntityFacet 包含 7 个分面值。"""
-    expected = {"source", "entity", "concept", "synthesis", "experience", "methodology", "personal"}
+    """EntityFacet 包含 6 个分面值。"""
+    expected = {"concept", "experience", "methodology", "project", "reference", "personal"}
     actual = {f.value for f in EntityFacet}
     assert actual == expected
 

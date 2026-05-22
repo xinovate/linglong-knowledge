@@ -328,7 +328,7 @@ linglong kb update <id> --content "..." --no-index
 | 触发点 | 时机 | 使用模式 | Facet |
 |--------|------|----------|-------|
 | 架构决策变更 | 原则/方案变化 | `--content` 替换 | `concept` |
-| 工具版本升级 | 新版本发布 | `--append` 追加 | `entity` |
+| 工具版本升级 | 新版本发布 | `--append` 追加 | `concept` |
 | 经验补充 | 发现新信息 | `--append` 追加 | `experience` |
 | 置信度调整 | 验证后提升/降低 | `--metadata` | 所有 |
 | 状态变更 | 人工审核后 | `--metadata` | 所有 |

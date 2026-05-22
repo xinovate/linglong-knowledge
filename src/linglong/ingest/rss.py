@@ -68,7 +68,7 @@ class RSSSource:
         entity_kwargs: dict = dict(
             id=entity_id,
             content=content,
-            facet=EntityFacet.SOURCE,
+            facet=EntityFacet.REFERENCE,
             summary=getattr(entry, "summary", None),
             created_by="agent:ingest",
             confidence=get_config().ingest.default_confidence.get("rss", 0.7),

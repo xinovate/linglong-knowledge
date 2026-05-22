@@ -14,7 +14,8 @@ Linglong 是一个**跨 Agent 知识中枢**。
 
 **当前状态**：
 - v0.1–v0.9 已完成：core + ingest + knowledge + composer + dispatch 五模块完整流水线，CLI 入口，图片资产管线
-- v1.0 知识库已封版：MCP Server 9 工具、RRF 混合搜索、lint 巡检、Agent 接入、277 测试
+- v1.0 知识库已封版：MCP Server 9 工具、RRF 混合搜索、lint 巡检、Agent 接入、276 测试
+- v1.0 facet 重分类：6 分面（concept/experience/methodology/project/reference/personal）+ group 子目录，142 条实体迁移完成
 - v1.0 其他模块：ingest 与知识库解耦、composer/dispatch 输出追踪、pipeline 概念移除
 
 **你的任务**：
@@ -56,6 +57,8 @@ knowledge（已沉淀的知识）→ composer → dispatch
 - `Source` — 来源信息
 
 **关键字段**：
+- `facet` — 六分面分类（concept/experience/methodology/project/reference/personal）
+- `group` — 子目录分组（可选，如 `linglong`、`openclaw`）
 - `created_by` — 标记创建者（如 `agent:claude`、`agent:openclaw`；不再有 `agent:ingest`）
 - `confirmed_by` — 人工确认标记
 - `confidence` — AI 置信度
@@ -75,6 +78,7 @@ store = KnowledgeStore()
 entity = store.create(Entity(
     content="# 标题\n\n参考 [[已有概念]]",
     facet=EntityFacet.CONCEPT,
+    group="linglong",  # 可选：子目录分组
     created_by="agent:claude",
 ))
 
@@ -105,7 +109,7 @@ store.archive(entity_id)
 linglong kb init                              # 初始化知识库
 linglong kb init --interactive                # 交互式配置向导
 linglong kb init --from-git URL               # 从 Git 仓库初始化
-linglong kb write --facet concept --title "标题" --content "内容" --yes
+linglong kb write --facet concept --group linglong --title "标题" --content "内容" --yes
 linglong kb read <entity_id>
 linglong kb search "关键词" --facet concept --deep --format json
 linglong kb search "更新" --since 2026-05-01 --created-by agent:claude

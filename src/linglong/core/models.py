@@ -105,13 +105,12 @@ class EntityStatus(StrEnum):
 class EntityFacet(StrEnum):
     """Knowledge entity classification."""
 
-    SOURCE = "source"            # 原始资料汇编
-    ENTITY = "entity"            # 专有名词
     CONCEPT = "concept"          # 抽象知识
-    SYNTHESIS = "synthesis"      # 跨源综合
     EXPERIENCE = "experience"    # 实战经验
-    METHODOLOGY = "methodology"  # 方法论
-    PERSONAL = "personal"        # 个人数据
+    METHODOLOGY = "methodology"  # 方法论、框架、流程
+    PROJECT = "project"          # 项目记录、里程碑
+    REFERENCE = "reference"      # 外部参考、资料
+    PERSONAL = "personal"        # 个人数据、情感、偏好
 
 
 class Relation(BaseModel):
@@ -142,6 +141,7 @@ class Entity(BaseModel):
     id: str | None = Field(default=None, description="Unique identifier (UUID)")
     content: str = Field(description="Markdown content")
     facet: EntityFacet = Field(description="Knowledge classification facet")
+    group: str | None = Field(default=None, description="Semantic subdirectory within facet")
     archived_at: datetime | None = Field(default=None, description="Archive timestamp")
     summary: str | None = Field(default=None, description="AI-generated summary for quick browsing")
 

@@ -155,7 +155,7 @@ def test_facet_mapping_from_type():
     from linglong.knowledge.sync.openclaw import TYPE_TO_FACET, _file_to_entity
 
     assert TYPE_TO_FACET["concept"] == EntityFacet.CONCEPT
-    assert TYPE_TO_FACET["article"] == EntityFacet.SOURCE
+    assert TYPE_TO_FACET["article"] == EntityFacet.REFERENCE
     assert TYPE_TO_FACET["tutorial"] == EntityFacet.METHODOLOGY
     assert TYPE_TO_FACET["daily"] == EntityFacet.PERSONAL
 
@@ -166,12 +166,12 @@ def test_facet_mapping_from_type():
         entity = _file_to_entity(f, "test.md")
         assert entity.facet == EntityFacet.CONCEPT
 
-    # 未知 type 回退到 SOURCE
+    # 未知 type 回退到 REFERENCE
     with tempfile.TemporaryDirectory() as tmpdir:
         f = Path(tmpdir) / "test.md"
         f.write_text("---\ntype: unknown_type\n---\n# 测试", encoding="utf-8")
         entity = _file_to_entity(f, "test.md")
-        assert entity.facet == EntityFacet.SOURCE
+        assert entity.facet == EntityFacet.REFERENCE
 
 
 

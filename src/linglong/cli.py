@@ -164,12 +164,23 @@ def cmd_write(args: argparse.Namespace) -> int:
     entity = Entity(
         content=f"# {args.title}\n\n{content}",
         facet=facet,
+        group=getattr(args, "group", None),
         created_by="agent:cli",
         confidence=0.5,
     )
 
     created = store.create(entity)
     print(f"✅ 已创建：{created.id} ({facet.value}/{args.title})")
+
+    # Warn about facet crowding
+    if not getattr(args, "group", None):
+        crowding = store.check_facet_crowding(facet)
+        if crowding:
+            groups = list(crowding["existing_groups"].keys())
+            print(f"⚠️ {facet.value} 根目录已有 {crowding['root_count']} 条未分组条目")
+            if groups:
+                print(f"  建议指定 --group，已有分组：{', '.join(groups)}")
+
     return 0
 
 
@@ -512,7 +523,7 @@ def cmd_migrate(args: argparse.Namespace) -> int:
         content = md_file.read_text(encoding="utf-8")
         entity = Entity(
             content=content,
-            facet=EntityFacet.SOURCE,
+            facet=EntityFacet.REFERENCE,
             created_by="migrate:cli",
             confidence=0.5,
         )
@@ -616,8 +627,9 @@ def _deprecated(func, name, group):
 def _reg_write(sub):
     p = sub.add_parser("write", help="写入知识条目")
     p.add_argument("--facet", required=True,
-        choices=["source", "entity", "concept", "synthesis", "experience", "methodology", "personal"],
+        choices=["concept", "experience", "methodology", "project", "reference", "personal"],
         help="知识分类")
+    p.add_argument("--group", default=None, help="子目录分组（如 linglong、openclaw）")
     p.add_argument("--title", required=True, help="标题（用作文件名）")
     p.add_argument("--content", default=None, help="内容文本")
     p.add_argument("--from-file", default=None, help="从文件读取内容")
