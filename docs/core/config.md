@@ -52,6 +52,16 @@ config = get_config()
 config.knowledge.wiki_path        # 知识库路径
 config.composer.image_assets.enabled  # 图片资产开关
 config.dispatch.default_publisher     # 默认发布器
+config.ingest.search_engine           # 搜索引擎: searxng/zhipu/google/bing_cn
+config.ingest.searxng_url             # SearXNG 实例地址
+config.ingest.search_timeout          # 搜索超时（秒）
+```
+
+YAML 支持 `${ENV_VAR}` 语法引用环境变量：
+
+```yaml
+composer:
+  llm_api_key: ${ZHIPU_API_KEY}  # 自动从环境变量读取
 ```
 
 ## 相关文件
