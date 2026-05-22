@@ -70,7 +70,10 @@ class TestLinglongConfig:
         assert config.rss_sources == []
         assert config.fetch_interval_minutes == 30
         assert config.max_items_per_source == 50
-        assert config.package_paths == [str(Path.home() / "linglong" / "data" / "packages")]
+        assert config.package_paths == [
+            str(Path.home() / "linglong" / "data" / "packages"),
+            str(Path(__file__).parent.parent.parent / "packages"),
+        ]
         assert config.verification_enabled is True
         assert config.default_verification["cross_reference_min"] == 1
         assert config.default_verification["max_age_days"] == 7

@@ -240,7 +240,10 @@ class IngestConfig(BaseSettings):
     fetch_interval_minutes: int = Field(default=30, description="Fetch interval in minutes")
     max_items_per_source: int = Field(default=50, description="Max items to fetch per source")
     package_paths: list[str] = Field(
-        default_factory=lambda: [str(Path.home() / "linglong" / "data" / "packages")],
+        default_factory=lambda: [
+            str(Path.home() / "linglong" / "data" / "packages"),
+            str(Path(__file__).parent.parent.parent.parent / "packages"),
+        ],
         description="Directories containing source package YAML files",
     )
     verification_enabled: bool = Field(default=True, description="Enable truth verification engine")

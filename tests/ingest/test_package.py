@@ -15,12 +15,12 @@ from linglong.ingest.package import (
 
 def test_load_ai_morning_brief_package():
     """Load the example AI morning brief package."""
-    package = SourcePackage.from_yaml("docs/examples/packages/ai-morning-brief.yaml")
+    package = SourcePackage.from_yaml("packages/ai-morning-brief.yaml")
     assert package.name == "ai-morning-brief"
     assert package.topic == "AI 早报"
     assert len(package.sources) == 1
     assert package.sources[0].type == "aihot"
-    assert len(package.dimensions) == 1
+    assert len(package.dimensions) == 6
 
 
 def test_package_load_all_from_directory():
