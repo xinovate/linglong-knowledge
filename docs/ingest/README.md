@@ -1,30 +1,49 @@
-# Ingest — 信息获取模块
+# Ingest — 信息采集助手
 
-## 职责
+## 定位
 
-- **RSS 源**：RSS feed 获取
-- **API 调用**：GitHub API、自定义 REST API
-- **Web Fetch**：并行抓取预定义网站列表
-- **Web Search**：搜索引擎采集（placeholder）
+**ingest 是用户的信息采集助手，不是知识库的数据入口。**
+
+采集结果交给用户阅读和思考，有价值的内容在人与 Agent 的讨论中沉淀进知识库。未经思考的原始数据直接入库只是堆积，没有分量。
+
+```
+数据源 → ingest（采集+验证）→ 定制化信息 → 用户阅读思考 → 讨论 → 沉淀 → 知识库
+                                              ↑
+                                        ingest 到这里结束
+```
+
+## 信息维度
+
+ingest 采集的信息覆盖 AI 领域 6 个维度：
+
+| 维度 | 采集内容 | 数据源方式 |
+|------|---------|-----------|
+| 研究员观点 | 技术前沿方向、新范式 | 搜索引擎 |
+| 公司决策 | 战略调整、产品发布、人事变动 | web_fetch + 搜索 |
+| 资本决策 | 大额融资、投资机构动向 | 搜索 + web_fetch |
+| 国家政策 | AI 监管、产业政策 | 搜索 + web_fetch |
+| 开源趋势 | AI 新项目、Stars 爆发增长 | GitHub API |
+| 应用落地 | 模型/Agent/机器人产品更新 | 搜索 + web_fetch |
+
+详细的维度定义、关注列表、精选标准 → [设计总览](design/00-overview.md)
 
 ## 设计原则
 
-**ingest 是信息采集工具，不写知识库。**
-
-ingest 采集的数据是原始信息，需要人和 Agent 讨论筛选后，才有价值的内容写入知识库。ingest 只负责获取和验证，不负责存储。
+1. **ingest 不写知识库** — 采集结果返回给调用方，写入由人决定
+2. **ingest 不做调度** — 由调用方（OpenClaw cron / CLI / MCP）触发
+3. **ingest 不做推送** — 采集后怎么展示是调用方的事
 
 ## 数据流
 
 ```mermaid
 graph LR
-    A[RSS/API/Web] --> B[SourceAdapter]
+    A[RSS/API/Web/Search] --> B[SourceAdapter]
     B --> C[PackageExecutor]
     C --> D[TruthVerification]
     D --> E[返回结果给调用方]
-    E --> F[人 + Agent 讨论]
-    F -->|有价值| G[写入 KnowledgeStore]
-    F -->|无价值| H[丢弃]
 ```
+
+ingest 的职责到 E 为止。后续用户阅读、讨论、决定是否写入知识库，都是独立环节。
 
 ## 核心组件
 
@@ -33,10 +52,25 @@ graph LR
 | `SourceAdapter` | `ingest/adapter.py` | 抽象基类，所有源适配器实现 `fetch()` + `health_check()` |
 | `SourcePackage` | `ingest/package.py` | YAML 采集包定义 |
 | `TruthVerificationEngine` | `ingest/verification.py` | 5 层真实性验证 |
-| `PackageExecutor` | `ingest/executor.py` | 并行执行引擎 |
+| `PackageExecutor` | `ingest/executor.py` | 并行执行引擎，返回 Entity 列表 |
 | `RSSAdapter` | `ingest/adapters/rss.py` | RSS 源适配器 |
-| `WebFetchAdapter` | `ingest/adapters/web_fetch.py` | 并行 HTTP 抓取 |
+| `WebFetchAdapter` | `ingest/adapters/web_fetch.py` | HTTP 页面抓取 |
 | `APIAdapter` | `ingest/adapters/api.py` | REST API 调用 |
+| `WebSearchAdapter` | `ingest/adapters/web_search.py` | 搜索引擎采集（空壳，待实现） |
+
+## 调用方式
+
+```bash
+# CLI — 采集并查看结果
+linglong ingest
+
+# CLI — 采集并写入知识库（手动挡，你决定哪些值得保存）
+linglong ingest --write
+
+# MCP — Agent 在对话中按需采集
+# fetch_rss(url) → 查看结果 → 讨论 → write_entity（手动写入）
+# execute_package(path) → 查看结果 → 讨论 → write_entity（手动写入）
+```
 
 ## 真实性验证（5 层）
 
@@ -47,33 +81,6 @@ graph LR
 | 时间有效性 | 新闻日期在近 3 天内 | 过期内容静默跳过 |
 | 源头权威性 | 优先官方渠道 | 工信部政策 > 自媒体解读 |
 | 常识判断 | 事件是否符合行业逻辑 | 单周增长 172K stars → 异常 |
-
-## 配置
-
-```yaml
-# .linglong.yaml
-ingest:
-  fetch_interval_minutes: 30
-  max_items_per_source: 50
-  package_paths:
-    - ~/linglong/data/packages
-  verification_enabled: true
-  verification_pass_threshold: 0.6
-```
-
-## 使用示例
-
-```bash
-# CLI — 返回采集结果到终端
-linglong ingest
-
-# CLI — 采集并写入知识库（讨论后决定）
-linglong ingest --write
-
-# MCP 工具 — 在对话中调用，Agent 讨论后决定是否写入知识库
-# fetch_rss → 查看 → write_entity（手动写入）
-# execute_package → 查看 → write_entity（手动写入）
-```
 
 ## 自定义 Adapter
 
@@ -92,3 +99,20 @@ class MyAdapter(SourceAdapter):
 
 AdapterRegistry.register(MyAdapter)
 ```
+
+## 配置
+
+```yaml
+# .linglong.yaml
+ingest:
+  fetch_interval_minutes: 30
+  max_items_per_source: 50
+  package_paths:
+    - ~/linglong/data/packages
+  verification_enabled: true
+  verification_pass_threshold: 0.6
+```
+
+## 设计文档
+
+- [设计总览](design/00-overview.md) — 定位、维度、差距分析、实现路线

@@ -1,12 +1,15 @@
 """RSS feed ingestion source."""
 
 import hashlib
+import logging
 
 import feedparser
 import httpx
 
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityFacet, Source, SourceType
+
+logger = logging.getLogger(__name__)
 
 
 class RSSSource:
@@ -113,6 +116,6 @@ class RSSIngestor:
                 entities = await source.fetch()
                 all_entities.extend(entities)
             except Exception as e:
-                print(f"Failed to ingest from {source.name}: {e}")
+                logger.warning("Failed to ingest from %s: %s", source.name, e)
 
         return all_entities

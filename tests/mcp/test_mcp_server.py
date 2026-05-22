@@ -11,6 +11,8 @@ from linglong.core.config import LinglongConfig, get_config, set_config
 from linglong.core.models import Entity, EntityFacet
 from linglong.knowledge.store import KnowledgeStore
 from linglong.mcp.tools import (
+    execute_package,
+    fetch_rss,
     get_template,
     list_entities,
     list_templates,
@@ -417,3 +419,78 @@ def test_list_entities_with_facet(temp_store):
     data = json.loads(result)
     assert data["count"] == 1
     assert data["results"][0]["facet"] == "experience"
+
+
+# --- fetch_rss ---
+
+
+def test_fetch_rss_returns_previews(temp_store):
+    from linglong.core.models import Entity
+
+    fake_entities = [
+        Entity(
+            id="test-1",
+            content="# Test Article\n\nArticle content here",
+            facet=EntityFacet.REFERENCE,
+            created_by="agent:rss",
+            confidence=0.7,
+        ),
+    ]
+
+    with patch("linglong.ingest.rss.RSSSource") as mock_cls, \
+         patch("asyncio.run", return_value=fake_entities):
+        mock_cls.return_value.fetch = lambda: None
+
+        result = fetch_rss("https://example.com/feed.xml", name="test-feed")
+        data = json.loads(result)
+
+    assert "error" not in data
+    assert data["count"] == 1
+    assert data["results"][0]["title"] == "Test Article"
+
+
+def test_fetch_rss_handles_error(temp_store):
+    with patch("asyncio.run", side_effect=Exception("Connection failed")):
+        result = fetch_rss("https://invalid.example/feed.xml")
+        data = json.loads(result)
+
+    assert "error" in data
+
+
+# --- execute_package ---
+
+
+def test_execute_package_returns_results(temp_store):
+    from linglong.core.models import Entity
+
+    fake_entities = [
+        Entity(
+            id="pkg-1",
+            content="# Package Result\n\nContent from package",
+            facet=EntityFacet.REFERENCE,
+            created_by="agent:rss",
+            confidence=0.8,
+        ),
+    ]
+    fake_result = {"entities": fake_entities, "total": 1, "failed": 0, "verified": 1}
+
+    with patch("linglong.ingest.package.SourcePackage") as mock_pkg_cls, \
+         patch("linglong.ingest.executor.PackageExecutor") as mock_exec_cls, \
+         patch("asyncio.run", return_value=fake_result):
+        mock_pkg_cls.from_yaml.return_value.name = "test-package"
+        result = execute_package("/path/to/package.yaml")
+        data = json.loads(result)
+
+    assert "error" not in data
+    assert data["count"] == 1
+    assert data["package"] == "test-package"
+
+
+def test_execute_package_handles_error(temp_store):
+    with patch("linglong.ingest.package.SourcePackage") as mock_cls:
+        mock_cls.from_yaml.side_effect = FileNotFoundError("Package not found")
+
+        result = execute_package("/nonexistent/package.yaml")
+        data = json.loads(result)
+
+    assert "error" in data

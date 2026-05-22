@@ -42,7 +42,7 @@ knowledge（已沉淀的知识）→ composer → dispatch
                             output_log（已输出追踪）
 ```
 
-- **ingest 不写知识库**：ingest 是信息采集工具，结果返回给调用方（CLI/MCP/对话），不直接写入 KnowledgeStore
+- **ingest 是用户的信息采集助手**：采集结果交给用户阅读思考，不写知识库。知识库的入口是"讨论沉淀"
 - **知识库只接受讨论沉淀后的写入**：人和 Agent 讨论筛选后，通过 MCP/CLI 写入
 - **composer 只从 knowledge 读取**，不直接读文件系统
 - **composer 不处理发布**，发布逻辑在 dispatch
