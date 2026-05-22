@@ -37,8 +37,9 @@ Codex ──────┘         ↓
 | v0.7 | composer 产品化 | 多模板/封面图/内容验证 | 🟠 延后至 v2.0 | — |
 | v0.8 | dispatch 正式化 | DispatchManager + LocalPublisher + HexoPublisher | ✅ | 2026-05-12 |
 | v0.9 | 稳定化 | CLI 入口 + 全链路集成测试 | ✅ | 2026-05-12 |
-| **v1.0** | **知识库封版** | MCP 9 工具 + RRF 混合搜索 + lint 巡检 + 6 facet + group + DB 先行 + kb sync（276 测试） | 🟡 收官中 | — |
-| **v2.0** | **产品化** | WebSearch + 发布队列 + 多模板 + API 冻结 | 🔴 未开始 | — |
+| **v1.0** | **知识库封版** | MCP 9 工具 + RRF 混合搜索 + lint 巡检 + 6 facet + group + DB 先行 + kb sync（276 测试） | ✅ | 2026-05-22 |
+| **v1.2** | **ingest 早报** | SearXNG 搜索 + AIHOT 适配器 + 多源聚合 + LLM 解读 + 晨报模板 + 339 测试 | ✅ | 2026-05-22 |
+| **v2.0** | **产品化** | 发布队列 + 多模板 + API 冻结 | 🔴 未开始 | — |
 
 ---
 
@@ -47,7 +48,7 @@ Codex ──────┘         ↓
 | 模块 | 单元测试 | 集成测试 | E2E | 总评 |
 |------|---------|---------|-----|------|
 | `core/` | ✅ 25 个 | — | — | ✅ |
-| `ingest/` | ✅ 20 个 | ✅ 1 个 | — | ✅ |
+| `ingest/` | ✅ 28 个 | ✅ 1 个 | — | ✅ |
 | `knowledge/` | ✅ 102 个 | — | — | ✅ |
 | `composer/` | ✅ 63 个 | ✅ 1 个 | — | ✅ |
 | `dispatch/` | ✅ 19 个 | ✅ 1 个 | — | ✅ |
@@ -55,7 +56,7 @@ Codex ──────┘         ↓
 | `cli/` | ✅ 26 个 | — | — | ✅ |
 | `integration/` | — | — | ✅ 2 个 | ✅ |
 
-**总计：276 个测试**
+**总计：339 个测试**
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
 
@@ -65,7 +66,7 @@ Codex ──────┘         ↓
 
 | 问题 | 严重度 | 状态 | 计划版本 | 详情 |
 |------|--------|------|----------|------|
-| WebSearchAdapter 未实现实际搜索 | 🟡 中 | 待实现 | v2.0 | DuckDuckGo/Bing CN 搜索需外部依赖 |
+| ~~WebSearchAdapter 未实现实际搜索~~ | ~~🟡 中~~ | ✅ 已完成 | v1.2 | SearXNG + ZhiPu + Google + Bing CN 四后端 |
 | 发布队列与失败重试 | 🟡 中 | 待实现 | v2.0 | DispatchManager 当前直连发布，无队列和重试 |
 | `datetime.utcnow()` 已弃用 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 全局替换为 `datetime.now(UTC)`，276 测试通过 |
 | MCP Server 读写接入 | ~~🟡 中~~ | ✅ 已完成 | v1.0 | 9 个 MCP 工具，Claude Code + OpenClaw 已接入 |
@@ -97,14 +98,15 @@ Codex ──────┘         ↓
 1. ✅ ~~**v1.0 端到端验证**~~ — ingest → compose → publish 16 篇文章输出正常
 2. ✅ ~~**模块边界设计重构**~~ — ingest 不写知识库、output_log、pipeline 移除、9 份文档更新
 3. ✅ ~~**BACKLOG-005 facet 重分类**~~ — 7→6 分面 + group 子目录，142 条 LLM 辅助迁移，276 测试通过
-4. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
-5. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
-6. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
+4. ✅ ~~**ingest v1.2 早报能力**~~ — SearXNG + AIHOT + 多源聚合 + LLM 解读 + 晨报模板，339 测试通过
+5. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
+6. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
+7. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
 
 **v2.0 延后项**（非阻塞）：
-- WebSearchAdapter 实际搜索
+- ~~WebSearchAdapter 实际搜索~~ ✅ v1.2 完成
 - 发布队列与失败重试
-- 多模板（早报/周报/PPT/视频脚本）
+- 多模板（周报/PPT/视频脚本）
 - AI 封面图生成
 - 跨 Agent 写入冲突解决
 - 多 Agent 更新合并（需交互式 UI）

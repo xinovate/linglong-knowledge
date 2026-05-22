@@ -105,21 +105,39 @@ graph TD
 
 **定位**：用户的信息采集助手，采集结果交给用户阅读思考，有价值的内容在讨论中沉淀进知识库。
 
+**多源聚合架构**：
+
+```mermaid
+graph TD
+    subgraph 数据源
+        A1[AIHOT] --> B[并行采集]
+        A2[SearXNG] --> B
+        A3[RSS] --> B
+        A4[API] --> B
+    end
+    B --> C[聚合所有源]
+    C --> D[5层验证]
+    D --> E[跨天去重]
+    E --> F[维度过滤]
+    F --> G[LLM 批量解读<br/>glm-5.1]
+    G --> H[晨报模板]
+```
+
 **信息维度（6 个）**：
 
-| 维度 | 采集内容 | 主要方式 |
-|------|---------|---------|
-| 研究员观点 | 技术前沿方向 | 搜索引擎 |
-| 公司决策 | 产品发布、战略调整 | web_fetch + 搜索 |
-| 资本决策 | 大额融资、投资动向 | 搜索 + web_fetch |
-| 国家政策 | AI 监管、产业政策 | 搜索 + web_fetch |
-| 开源趋势 | AI 新项目爆发 | GitHub API |
-| 应用落地 | 模型/Agent/机器人更新 | 搜索 + web_fetch |
+| 维度 | 采集内容 | 数据源 |
+|------|---------|--------|
+| 研究员观点 | 技术前沿方向 | SearXNG 搜索 |
+| 公司决策 | 产品发布、战略调整 | AIHOT + SearXNG |
+| 资本决策 | 大额融资、投资动向 | AIHOT + SearXNG |
+| 国家政策 | AI 监管、产业政策 | AIHOT + SearXNG |
+| 开源趋势 | AI 新项目爆发 | SearXNG 搜索 |
+| 应用落地 | 模型/Agent/机器人更新 | AIHOT + SearXNG |
 
 **设计要点**：
 - **不写知识库**：采集结果返回给调用方，写入由人决定
-- **不做调度和推送**：由调用方（OpenClaw cron / CLI / MCP）触发和分发
-- 可配置 YAML 采集包（按维度组织数据源 + 精选标准 + 搜索关键词）
+- **多源聚合**：AIHOT + SearXNG + RSS 等所有源聚合后统一 LLM 解读
+- **包配置内联**：定义在 `.linglong.yaml` 的 `ingest.packages` 中
 - 5 层真实性验证（多源交叉、数字合理性、时间有效性、源头权威、常识判断）
 - 支持 CLI 命令和 MCP 工具两种调用方式
 - 详细设计 → [ingest 设计总览](ingest/design/00-overview.md)
@@ -380,10 +398,11 @@ services:
 - composer：LLM/规则提炼、博客模板、草稿审核、图片资产管线
 - dispatch：Hexo 发布（git workflow）、本地文件输出、发布队列
 
-### Phase 4（v0.9–v1.0：当前）
+### Phase 4（v0.9–v1.2：当前）
 - v0.9 ✅：CLI 入口、集成测试、auto-publish、配置外部化
-- v1.0 知识库 ✅：MCP Server、RRF 混合搜索、lint 巡检、Agent 接入、277 测试
-- **v1.0 其他模块**：ingest 与知识库解耦、composer/dispatch 输出追踪、pipeline 概念移除
+- v1.0 知识库 ✅：MCP Server、RRF 混合搜索、lint 巡检、Agent 接入、276 测试
+- v1.0 其他模块 ✅：ingest 与知识库解耦、composer/dispatch 输出追踪、pipeline 概念移除
+- v1.2 ingest ✅：SearXNG 搜索 + AIHOT 适配器 + 多源聚合 + LLM 解读 + 晨报模板 + 339 测试
 
 ## 参考
 

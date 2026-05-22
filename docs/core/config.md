@@ -32,6 +32,50 @@ dispatch:       # 分发配置
 
 完整字段参考 [`.linglong.yaml.example`](../../.linglong.yaml.example)。
 
+## ingest 配置
+
+```yaml
+ingest:
+  search_engine: searxng       # searxng | zhipu | google | bing_cn | auto
+  searxng_url: http://localhost:8088
+  search_timeout: 30.0
+
+  packages:                    # 内联包定义列表
+    - name: ai-morning-brief
+      topic: AI 早报
+      schedule: "0 7 * * *"
+      output:
+        format: morning-brief   # morning-brief | 空（不格式化）
+        persist: true
+      sources:                  # 顶级数据源
+        - id: aihot-daily
+          type: aihot
+          config:
+            endpoint: daily
+      dimensions:               # 维度搜索
+        - name: 公司决策
+          search:
+            keywords: ["OpenAI 最新", "Anthropic 最新"]
+            engine: auto
+            concurrent: true
+          filter:
+            max_results: 5
+            max_age_days: 3
+      verification:
+        enabled: true
+        pass_threshold: 0.6
+```
+
+**支持的数据源类型**：
+
+| type | 说明 |
+|------|------|
+| `aihot` | AIHOT AI 新闻聚合（`endpoint: daily` 或 `items`） |
+| `web_search` | 搜索引擎（SearXNG/ZhiPu/Google/Bing CN） |
+| `rss` | RSS feed |
+| `api` | REST API |
+| `web_fetch` | HTTP 页面抓取 |
+
 ## 环境变量
 
 也支持环境变量，前缀 `LL_`，下划线分隔层级：
@@ -42,6 +86,8 @@ dispatch:       # 分发配置
 | `LL_KNOWLEDGE_WIKI_PATH` | `knowledge.wiki_path` |
 | `LL_COMPOSER_LLM_MODEL` | `composer.llm_model` |
 | `LL_DISPATCH_DEFAULT_PUBLISHER` | `dispatch.default_publisher` |
+| `LL_INGEST_SEARCH_ENGINE` | `ingest.search_engine` |
+| `LL_INGEST_SEARXNG_URL` | `ingest.searxng_url` |
 
 ## 代码中使用
 
@@ -50,11 +96,10 @@ from linglong.core.config import get_config
 
 config = get_config()
 config.knowledge.wiki_path        # 知识库路径
+config.ingest.search_engine       # 搜索引擎
+config.ingest.packages            # 包定义列表
 config.composer.image_assets.enabled  # 图片资产开关
 config.dispatch.default_publisher     # 默认发布器
-config.ingest.search_engine           # 搜索引擎: searxng/zhipu/google/bing_cn
-config.ingest.searxng_url             # SearXNG 实例地址
-config.ingest.search_timeout          # 搜索超时（秒）
 ```
 
 YAML 支持 `${ENV_VAR}` 语法引用环境变量：
@@ -67,4 +112,4 @@ composer:
 ## 相关文件
 
 - `src/linglong/core/config.py` — 配置模型定义
-- `.linglong.yaml.example` — 完整配置模板
+- `.linglong.yaml` — 用户配置（不入库）
