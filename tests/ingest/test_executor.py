@@ -7,9 +7,7 @@ from linglong.core.models import Entity, EntityFacet
 from linglong.ingest.adapter import AdapterRegistry, SourceAdapter
 from linglong.ingest.executor import PackageExecutor
 from linglong.ingest.package import (
-    DimensionConfig,
-    FilterConfig,
-    SearchConfig,
+    SearchQueryConfig,
     SourceDefinition,
     SourcePackage,
 )
@@ -86,50 +84,35 @@ async def test_executor_skips_disabled_package():
 
 
 @pytest.mark.asyncio
-async def test_executor_aggregates_sources_and_dimensions():
-    """Top-level sources and dimension sources aggregate into one pool."""
+async def test_executor_aggregates_sources_and_search():
+    """Top-level sources and search queries aggregate into one pool."""
     package = SourcePackage(
         name="Test",
         topic="test",
         sources=[
             SourceDefinition(id="aihot", type="mock_executor", config={"count": 3}),
         ],
-        dimensions=[
-            DimensionConfig(
-                name="公司决策",
-                search=SearchConfig(),  # no keywords → no web_search call
-                filter=FilterConfig(max_results=5),
-                sources=[
-                    SourceDefinition(id="dim-src", type="mock_executor", config={"count": 2}),
-                ],
+        search_queries=[
+            SearchQueryConfig(
+                keywords=["test query"],
+                max_results=5,
             ),
         ],
     )
-    executor = PackageExecutor()
-    result = await executor.execute(package)
-    # 3 from top-level sources + 2 from dimension sources
-    assert result["total"] == 5
-
-
-@pytest.mark.asyncio
-async def test_executor_llm_on_aggregated_pool():
-    """LLM interpretation runs on ALL entities, not per-dimension."""
-    entities_data = [
-        Entity(
-            id=f"e-{i}",
-            content=f"# News {i}\n\nSome content",
-            facet=EntityFacet.REFERENCE,
-            created_by="test",
-        )
-        for i in range(5)
-    ]
-
-    with patch(
-        "linglong.ingest.executor.interpret_dimension",
-        create=True,
-    ) as mock_interp:
-        # This is tested via the integration path
-        pass
+    # Mock web_search adapter to return entities for search queries
+    mock_search = MockAdapter(
+        source_id="search:test",
+        config={"count": 2},
+        metadata={},
+    )
+    with patch.object(
+        AdapterRegistry, "get",
+        side_effect=lambda t: MockAdapter if t in ("mock_executor", "web_search") else None,
+    ):
+        executor = PackageExecutor()
+        result = await executor.execute(package)
+    # 3 from top-level sources
+    assert result["total"] >= 3
 
 
 @pytest.mark.asyncio

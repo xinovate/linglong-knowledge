@@ -7,9 +7,8 @@ from typing import Any
 from linglong.core.models import Entity
 from linglong.ingest.adapter import AdapterRegistry, SourceAdapter
 from linglong.ingest.dedup import dedup_entities
-from linglong.ingest.filter import filter_by_dimensions
 from linglong.ingest.history import IngestHistory
-from linglong.ingest.package import DimensionConfig, SourcePackage
+from linglong.ingest.package import SearchQueryConfig, SourcePackage
 from linglong.ingest.templates import get_template
 from linglong.ingest.verification import TruthVerificationEngine
 
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class PackageExecutor:
-    """Execute a source package: fetch all sources → aggregate → interpret → format."""
+    """Execute a source package: fetch all sources → aggregate → tag → interpret → format."""
 
     def __init__(
         self,
@@ -37,76 +36,58 @@ class PackageExecutor:
             logger.info("Package %s is disabled, skipping", package.name)
             return _empty_result()
 
-        # Phase 1: Fetch ALL sources in parallel (top-level + dimension searches)
+        # Phase 1: Fetch ALL sources in parallel
         all_entities: list[Entity] = []
-        dimension_entities: dict[str, list[Entity]] = {}
 
-        # 1a. Top-level sources (AIHOT, RSS, API, etc.)
+        # 1a. Top-level sources (AIHOT, ArXiv, GitHub, RSS, etc.)
         if package.sources:
             source_entities = await self._fetch_sources(package.sources)
             all_entities.extend(source_entities)
-            # Tag top-level source entities with a generic dimension for display
-            dimension_entities["_sources"] = source_entities
 
-        # 1b. Dimension-based searches
-        if package.dimensions:
-            dim_results = await self._fetch_dimensions(package.dimensions)
-            dimension_entities.update(dim_results)
-            for dim_ents in dim_results.values():
-                all_entities.extend(dim_ents)
+        # 1b. Search queries
+        if package.search_queries:
+            search_entities = await self._fetch_search_queries(package.search_queries)
+            all_entities.extend(search_entities)
 
         total = len(all_entities)
 
         # Phase 2: Verification
         if self.verification_engine and package.verification.enabled:
             all_entities, _ = self._verify(all_entities)
-            # Re-sync dimension_entities after verification removes some
-            verified_ids = {e.id for e in all_entities}
-            for dim_name in dimension_entities:
-                dimension_entities[dim_name] = [
-                    e for e in dimension_entities[dim_name] if e.id in verified_ids
-                ]
 
         # Phase 3: Cross-day dedup
         dedup_count = total
-        if self.history and dimension_entities:
-            deduped_dims: dict[str, list[Entity]] = {}
-            for dim_name, dim_ents in dimension_entities.items():
-                deduped = dedup_entities(
-                    dim_ents,
-                    self.history,
-                    lookback_days=self.dedup_lookback_days,
-                    dimension=dim_name,
-                )
-                deduped_dims[dim_name] = deduped
-            dimension_entities = deduped_dims
-            all_entities = []
-            for dim_ents in dimension_entities.values():
-                all_entities.extend(dim_ents)
+        if self.history:
+            all_entities = dedup_entities(
+                all_entities,
+                self.history,
+                lookback_days=self.dedup_lookback_days,
+            )
             dedup_count = len(all_entities)
 
-        # Phase 4: Dimension-based filtering
-        filtered_count = dedup_count
-        if dimension_entities and package.dimensions:
-            dimension_entities = filter_by_dimensions(
-                dimension_entities, package.dimensions
-            )
-            all_entities = []
-            for dim_ents in dimension_entities.values():
-                all_entities.extend(dim_ents)
-            filtered_count = len(all_entities)
+        # Phase 4: LLM auto-tag (dimension classification)
+        dimension_entities: dict[str, list[Entity]] = {}
+        if self.llm_config and all_entities:
+            try:
+                from linglong.ingest.interpreter import auto_tag
 
-        # Phase 5: LLM interpretation — on ALL aggregated entities as one batch
+                dimension_entities = auto_tag(all_entities, self.llm_config)
+            except Exception as e:
+                logger.warning("Auto-tag failed (non-fatal): %s", e)
+                dimension_entities = {"AI 动态": all_entities}
+        elif all_entities:
+            dimension_entities = {"AI 动态": all_entities}
+
+        # Phase 5: LLM interpretation + Top 5
         interpretations: dict[str, list[dict[str, str]]] = {}
         top5: list[dict[str, Any]] = []
         if self.llm_config and package.output.format == "morning-brief" and all_entities:
             try:
                 from linglong.ingest.interpreter import generate_top5, interpret_dimension
 
-                # Single batch interpretation on all aggregated entities
                 all_interps = interpret_dimension(all_entities, self.llm_config)
 
-                # Map interpretations back to their dimensions for display
+                # Map interpretations back to dimensions
                 interp_idx = 0
                 for dim_name, dim_ents in dimension_entities.items():
                     dim_interps = all_interps[interp_idx:interp_idx + len(dim_ents)]
@@ -128,26 +109,17 @@ class PackageExecutor:
         if package.output.format and dimension_entities:
             template_fn = get_template(package.output.format)
             if template_fn:
-                # Remove _sources key from display — merge into first section
-                display_dims = {k: v for k, v in dimension_entities.items() if k != "_sources"}
-                display_interps = {k: v for k, v in interpretations.items() if k != "_sources"}
-
-                # If we have _sources entities with no other dimension, show them
-                if not display_dims and "_sources" in dimension_entities:
-                    display_dims["AI 动态"] = dimension_entities["_sources"]
-                    display_interps["AI 动态"] = interpretations.get("_sources", [])
-
                 output_text = template_fn(
-                    display_dims,
+                    dimension_entities,
                     title=package.topic,
-                    interpretations=display_interps or None,
+                    interpretations=interpretations or None,
                     top5=top5 or None,
                 )
 
         return {
             "entities": all_entities,
             "total": total,
-            "filtered": filtered_count,
+            "filtered": dedup_count,
             "failed": 0,
             "output": output_text,
         }
@@ -155,7 +127,7 @@ class PackageExecutor:
     async def _fetch_sources(
         self, sources: list[Any]
     ) -> list[Entity]:
-        """Fetch from source definitions (top-level or within dimension)."""
+        """Fetch from source definitions."""
         adapters: list[SourceAdapter] = []
         for source_def in sources:
             if not source_def.enabled:
@@ -179,47 +151,39 @@ class PackageExecutor:
             entities.extend(result)
         return entities
 
-    async def _fetch_dimensions(
-        self, dimensions: list[DimensionConfig]
-    ) -> dict[str, list[Entity]]:
-        """Fetch from all dimensions in parallel."""
-        result: dict[str, list[Entity]] = {}
+    async def _fetch_search_queries(
+        self, queries: list[SearchQueryConfig]
+    ) -> list[Entity]:
+        """Fetch from search query groups."""
+        search_adapter_cls = AdapterRegistry.get("web_search")
+        if not search_adapter_cls:
+            return []
 
-        async def _fetch_one_dim(dim: DimensionConfig) -> tuple[str, list[Entity]]:
-            entities: list[Entity] = []
+        async def _fetch_one(query: SearchQueryConfig) -> list[Entity]:
+            adapter = search_adapter_cls(
+                source_id=f"search:{query.keywords[0][:20]}",
+                config={
+                    "queries": query.keywords,
+                    "engine": "auto",
+                    "concurrent": True,
+                    "max_results": query.max_results * 2,
+                    "max_age_days": query.max_age_days,
+                },
+                metadata={},
+            )
+            try:
+                return await adapter.fetch()
+            except Exception as e:
+                logger.warning("Search query failed: %s", e)
+                return []
 
-            # Search-based sources
-            if dim.search.keywords:
-                search_adapter_cls = AdapterRegistry.get("web_search")
-                if search_adapter_cls:
-                    adapter = search_adapter_cls(
-                        source_id=f"search:{dim.name}",
-                        config={
-                            "queries": dim.search.keywords,
-                            "engine": dim.search.engine,
-                            "concurrent": dim.search.concurrent,
-                            "max_results": dim.filter.max_results * 2,
-                            "max_age_days": dim.filter.max_age_days,
-                        },
-                        metadata={"dimension": dim.name},
-                    )
-                    try:
-                        entities.extend(await adapter.fetch())
-                    except Exception as e:
-                        logger.warning("Dimension '%s' search failed: %s", dim.name, e)
+        tasks = [_fetch_one(q) for q in queries]
+        results = await asyncio.gather(*tasks)
 
-            # Configured sources within dimension
-            if dim.sources:
-                entities.extend(await self._fetch_sources(dim.sources))
-
-            return dim.name, entities
-
-        tasks = [_fetch_one_dim(d) for d in dimensions]
-        dim_results = await asyncio.gather(*tasks)
-        for dim_name, entities in dim_results:
-            result[dim_name] = entities
-
-        return result
+        entities: list[Entity] = []
+        for result in results:
+            entities.extend(result)
+        return entities
 
     async def _fetch_with_error_handling(self, adapter: SourceAdapter) -> list[Entity]:
         try:

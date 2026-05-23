@@ -17,25 +17,28 @@ class SourceDefinition(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class SearchConfig(BaseModel):
-    """Search configuration within a dimension."""
+class SearchQueryConfig(BaseModel):
+    """Flat search query (no preset dimension)."""
 
     keywords: list[str] = Field(default_factory=list)
-    engine: str = "auto"  # auto | google | bing_cn | zhipu
-    concurrent: bool = False  # fetch all keywords in parallel
+    max_results: int = 5
+    max_age_days: int = 7
+
+
+# Deprecated aliases for backward compat with tests/external code
+class SearchConfig(BaseModel):
+    keywords: list[str] = Field(default_factory=list)
+    engine: str = "auto"
+    concurrent: bool = False
 
 
 class FilterConfig(BaseModel):
-    """Filter configuration within a dimension."""
-
     max_results: int = 5
     max_age_days: int = 7
     min_stars: int = 0
 
 
 class DimensionConfig(BaseModel):
-    """A single dimension (topic) within a package."""
-
     name: str
     search: SearchConfig = Field(default_factory=SearchConfig)
     sources: list[SourceDefinition] = Field(default_factory=list)
@@ -69,7 +72,8 @@ class SourcePackage(BaseModel):
     schedule: str = "0 7 * * *"
     enabled: bool = True
     sources: list[SourceDefinition] = Field(default_factory=list)
-    dimensions: list[DimensionConfig] = Field(default_factory=list)
+    search_queries: list[SearchQueryConfig] = Field(default_factory=list)
+    dimensions: list[DimensionConfig] = Field(default_factory=list)  # deprecated
     verification: VerificationSettings = Field(default_factory=VerificationSettings)
     output: OutputConfig = Field(default_factory=OutputConfig)
 

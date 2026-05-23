@@ -1,4 +1,4 @@
-"""Morning brief formatting template — table format matching OpenClaw style."""
+"""Morning brief formatting template — unified two-column table by dimension."""
 
 from __future__ import annotations
 
@@ -16,18 +16,6 @@ _DIMENSION_EMOJI: dict[str, str] = {
     "应用落地": "🚀",
     "AI 动态": "🤖",
 }
-
-# Dimension → table column headers
-_DIMENSION_COLUMNS: dict[str, list[str]] = {
-    "研究员观点": ["观点/动态", "来源人", "解读"],
-    "公司决策": ["事件", "公司", "日期", "解读"],
-    "资本决策": ["投资事件", "投资方", "金额", "解读"],
-    "国家政策": ["政策名称", "发布部门", "解读"],
-    "开源趋势": ["项目名", "分类", "Stars", "日期", "解读"],
-    "应用落地": ["产品/功能", "公司", "日期", "解读"],
-}
-
-_DEFAULT_COLUMNS = ["事件", "解读"]
 
 
 def format_morning_brief(
@@ -63,7 +51,7 @@ def format_morning_brief(
     lines.append(f"> {', '.join(parts)}")
     lines.append("")
 
-    # Per-dimension tables
+    # Per-dimension tables (unified two columns: 事件 | 解读)
     for dim_name, entities in dimension_entities.items():
         if not entities:
             continue
@@ -71,12 +59,9 @@ def format_morning_brief(
         lines.append(f"## {emoji} {dim_name}")
         lines.append("")
 
-        cols = _DIMENSION_COLUMNS.get(dim_name, _DEFAULT_COLUMNS)
-        col_count = len(cols)
-
         # Table header
-        lines.append("| " + " | ".join(cols) + " |")
-        lines.append("| " + " | ".join(["---"] * col_count) + " ")
+        lines.append("| 事件 | 解读 |")
+        lines.append("| --- | --- |")
 
         dim_interps = (interpretations or {}).get(dim_name, [])
         for i, entity in enumerate(entities):
@@ -91,13 +76,7 @@ def format_morning_brief(
             else:
                 cell_title = title_text
 
-            # Fill table row based on column count
-            if col_count == 3:
-                lines.append(f"| {cell_title} | — | {interp or '—'} |")
-            elif col_count == 4:
-                lines.append(f"| {cell_title} | — | — | {interp or '—'} |")
-            else:
-                lines.append(f"| {cell_title} | {interp or '—'} |")
+            lines.append(f"| {cell_title} | {interp or '—'} |")
 
         lines.append("")
 
@@ -126,7 +105,7 @@ def format_morning_brief(
     # Source footer
     lines.append("━━━━━━━━━━━━━━━━━━━━")
     lines.append("")
-    lines.append("📡 数据来源：AIHOT + SearXNG 搜索")
+    lines.append("📡 数据来源：AIHOT + SearXNG + ArXiv + GitHub + RSS")
 
     return "\n".join(lines)
 

@@ -11,6 +11,26 @@ from linglong.core.models import Entity
 
 logger = logging.getLogger(__name__)
 
+_AUTO_TAG_PROMPT = """你是一位 AI 领域的新闻分类专家。对以下新闻逐条打 1 个主维度标签和 0-2 个辅助标签。
+
+主维度（必选其一）：
+- 研究员观点：研究前沿、新范式、论文发布
+- 公司决策：战略调整、产品发布、人事变动、合作
+- 资本决策：融资、投资、并购、IPO
+- 国家政策：AI 监管、产业政策、合规、标准
+- 开源趋势：开源项目、Stars 增长、社区动态、release
+- 应用落地：产品更新、场景应用、商业化
+
+辅助标签（可选）：funding / release / personnel / research / policy / open_source / partnership / benchmark
+
+按以下 JSON 格式返回：
+{{"items": [{{"index": 1, "dimension": "公司决策", "tags": ["release"], "entities": ["OpenAI"]}}]}}
+
+只返回 JSON，不要其他内容。
+
+新闻列表：
+{items_text}"""
+
 _INTERPRET_BATCH_PROMPT = """你是一位 AI 领域的资深分析师。对以下新闻条目逐条生成一句话解读。
 
 要求：
@@ -133,6 +153,52 @@ def generate_top5(
     except Exception as e:
         logger.warning("LLM Top5 generation failed: %s", e)
         return []
+
+
+def auto_tag(
+    entities: list[Entity],
+    llm_config: dict[str, Any] | None = None,
+) -> dict[str, list[Entity]]:
+    """LLM auto-tags entities with dimension + auxiliary tags.
+
+    Returns dimension name → list of entities.
+    """
+    if not entities:
+        return {}
+
+    items_text = "\n".join(
+        f"{i+1}. {_entity_title(e)} — {_entity_snippet(e)}"
+        for i, e in enumerate(entities)
+    )
+
+    try:
+        system = _AUTO_TAG_PROMPT.format(items_text=items_text)
+        response = _call_llm(system, items_text, max_tokens=2000)
+        data = json.loads(response)
+        tag_map: dict[int, dict[str, Any]] = {}
+        for item in data.get("items", []):
+            tag_map[item["index"]] = item
+    except Exception as e:
+        logger.warning("Auto-tag failed, using default: %s", e)
+        tag_map = {}
+
+    dimension_entities: dict[str, list[Entity]] = {}
+    for i, entity in enumerate(entities):
+        item = tag_map.get(i + 1, {})
+        dimension = item.get("dimension", "应用落地")
+        if dimension not in dimension_entities:
+            dimension_entities[dimension] = []
+        # Store tags in entity sources metadata for later use
+        tags = item.get("tags", [])
+        mentioned = item.get("entities", [])
+        if entity.sources:
+            entity.sources[0].metadata["auto_dimension"] = dimension
+            entity.sources[0].metadata["auto_tags"] = tags
+            entity.sources[0].metadata["mentioned_entities"] = mentioned
+        dimension_entities[dimension].append(entity)
+
+    logger.info("Auto-tag: %d entities → %d dimensions", len(entities), len(dimension_entities))
+    return dimension_entities
 
 
 def _entity_title(entity: Entity) -> str:

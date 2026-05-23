@@ -19,6 +19,7 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | v0.9 | 稳定化（CLI、集成测试、auto-publish、配置外部化） | ✅ |
 | v1.0 | 模块边界对齐 + 知识库封版 | ✅ |
 | **v1.2** | **ingest 早报能力（SearXNG + AIHOT + LLM 解读 + 晨报）** | **✅** |
+| **v1.3** | **ingest 信源增强 + 动态标签 + 反馈闭环** | **✅** |
 | **v2.0** | **产品化（多模板 + 发布队列 + Codex 接入）** | **🔴 未开始** |
 
 ## v1.0 已完成
@@ -56,6 +57,20 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 - ✅ 339 测试全通过
 
 ## 下一步工作
+
+### v1.3 已完成（ingest 信源增强 + 动态标签 + 反馈闭环）
+
+| # | 任务 | 模块 | 优先级 | 状态 |
+|---|------|------|--------|------|
+| 1 | ArXiv 适配器（cs.AI/CL/RO 论文采集） | ingest | **高** | ✅ |
+| 2 | GitHub Search 适配器（topic + stars 筛选） | ingest | **高** | ✅ |
+| 3 | OpenAI Blog RSS 接入 | ingest | **高** | ✅ |
+| 4 | LLM 动态标签（auto_tag） | ingest | **高** | ✅ |
+| 5 | search_queries 替换 dimensions | ingest | **高** | ✅ |
+| 6 | 晨报模板统一两列表格 | ingest | 中 | ✅ |
+| 7 | FeedbackStore + ingest_feedback 表 | ingest | 中 | ✅ |
+| 8 | Top 5 偏好注入 | ingest | 中 | ✅ |
+| 9 | MCP record_feedback 工具 | ingest | 低 | 待实现 |
 
 ### v2.0 收尾项
 
@@ -128,3 +143,15 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 **决策**: 采集包定义从独立 YAML 文件合并到 `.linglong.yaml` 的 `ingest.packages` 字段。
 - **原因**: 单一配置文件管理所有设置，减少维护成本。clone 即可用。
 - **影响**: `package_paths` 字段移除，CLI 从 `config.ingest.packages` 直接加载。
+
+### ADR-011: LLM 动态标签替代硬编码维度（v1.3）
+
+**决策**: 维度归属由 LLM 根据内容自动判断，不再由搜索关键词分组决定。`dimensions` 配置替换为扁平的 `search_queries`。
+- **原因**: 搜索关键词预分组导致同一条新闻只能归一个维度，无法跨维度。LLM 打标更准确，且配置更简洁。
+- **影响**: 移除 `DimensionConfig`、`SearchConfig`、`FilterConfig`，新增 `SearchQueryConfig` 和 `auto_tag()`。
+
+### ADR-012: 信源选择 — ArXiv + GitHub + RSS（v1.3）
+
+**决策**: v1.3 新增 ArXiv、GitHub Search、OpenAI Blog RSS 三个信源。X/Twitter、Reddit、Hacker News 暂不纳入。
+- **原因**: ArXiv（研究前沿）、GitHub（开源趋势）、OpenAI Blog（官方一手）均为免费直连高信噪比渠道。X/Twitter 成本过高（$100+/月），Reddit 需代理不稳定，HN AI 相关内容偏观点非新闻。
+- **影响**: 新增 `ArXivAdapter`、`GitHubAdapter`，RSS 复用现有 `RSSAdapter`。

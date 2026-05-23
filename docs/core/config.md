@@ -47,34 +47,88 @@ ingest:
       output:
         format: morning-brief   # morning-brief | 空（不格式化）
         persist: true
-      sources:                  # 顶级数据源
+      sources:                  # 顶级数据源（全量采集，不限维度）
         - id: aihot-daily
           type: aihot
           config:
             endpoint: daily
-      dimensions:               # 维度搜索
-        - name: 公司决策
-          search:
-            keywords: ["OpenAI news May 2026", "Anthropic Claude latest"]
-            engine: auto
-            concurrent: true
-          filter:
-            max_results: 5
-            max_age_days: 3
+        - id: openai-blog
+          type: rss
+          config:
+            url: https://openai.com/blog/rss.xml
+            max_items: 10
+        - id: arxiv-ai
+          type: arxiv
+          config:
+            categories: ["cs.AI", "cs.CL", "cs.RO"]
+            max_results: 10
+        - id: github-trending
+          type: github
+          config:
+            topics: ["ai", "llm", "ai-agent"]
+            min_stars: 50
+            since_days: 7
+            max_results: 10
+      search_queries:           # 扁平搜索配置（v1.3 替换 dimensions）
+        - keywords: ["OpenAI news May 2026", "Anthropic Claude latest"]
+          max_results: 5
+          max_age_days: 3
+        - keywords: ["AI startup funding round 2026"]
+          max_results: 3
+          max_age_days: 5
       verification:
         enabled: true
         pass_threshold: 0.6
 ```
 
-**支持的数据源类型**：
+### 支持的数据源类型
 
-| type | 说明 |
-|------|------|
-| `aihot` | AIHOT AI 新闻聚合（`endpoint: daily` 或 `items`） |
-| `web_search` | 搜索引擎（SearXNG/ZhiPu/Google/Bing CN） |
-| `rss` | RSS feed |
-| `api` | REST API |
-| `web_fetch` | HTTP 页面抓取 |
+| type | 说明 | config 字段 |
+|------|------|------------|
+| `aihot` | AIHOT AI 新闻聚合 | `endpoint: daily` 或 `items` |
+| `arxiv` | ArXiv 论文预印本 | `categories`, `max_results`, `sort_by` |
+| `github` | GitHub 开源项目搜索 | `topics`, `min_stars`, `since_days`, `max_results`, `token` |
+| `rss` | RSS feed | `url`, `max_items` |
+| `web_search` | 搜索引擎 | `queries`, `engine`, `concurrent` |
+| `api` | REST API | — |
+| `web_fetch` | HTTP 页面抓取 | — |
+
+### ArXiv 配置
+
+```yaml
+- id: arxiv-ai
+  type: arxiv
+  config:
+    categories: ["cs.AI", "cs.CL", "cs.RO"]  # ArXiv 分类
+    max_results: 10                            # 默认 10
+    sort_by: submittedDate                     # submittedDate | relevance
+```
+
+常用分类：`cs.AI`（人工智能）、`cs.CL`（计算语言学）、`cs.RO`（机器人）、`cs.LG`（机器学习）、`cs.CV`（计算机视觉）
+
+### GitHub 配置
+
+```yaml
+- id: github-trending
+  type: github
+  config:
+    topics: ["ai", "llm", "ai-agent"]  # GitHub topic 筛选
+    min_stars: 50                        # 最低 star 数
+    since_days: 7                        # 最近 N 天创建
+    max_results: 10                      # 默认 10
+    token: ""                            # 可选，提升 API 限额
+```
+
+### search_queries 配置
+
+```yaml
+search_queries:
+  - keywords: ["OpenAI news", "Anthropic Claude latest"]
+    max_results: 5          # 每组最多采集条数
+    max_age_days: 3         # 限制结果时效
+```
+
+`search_queries` 替代了 v1.2 的 `dimensions`。维度归属不再由配置决定——由 LLM 根据内容自动判断。
 
 ## 环境变量
 
