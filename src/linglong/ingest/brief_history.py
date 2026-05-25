@@ -6,6 +6,7 @@ to inject as "already reported" context for the next run.
 
 import json
 import logging
+import re
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -126,3 +127,51 @@ class BriefHistory:
                 removed += 1
         if removed:
             logger.info("Cleaned up %d old history files", removed)
+
+    def get_last_output(self) -> str | None:
+        """Return the most recent history file's raw content for fallback."""
+        files = sorted(self.history_dir.glob("*.json"), reverse=True)
+        if not files:
+            return None
+        try:
+            data = json.loads(files[0].read_text(encoding="utf-8"))
+            return "\n\n".join(f"## {k}\n{v}" for k, v in data.items() if v)
+        except Exception:
+            return None
+
+    def check_overlap(self, new_sections: dict[str, str]) -> list[str]:
+        """Check new output sections for overlap with recent history.
+
+        Returns a list of warnings for dimensions with high overlap.
+        Uses simple token overlap (jaccard-like) for lightweight detection.
+        """
+        history = self.load()
+        warnings: list[str] = []
+
+        for dim, new_text in new_sections.items():
+            old_text = history.get(dim)
+            if not old_text or not new_text:
+                continue
+            new_tokens = _extract_tokens(new_text)
+            old_tokens = _extract_tokens(old_text)
+            if not new_tokens or not old_tokens:
+                continue
+            overlap = new_tokens & old_tokens
+            ratio = len(overlap) / min(len(new_tokens), len(old_tokens))
+            if ratio > 0.4:
+                warnings.append(
+                    f"{dim}: {ratio:.0%} token overlap ({len(overlap)} shared), "
+                    f"possible重复"
+                )
+        if warnings:
+            logger.warning("Dedup check: %s", "; ".join(warnings))
+        return warnings
+
+
+def _extract_tokens(text: str) -> set[str]:
+    """Extract meaningful tokens from text for overlap comparison."""
+    # Remove markdown table formatting, keep content
+    cleaned = re.sub(r"[|\\-─━]", " ", text)
+    # Split into words, keep tokens >= 2 chars (catches both en/cn)
+    tokens = {w for w in cleaned.split() if len(w) >= 2}
+    return tokens
