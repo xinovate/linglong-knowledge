@@ -248,6 +248,12 @@ class IngestConfig(BaseSettings):
     search_timeout: float = Field(
         default=30.0, description="Search request timeout in seconds"
     )
+    searxng_api_key: str | None = Field(
+        default=None, description="SearXNG API key (Bearer Token via nginx auth)"
+    )
+    rsshub_access_key: str | None = Field(
+        default=None, description="RSSHub ACCESS_KEY for authenticated requests"
+    )
 
 
 class OSSConfig(BaseModel):

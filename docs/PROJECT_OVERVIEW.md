@@ -43,6 +43,7 @@ Codex ──────┘         ↓
 | **v2.0** | **IngestAgent 重构** | LLM Agent 单 prompt 早报 + GitHub Trending 多源 + BriefHistory 去重 + 394 测试 | ✅ | 2026-05-25 |
 | **v2.1** | **RSS 数据源** | 6 个 RSS 订阅源 + 交叉去重 + 时效过滤 + 394 测试 | ✅ | 2026-05-25 |
 | **v2.2** | **ingest 增强 + 清理** | 融资快照 + 关键人物扩展 + 8 RSS + 健康监控 + LLM 容错 + 去重量化 + legacy 清理（-4164 行）+ 321 测试 | ✅ | 2026-05-25 |
+| **v2.3** | **安全加固 + MCP 增强** | 3 服务 API Key 认证 + nginx 反代 SearXNG + generate_brief/search_web MCP 工具 + 329 测试 | ✅ | 2026-05-25 |
 
 ---
 
@@ -51,15 +52,15 @@ Codex ──────┘         ↓
 | 模块 | 单元测试 | 集成测试 | E2E | 总评 |
 |------|---------|---------|-----|------|
 | `core/` | ✅ 25 个 | — | — | ✅ |
-| `ingest/` | ✅ 36 个 | — | — | ✅ |
+| `ingest/` | ✅ 39 个 | — | — | ✅ |
 | `knowledge/` | ✅ 102 个 | — | — | ✅ |
 | `composer/` | ✅ 63 个 | ✅ 1 个 | — | ✅ |
 | `dispatch/` | ✅ 19 个 | ✅ 1 个 | — | ✅ |
-| `mcp/` | ✅ 20 个 | — | — | ✅ |
+| `mcp/` | ✅ 28 个 | — | — | ✅ |
 | `cli/` | ✅ 26 个 | — | — | ✅ |
 | `integration/` | — | — | ✅ 1 个 | ✅ |
 
-**总计：321 个测试**
+**总计：329 个测试**
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
 
@@ -70,7 +71,8 @@ Codex ──────┘         ↓
 | 问题 | 严重度 | 状态 | 计划版本 | 详情 |
 |------|--------|------|----------|------|
 | ~~WebSearchAdapter 未实现实际搜索~~ | ~~🟡 中~~ | ✅ 已完成 | v1.2 | SearXNG + ZhiPu + Google + Bing CN 四后端 |
-| 发布队列与失败重试 | 🟡 中 | 待实现 | v2.0 | DispatchManager 当前直连发布，无队列和重试 |
+| ~~服务端口公网暴露~~ | ~~🔴 高~~ | ✅ 已修复 | v2.3 | SearXNG nginx 反代 + RSSHub ACCESS_KEY + Embedding Bearer Token |
+| 发布队列与失败重试 | 🟡 中 | 待实现 | v2.3 | DispatchManager 当前直连发布，无队列和重试 |
 | `datetime.utcnow()` 已弃用 | ~~🟡 低~~ | ✅ 已修复 | v1.0 | 全局替换为 `datetime.now(UTC)`，276 测试通过 |
 | MCP Server 读写接入 | ~~🟡 中~~ | ✅ 已完成 | v1.0 | 9 个 MCP 工具，Claude Code + OpenClaw 已接入 |
 | 向量搜索增强（混合搜索/自动模式） | ~~🟡 低~~ | ✅ 已完成 | v1.0 | RRF 混合搜索 + 自动模式路由，276 测试通过 |
@@ -103,10 +105,11 @@ Codex ──────┘         ↓
 4. ✅ ~~**ingest v1.2 早报能力**~~ — SearXNG + AIHOT + 多源聚合 + LLM 解读 + 晨报模板，339 测试通过
 5. ✅ ~~**ingest v2.0 IngestAgent 重构**~~ — LLM Agent 单 prompt 早报 + GitHub Trending + BriefHistory 去重，394 测试通过
 6. ✅ ~~**ingest v2.1 RSS 数据源**~~ — 6 个 RSS 订阅源 + 交叉去重 + 时效过滤，394 测试通过
-7. ✅ ~~**ingest v2.2 增强**~~ — 公司融资快照 + 关键人物扩展 + 8 RSS 源 + 信源健康 + LLM 容错 + 去重量化，407 测试通过
-8. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
-9. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
-10. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
+7. ✅ ~~**ingest v2.2 增强**~~ — 公司融资快照 + 关键人物扩展 + 8 RSS 源 + 信源健康 + LLM 容错 + 去重量化，321 测试通过
+8. ✅ ~~**v2.3 安全加固 + MCP 增强**~~ — SearXNG nginx 反代 + RSSHub/Embedding API Key + generate_brief/search_web MCP 工具，329 测试通过
+9. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
+10. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
+11. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
 
 **v2.3 收尾项**（非阻塞）：
 - 发布队列与失败重试

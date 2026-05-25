@@ -13,12 +13,14 @@ from linglong.knowledge.store import KnowledgeStore
 from linglong.mcp.tools import (
     execute_package,
     fetch_rss,
+    generate_brief,
     get_template,
     list_entities,
     list_templates,
     read_entity,
     search_and_read,
     search_similar,
+    search_web,
     search_wiki,
     update_entity,
     write_entity,
@@ -463,7 +465,87 @@ def test_fetch_rss_handles_error(temp_store):
     assert "error" in data
 
 
-# --- execute_package ---
+# --- generate_brief ---
+
+
+def test_generate_brief_returns_output(temp_store):
+    config = get_config()
+    config.ingest.packages = [{"name": "ai-morning-brief", "topic": "AI 早报"}]
+    set_config(config)
+
+    with patch("linglong.ingest.agent.IngestAgent") as mock_agent_cls, \
+         patch("linglong.ingest.brief_history.BriefHistory") as mock_bh_cls, \
+         patch("linglong.ingest.feedback.FeedbackStore") as mock_fs_cls, \
+         patch("asyncio.run", return_value="# AI 早报\n\nContent"):
+        mock_agent = MagicMock()
+        mock_agent.run = AsyncMock(return_value="# AI 早报\n\nContent")
+        mock_agent_cls.return_value = mock_agent
+
+        result = generate_brief()
+        data = json.loads(result)
+
+    assert "error" not in data
+    assert data["package"] == "ai-morning-brief"
+    assert "output" in data
+
+
+def test_generate_brief_no_packages(temp_store):
+    config = get_config()
+    config.ingest.packages = []
+    set_config(config)
+
+    result = generate_brief()
+    data = json.loads(result)
+
+    assert "error" in data
+    assert "No packages" in data["error"]
+
+
+def test_generate_brief_handles_error(temp_store):
+    config = get_config()
+    config.ingest.packages = [{"name": "test", "topic": "test"}]
+    set_config(config)
+
+    with patch("linglong.ingest.agent.IngestAgent", side_effect=Exception("Agent failed")):
+        result = generate_brief()
+        data = json.loads(result)
+
+    assert "error" in data
+
+
+# --- search_web ---
+
+
+def test_search_web_returns_results(temp_store):
+    mock_data = {
+        "results": [
+            {"title": "AI News", "url": "https://example.com", "content": "Summary", "engine": "google"},
+        ]
+    }
+    mock_response = MagicMock()
+    mock_response.json.return_value = mock_data
+    mock_response.raise_for_status = MagicMock()
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        result = search_web("AI news", max_results=5)
+        data = json.loads(result)
+
+    assert "error" not in data
+    assert data["count"] == 1
+    assert data["results"][0]["title"] == "AI News"
+
+
+def test_search_web_handles_error(temp_store):
+    with patch("asyncio.run", side_effect=Exception("Connection failed")):
+        result = search_web("test query")
+        data = json.loads(result)
+
+    assert "error" in data
 
 
 def test_execute_package_returns_results(temp_store):

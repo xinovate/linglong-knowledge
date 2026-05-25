@@ -326,6 +326,11 @@ def fetch_rss(url: str, name: str | None = None, max_items: int = 20) -> str:
         import feedparser
         import httpx
 
+        config = get_config()
+        if config.ingest.rsshub_access_key:
+            sep = "&" if "?" in url else "?"
+            url = f"{url}{sep}key={config.ingest.rsshub_access_key}"
+
         async def _fetch():
             async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
                 resp = await client.get(
@@ -419,4 +424,90 @@ def execute_package(package_path: str) -> str:
         return json.dumps(response, ensure_ascii=False)
     except Exception as exc:
         logger.exception("execute_package failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def generate_brief() -> str:
+    """Execute an ingest package (YAML-defined collection of sources).
+
+    Returns collected entities for discussion. Use write_entity to save
+    selected results to the knowledge store.
+    """
+    try:
+        import asyncio
+        from pathlib import Path
+
+        from linglong.ingest.agent import IngestAgent
+        from linglong.ingest.brief_history import BriefHistory
+        from linglong.ingest.feedback import FeedbackStore
+        from linglong.ingest.package import SourcePackage
+
+        config = get_config()
+        if not config.ingest.packages:
+            return json.dumps(
+                {"error": "No packages configured in .linglong.yaml"},
+                ensure_ascii=False,
+            )
+
+        package = SourcePackage(**config.ingest.packages[0])
+        feedback_store = FeedbackStore()
+        history_dir = Path.home() / "linglong" / "brief_history"
+        brief_history = BriefHistory(history_dir)
+        agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
+        output = asyncio.run(agent.run(package))
+
+        response: dict[str, Any] = {
+            "package": package.name,
+            "output_length": len(output) if output else 0,
+        }
+        if output:
+            response["output"] = output
+        return json.dumps(response, ensure_ascii=False)
+    except Exception as exc:
+        logger.exception("generate_brief failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def search_web(query: str, max_results: int = 10) -> str:
+    """Search the web via SearXNG. Returns results including web page title, web page URL, web page summary, website name, website icon, etc."""
+    try:
+        import asyncio
+
+        import httpx
+
+        config = get_config()
+        base_url = config.ingest.searxng_url.rstrip("/")
+        timeout = config.ingest.search_timeout
+
+        params = {
+            "q": query,
+            "format": "json",
+            "categories": "general",
+        }
+        headers: dict[str, str] = {}
+        if config.ingest.searxng_api_key:
+            headers["Authorization"] = f"Bearer {config.ingest.searxng_api_key}"
+
+        async def _search():
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.get(f"{base_url}/search", params=params, headers=headers)
+                resp.raise_for_status()
+                return resp.json()
+
+        data = asyncio.run(_search())
+        results = []
+        for r in data.get("results", [])[:max_results]:
+            results.append({
+                "title": r.get("title", ""),
+                "url": r.get("url", ""),
+                "snippet": r.get("content", ""),
+                "engine": r.get("engine", ""),
+            })
+
+        return json.dumps(
+            {"results": results, "count": len(results)},
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("search_web failed")
         return json.dumps({"error": str(exc)}, ensure_ascii=False)

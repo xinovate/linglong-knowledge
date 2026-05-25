@@ -103,8 +103,11 @@ linglong ingest
 ```yaml
 # .linglong.yaml
 ingest:
-  search_engine: searxng
   searxng_url: http://localhost:8088
+
+  # API Key 认证（可选，用于安全加固）
+  searxng_api_key: ${SEARXNG_API_KEY}
+  rsshub_access_key: ${RSSHUB_ACCESS_KEY}
 
   # RSS 订阅源（v2.1 新增）
   rss_sources:

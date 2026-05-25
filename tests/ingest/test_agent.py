@@ -476,3 +476,81 @@ class TestBriefHistoryOverlap:
         history = BriefHistory(tmp_path)
         warnings = history.check_overlap({"关键人物": "content"})
         assert len(warnings) == 0
+
+
+class TestApiKeyAuth:
+    @pytest.mark.asyncio
+    async def test_searxng_sends_auth_header(self):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"results": []}
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        config_mock = MagicMock()
+        config_mock.ingest.searxng_url = "http://localhost:8088"
+        config_mock.ingest.search_timeout = 10.0
+        config_mock.ingest.searxng_api_key = "test-secret-key"
+
+        with patch("linglong.ingest.agent.httpx.AsyncClient", return_value=mock_client), \
+             patch("linglong.ingest.agent.get_config", return_value=config_mock):
+            from linglong.ingest.agent import _searxng_search
+            await _searxng_search("test query")
+
+        call_kwargs = mock_client.get.call_args
+        headers = call_kwargs.kwargs.get("headers", {})
+        assert headers.get("Authorization") == "Bearer test-secret-key"
+
+    @pytest.mark.asyncio
+    async def test_searxng_no_header_without_key(self):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"results": []}
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        config_mock = MagicMock()
+        config_mock.ingest.searxng_url = "http://localhost:8088"
+        config_mock.ingest.search_timeout = 10.0
+        config_mock.ingest.searxng_api_key = None
+
+        with patch("linglong.ingest.agent.httpx.AsyncClient", return_value=mock_client), \
+             patch("linglong.ingest.agent.get_config", return_value=config_mock):
+            from linglong.ingest.agent import _searxng_search
+            await _searxng_search("test query")
+
+        call_kwargs = mock_client.get.call_args
+        headers = call_kwargs.kwargs.get("headers", {})
+        assert "Authorization" not in headers
+
+    @pytest.mark.asyncio
+    async def test_rsshub_appends_key(self):
+        rss_xml = '<?xml version="1.0"?><rss version="2.0"><channel><title>T</title></channel></rss>'
+        mock_response = MagicMock()
+        mock_response.text = rss_xml
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        config_mock = MagicMock()
+        config_mock.ingest.rss_sources = [
+            {"name": "36氪快讯", "url": "http://localhost:1200/36kr/newsflashes"},
+        ]
+        config_mock.ingest.rsshub_access_key = "rsshub-secret"
+
+        with patch("linglong.ingest.agent.httpx.AsyncClient", return_value=mock_client), \
+             patch("linglong.ingest.agent.get_config", return_value=config_mock):
+            from linglong.ingest.agent import _fetch_rss_feeds
+            await _fetch_rss_feeds()
+
+        called_url = mock_client.get.call_args.args[0]
+        assert "key=rsshub-secret" in called_url

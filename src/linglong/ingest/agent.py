@@ -92,9 +92,12 @@ async def _searxng_search(query: str, max_results: int = 15) -> list[dict[str, s
         "format": "json",
         "categories": "general",
     }
+    headers: dict[str, str] = {}
+    if config.ingest.searxng_api_key:
+        headers["Authorization"] = f"Bearer {config.ingest.searxng_api_key}"
 
     async with httpx.AsyncClient(timeout=timeout) as client:
-        response = await client.get(f"{base_url}/search", params=params)
+        response = await client.get(f"{base_url}/search", params=params, headers=headers)
         response.raise_for_status()
 
     data = response.json()
@@ -416,6 +419,9 @@ async def _fetch_rss_feeds() -> list[dict[str, str]]:
         url = src.get("url", "")
         if not url:
             continue
+        if config.ingest.rsshub_access_key:
+            sep = "&" if "?" in url else "?"
+            url = f"{url}{sep}key={config.ingest.rsshub_access_key}"
         try:
             async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
                 resp = await client.get(

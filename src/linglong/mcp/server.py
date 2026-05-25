@@ -5,6 +5,7 @@ from mcp.server.fastmcp import FastMCP
 from linglong.mcp.tools import (
     execute_package,
     fetch_rss,
+    generate_brief,
     get_template,
     list_entities,
     list_templates,
@@ -12,6 +13,7 @@ from linglong.mcp.tools import (
     record_feedback,
     search_and_read,
     search_similar,
+    search_web,
     search_wiki,
     update_entity,
     write_entity,
@@ -31,3 +33,5 @@ mcp.tool()(list_templates)
 mcp.tool()(fetch_rss)
 mcp.tool()(record_feedback)
 mcp.tool()(execute_package)
+mcp.tool()(generate_brief)
+mcp.tool()(search_web)
