@@ -8,11 +8,14 @@ import pytest
 
 from linglong.ingest.agent import (
     IngestAgent,
+    SourceHealth,
     _dedup_results,
+    _format_company_snapshot,
     _format_github,
     _format_results,
     _format_rss,
     _is_noise_url,
+    _load_company_snapshot,
     _parse_opengithub_table,
 )
 from linglong.ingest.package import SearchQueryConfig, SourcePackage
@@ -349,3 +352,127 @@ class TestFetchRssFeeds:
 
         assert len(items) == 1
         assert items[0]["source"] == "Good"
+
+
+class TestCompanySnapshot:
+    def test_load_snapshot(self):
+        snapshot = _load_company_snapshot()
+        assert "companies" in snapshot
+        assert "OpenAI" in snapshot["companies"]
+
+    def test_format_snapshot(self):
+        snapshot = {
+            "updated": "2026-05-25",
+            "companies": {
+                "OpenAI": {
+                    "latest_funding": "$100亿 E轮 (2026.03)",
+                    "valuation": "$3000亿",
+                    "stock": None,
+                },
+            },
+        }
+        text = _format_company_snapshot(snapshot)
+        assert "OpenAI" in text
+        assert "$100亿" in text
+        assert "$3000亿" in text
+
+    def test_format_empty_snapshot(self):
+        assert _format_company_snapshot({}) == ""
+
+    def test_format_missing_companies(self):
+        assert _format_company_snapshot({"updated": "2026-05-25"}) == ""
+
+
+class TestSourceHealth:
+    def test_records_success(self):
+        health = SourceHealth()
+        health.record("test", True, 10)
+        summary = health.summary()
+        assert "100% success" in summary
+
+    def test_consecutive_failures_warning(self, caplog):
+        import logging
+
+        health = SourceHealth(warn_threshold=2)
+        with caplog.at_level(logging.WARNING):
+            health.record("bad", False, 0)
+            health.record("bad", False, 0)
+        assert any("failed 2 times" in r.message for r in caplog.records)
+
+    def test_summary_empty(self):
+        health = SourceHealth()
+        assert health.summary() == ""
+
+    def test_mixed_success_rate(self):
+        health = SourceHealth()
+        health.record("src", True, 5)
+        health.record("src", True, 3)
+        health.record("src", False, 0)
+        summary = health.summary()
+        assert "67% success" in summary
+
+
+class TestLlmRetry:
+    @pytest.mark.asyncio
+    async def test_llm_retries_on_failure(self):
+        pkg = _make_package()
+        agent = IngestAgent()
+        mock_results = [{"title": "T", "url": "https://t.com", "snippet": "s"}]
+
+        with patch("linglong.ingest.agent._searxng_search", new_callable=AsyncMock, return_value=mock_results), \
+             patch("linglong.ingest.agent._github_trending", new_callable=AsyncMock, return_value=([], "trending")), \
+             patch("linglong.ingest.agent._fetch_rss_feeds", new_callable=AsyncMock, return_value=[]), \
+             patch("linglong.ingest.agent._call_llm", side_effect=Exception("API error")):
+            with pytest.raises(Exception, match="API error"):
+                await agent.run(pkg)
+
+    @pytest.mark.asyncio
+    async def test_llm_fallback_to_history(self, tmp_path):
+        from linglong.ingest.brief_history import BriefHistory
+
+        history = BriefHistory(tmp_path)
+        history.save("2026-05-24", {"关键人物": "Some content"})
+
+        pkg = _make_package()
+        agent = IngestAgent(brief_history=history)
+
+        with patch("linglong.ingest.agent._searxng_search", new_callable=AsyncMock, return_value=[{"title": "T", "url": "https://t.com", "snippet": "s"}]), \
+             patch("linglong.ingest.agent._github_trending", new_callable=AsyncMock, return_value=([], "trending")), \
+             patch("linglong.ingest.agent._fetch_rss_feeds", new_callable=AsyncMock, return_value=[]), \
+             patch("linglong.ingest.agent._call_llm", side_effect=Exception("API error")):
+            output = await agent.run(pkg)
+
+        assert "LLM 生成失败" in output
+        assert "Some content" in output
+
+
+class TestBriefHistoryOverlap:
+    def test_detects_overlap(self, tmp_path):
+        from linglong.ingest.brief_history import BriefHistory
+
+        history = BriefHistory(tmp_path)
+        yesterday = (date.today() - __import__("datetime").timedelta(days=1)).isoformat()
+        history.save(yesterday, {"关键人物": "LeCun says AI is great. Hinton warns about dangers."})
+
+        new_sections = {"关键人物": "LeCun says AI is great. Hinton warns about dangers. New stuff."}
+        warnings = history.check_overlap(new_sections)
+        assert len(warnings) >= 1
+        assert "关键人物" in warnings[0]
+
+    def test_no_overlap_no_warning(self, tmp_path):
+        from linglong.ingest.brief_history import BriefHistory
+
+        history = BriefHistory(tmp_path)
+        yesterday = (date.today() - __import__("datetime").timedelta(days=1)).isoformat()
+        history.save(yesterday, {"关键人物": "Completely different content about robots."})
+
+        new_sections = {"关键人物": "OpenAI released GPT-6 model today."}
+        warnings = history.check_overlap(new_sections)
+        assert len(warnings) == 0
+
+    def test_empty_history(self, tmp_path):
+        from linglong.ingest.brief_history import BriefHistory
+
+        history = BriefHistory(tmp_path)
+        warnings = history.check_overlap({"关键人物": "content"})
+        assert len(warnings) == 0
