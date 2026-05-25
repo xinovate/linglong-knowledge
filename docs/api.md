@@ -209,49 +209,33 @@ print(config.ingest.fetch_interval_minutes)
 
 ## Ingest 采集 API
 
-### RSSSource
+### IngestAgent
 
 ```python
-from linglong.ingest.rss import RSSSource
-
-source = RSSSource(
-    name="techcrunch",
-    url="https://techcrunch.com/feed/",
-    category="tech",
-)
-
-# 采集（返回 Entity 列表，不写知识库）
-import asyncio
-entities = asyncio.run(source.fetch())
-for entity in entities:
-    print(entity.id, entity.content[:80])
-```
-
-### PackageExecutor
-
-```python
-from linglong.ingest.executor import PackageExecutor
+from pathlib import Path
+from linglong.ingest.agent import IngestAgent
+from linglong.ingest.brief_history import BriefHistory
+from linglong.ingest.feedback import FeedbackStore
 from linglong.ingest.package import SourcePackage
+from linglong.core.config import get_config
 
-executor = PackageExecutor()
+config = get_config()
 packages = [SourcePackage(**p) for p in config.ingest.packages]
 
-for package in packages:
-    # 执行采集包（返回 Entity 列表，不写知识库）
-    result = asyncio.run(executor.execute(package))
-    print(f"采集到 {len(result['entities'])} 条，验证通过 {result['verified']}")
-    for entity in result["entities"]:
-        print(entity.id, entity.content[:80])
+feedback_store = FeedbackStore()
+brief_history = BriefHistory(Path.home() / "linglong" / "brief_history")
+agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
+
+# 生成早报（返回 markdown 字符串）
+output = await agent.run(packages[0])
+print(output)
 ```
 
 ### CLI
 
 ```bash
-# 采集并输出到终端
+# 生成 AI 早报
 linglong ingest
-
-# 采集并写入知识库（讨论后决定）
-linglong ingest --write
 ```
 
 ---

@@ -80,15 +80,12 @@ graph TD
 
 | 组件 | 路径 | 说明 |
 |------|------|------|
-| `IngestAgent` | `ingest/agent.py` | v2.0 LLM Agent：预搜索 + 单 prompt → markdown |
-| `BriefHistory` | `ingest/brief_history.py` | 按维度跨天去重，历史输出注入 prompt |
+| `IngestAgent` | `ingest/agent.py` | LLM Agent：预搜索 + 单 prompt → markdown |
+| `BriefHistory` | `ingest/brief_history.py` | 按维度跨天去重 + 重叠检测 + fallback 输出 |
 | `SourcePackage` | `ingest/package.py` | 采集包定义模型（内联在 .linglong.yaml） |
-| `PackageExecutor` | `ingest/executor.py` | 并行执行引擎（legacy，适配 agent 输出） |
 | `FeedbackStore` | `ingest/feedback.py` | 用户偏好存储 + 权重计算 |
-| `auto_tag` | `ingest/interpreter.py` | LLM 自动打标（legacy） |
-| `interpret_dimension` | `ingest/interpreter.py` | LLM 批量解读（legacy） |
-| `generate_top5` | `ingest/interpreter.py` | Top 5 四维精选（legacy） |
-| `format_morning_brief` | `ingest/templates/morning_brief.py` | 晨报模板（legacy） |
+| `SourceHealth` | `ingest/agent.py` | 信源健康监控（成功率 + 连续失败告警） |
+| `company_snapshot.json` | `ingest/` | 中美 14 家 AI 公司融资/估值快照 |
 
 ## 调用方式
 
