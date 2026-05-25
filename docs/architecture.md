@@ -114,12 +114,15 @@ graph TD
     subgraph 数据采集
         A1[SearXNG 搜索<br/>~160 条] --> D[聚合去重]
         A2[GitHub Trending<br/>日/周/月 11 条] --> D
-        A3[RSS 6 源<br/>~130 条] --> D
+        A3[RSS 8 源<br/>~170 条] --> D
+        A4[公司融资快照<br/>14 家公司] --> E
     end
     D --> E[IngestAgent<br/>单次 LLM prompt]
     E --> F[5 维度 Markdown 早报]
     G[BriefHistory<br/>跨天去重] -->|近期已播报| E
-    E -->|保存| G
+    E -->|保存+重叠检测| G
+    H[SourceHealth<br/>信源健康监控] -->|告警| D
+    E -->|fallback| G
 ```
 
 **信息维度（5 个）**：
@@ -135,9 +138,12 @@ graph TD
 **设计要点**：
 - **不写知识库**：采集结果返回给调用方，写入由人决定
 - **LLM Agent 驱动**：预搜索 + 单次 prompt → 直接输出（v2.0+）
-- **RSS 数据源**：6 个订阅源（AIHOT/36氪/量子位/The Rundown AI/财联社/36氪快讯），信噪比高于搜索
-- **BriefHistory 去重**：历史输出注入 prompt，LLM 语义级跨天去重
+- **RSS 数据源**：8 个订阅源（AIHOT/36氪/量子位/The Rundown AI/财联社/36氪快讯/TechCrunch AI/The Verge AI），信噪比高于搜索
+- **公司融资快照**：静态 JSON 数据文件（14 家公司），注入 prompt 填充融资/估值列
+- **BriefHistory 去重**：历史输出注入 prompt + token overlap 重叠检测量化
 - **GitHub Trending**：OpenGithubs 三级 fallback（日/周/月分层）
+- **信源健康监控**：SourceHealth 追踪成功率，连续失败告警
+- **LLM 容错**：2 次重试 + fallback 到 BriefHistory 最近输出
 - 支持 CLI 和 MCP 两种调用方式
 - 详细设计 → [ingest 设计总览](ingest/design/00-overview.md)
 
@@ -403,9 +409,10 @@ services:
 - v1.2 ✅：SearXNG 搜索 + AIHOT 适配器 + 多源聚合 + LLM 解读 + 晨报模板
 - v1.3 ✅：ArXiv/GitHub/RSS 信源 + LLM 动态标签 + 反馈闭环
 
-### Phase 5（v2.0–v2.1：当前）
+### Phase 5（v2.0–v2.2：已完成）
 - v2.0 ✅：IngestAgent LLM 单 prompt 早报 + GitHub Trending 多源 fallback + BriefHistory 维度去重 + 394 测试
 - v2.1 ✅：RSS 订阅源接入（AIHOT/36氪/量子位/The Rundown AI/财联社）+ 交叉去重
+- v2.2 ✅：公司融资快照 + 关键人物扩展 + 8 RSS 源 + 信源健康监控 + LLM 容错 + 去重量化 + 407 测试
 
 ## 参考
 

@@ -42,6 +42,7 @@ Codex ──────┘         ↓
 | **v1.3** | **ingest 信源增强** | ArXiv/GitHub/RSS 信源 + LLM 动态标签 + 反馈闭环 | ✅ | 2026-05-23 |
 | **v2.0** | **IngestAgent 重构** | LLM Agent 单 prompt 早报 + GitHub Trending 多源 + BriefHistory 去重 + 394 测试 | ✅ | 2026-05-25 |
 | **v2.1** | **RSS 数据源** | 6 个 RSS 订阅源 + 交叉去重 + 时效过滤 + 394 测试 | ✅ | 2026-05-25 |
+| **v2.2** | **ingest 增强** | 公司融资快照 + 关键人物扩展 + 8 RSS 源 + 信源健康监控 + LLM 容错 + 去重量化 + 407 测试 | ✅ | 2026-05-25 |
 
 ---
 
@@ -50,7 +51,7 @@ Codex ──────┘         ↓
 | 模块 | 单元测试 | 集成测试 | E2E | 总评 |
 |------|---------|---------|-----|------|
 | `core/` | ✅ 25 个 | — | — | ✅ |
-| `ingest/` | ✅ 52 个 | ✅ 1 个 | — | ✅ |
+| `ingest/` | ✅ 65 个 | ✅ 1 个 | — | ✅ |
 | `knowledge/` | ✅ 102 个 | — | — | ✅ |
 | `composer/` | ✅ 63 个 | ✅ 1 个 | — | ✅ |
 | `dispatch/` | ✅ 19 个 | ✅ 1 个 | — | ✅ |
@@ -58,7 +59,7 @@ Codex ──────┘         ↓
 | `cli/` | ✅ 26 个 | — | — | ✅ |
 | `integration/` | — | — | ✅ 1 个 | ✅ |
 
-**总计：394 个测试**
+**总计：407 个测试**
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
 
@@ -84,11 +85,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
+| `e938736` | test(ingest): 新增 13 个测试 — 快照/健康/重试/fallback/去重 | 2026-05-25 |
+| `2d0833d` | feat(ingest): 信源健康监控 + LLM 容错 + 去重量化 | 2026-05-25 |
+| `268e616` | feat(ingest): 公司融资快照 + 关键人物扩展 + 更多 RSS 源 | 2026-05-25 |
+| `c495e7a` | docs: v2.0/v2.1 文档全面更新 | 2026-05-25 |
 | `c4a2baf` | feat(ingest): v2.0 CLI/executor/interpreter/mcp 适配 + roadmap 更新 | 2026-05-25 |
-| `8e73902` | feat(ingest): v2.0 IngestAgent + BriefHistory + v2.1 RSS 数据源集成 | 2026-05-25 |
-| `d0b2e5e` | feat(ingest): v1.3 信源增强 + 动态标签 + 反馈闭环 | 2026-05-23 |
-| `cafd6b2` | ci: remove Python 3.11 from test matrix | 2026-05-23 |
-| `04c14ec` | docs(roadmap): v1.0/v1.2 标记完成 + v2.0 任务清单 + ADR-009/010 | 2026-05-22 |
 
 ---
 
@@ -102,13 +103,12 @@ Codex ──────┘         ↓
 4. ✅ ~~**ingest v1.2 早报能力**~~ — SearXNG + AIHOT + 多源聚合 + LLM 解读 + 晨报模板，339 测试通过
 5. ✅ ~~**ingest v2.0 IngestAgent 重构**~~ — LLM Agent 单 prompt 早报 + GitHub Trending + BriefHistory 去重，394 测试通过
 6. ✅ ~~**ingest v2.1 RSS 数据源**~~ — 6 个 RSS 订阅源 + 交叉去重 + 时效过滤，394 测试通过
-7. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
-8. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
-9. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
+7. ✅ ~~**ingest v2.2 增强**~~ — 公司融资快照 + 关键人物扩展 + 8 RSS 源 + 信源健康 + LLM 容错 + 去重量化，407 测试通过
+8. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
+9. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
+10. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
 
-**v2.2 收尾项**（非阻塞）：
-- 公司融资快照（JSON 数据文件 + prompt 注入）
-- 关键人物关键词扩展
+**v2.3 收尾项**（非阻塞）：
 - 发布队列与失败重试
 - 多模板（周报/PPT/视频脚本）
 - AI 封面图生成

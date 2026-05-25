@@ -22,6 +22,7 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | **v1.3** | **ingest 信源增强 + 动态标签 + 反馈闭环** | **✅** |
 | **v2.0** | **IngestAgent LLM 早报重构 + GitHub Trending + BriefHistory 去重** | **✅** |
 | **v2.1** | **早报数据源 RSS 化（6 源接入 + 交叉去重 + 时效过滤）** | **✅** |
+| **v2.2** | **ingest 增强（融资快照 + 关键人物扩展 + 8 RSS + 健康监控 + LLM 容错 + 去重量化）** | **✅** |
 
 ## v1.0 已完成
 
@@ -86,7 +87,19 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | 8 | 时效性过滤（≤7 天）+ 日期倒序排序 | ingest | ✅ |
 | 9 | 394 测试全通过 | ingest | ✅ |
 
-### v2.2 收尾项
+### v2.2 已完成（ingest 增强）
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| 1 | 公司融资快照（JSON 数据文件 + prompt 注入） | ingest | ✅ |
+| 2 | 关键人物扩展（20+ 人 + 10 条新搜索关键词） | ingest | ✅ |
+| 3 | 更多 RSS 源（TechCrunch AI + The Verge AI，共 8 源） | ingest | ✅ |
+| 4 | 信源健康监控（SourceHealth + 连续失败告警） | ingest | ✅ |
+| 5 | LLM 调用容错（2 次重试 + fallback 到历史输出） | ingest | ✅ |
+| 6 | BriefHistory 去重效果量化（token overlap 检测） | ingest | ✅ |
+| 7 | 407 测试全通过 | ingest | ✅ |
+
+### v2.3 收尾项
 
 | # | 任务 | 模块 | 优先级 | 说明 |
 |---|------|------|--------|------|
@@ -101,11 +114,10 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | 9 | 跨 Agent 写入冲突解决 | knowledge | 低 | 多 Agent 同时修改同一 wiki |
 | 10 | API 冻结 + mypy strict | core | 低 | 稳定公开接口 |
 
-### ingest 已知问题（v2.0）
+### ingest 已知问题（v2.2）
 
-- 政策动态/应用落地维度条目偏少，根因是 SearXNG 通用搜索对细分领域覆盖不足 → v2.1 通过 RSS 专用数据源解决
-- 公司融资/股价数据依赖搜索结果，无数据时 LLM 可能不填 → v2.1 通过融资快照数据文件解决
-- BriefHistory 去重基于历史输出段落注入 prompt，LLM 理解"不重复"指令，但无法 100% 保证不重复
+- BriefHistory 去重基于历史输出段落注入 prompt，LLM 理解"不重复"指令，但无法 100% 保证不重复 → v2.2 新增 check_overlap() token overlap 检测辅助量化
+- 公司融资快照数据需要手动更新 JSON 文件（当前更新于 2026-05-25）
 
 ---
 
@@ -192,3 +204,21 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 **决策**: 时效性过滤（≤7 天）完全由 prompt 规则约束，不在 SearXNG API 层加 `time_range` 参数。
 - **原因**: 测试发现 SearXNG 实例对 `time_range` 参数支持不稳定（加参数后全部返回 0 结果）。LLM 级过滤更灵活，能理解"同一事件有新进展可保留"等语义。
 - **影响**: prompt 模板新增时效性规则，代码无需对接 SearXNG time_range。
+
+### ADR-017: 公司融资快照静态 JSON + prompt 注入（v2.2）
+
+**决策**: 公司融资/估值数据存储在静态 JSON 文件中，每次生成早报时加载注入 prompt，不做实时 API 查询。
+- **原因**: 公司融资信息更新频率低（月级别），不值得对接实时 API。静态 JSON 维护成本低，LLM 直接引用即可填充公司动态表格。
+- **影响**: 新增 `company_snapshot.json`，agent.py 新增 `_load_company_snapshot()` + `_format_company_snapshot()`，prompt 新增 `{company_snapshot}` 占位符。
+
+### ADR-018: 信源健康模块级监控而非请求级（v2.2）
+
+**决策**: SourceHealth 在 `run()` 粒度追踪三大源（SearXNG/GitHub/RSS）的成功/失败，而非在每个 HTTP 请求粒度。
+- **原因**: 单次 run 涉及数十次 SearXNG 请求，请求级追踪过于细碎。用户关心的是"今天 SearXNG 整体是否正常"，而非某个关键词搜索是否失败。
+- **影响**: `_source_health` 全局实例，每次 run 记录 3 条，连续 3 次失败时 WARN 日志。
+
+### ADR-019: LLM 容错：重试 + 历史输出 fallback（v2.2）
+
+**决策**: `_call_llm` 增加 2 次重试，全部失败时 fallback 到 BriefHistory 最近一次成功输出。
+- **原因**: LLM API 偶发 400/500 错误（如 prompt 过长、服务抖动），不应让整个早报生成失败。上次成功的早报作为 fallback，虽不完美但好于无输出。
+- **影响**: `_call_llm` 新增 `retries` 参数，`BriefHistory.get_last_output()` 返回最近一次 JSON 内容。
