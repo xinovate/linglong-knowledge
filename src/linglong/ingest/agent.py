@@ -4,6 +4,7 @@ Pre-searches all keywords via SearXNG, then calls LLM once with the full
 context to produce a structured morning brief in markdown.
 """
 
+import json
 import logging
 import re
 from datetime import UTC, date, timedelta
@@ -21,6 +22,48 @@ from linglong.ingest.package import SourcePackage
 logger = logging.getLogger(__name__)
 
 _PROMPT_DIR = Path(__file__).parent / "prompts"
+_DATA_DIR = Path(__file__).parent
+
+
+class SourceHealth:
+    """Track health of each data source (success rate, consecutive failures)."""
+
+    def __init__(self, warn_threshold: int = 3) -> None:
+        self._warn_threshold = warn_threshold
+        self._stats: dict[str, dict[str, Any]] = {}
+
+    def record(self, source: str, success: bool, item_count: int = 0) -> None:
+        if source not in self._stats:
+            self._stats[source] = {
+                "total": 0, "success": 0, "consecutive_failures": 0, "last_items": 0,
+            }
+        s = self._stats[source]
+        s["total"] += 1
+        s["last_items"] = item_count
+        if success:
+            s["success"] += 1
+            s["consecutive_failures"] = 0
+        else:
+            s["consecutive_failures"] += 1
+            if s["consecutive_failures"] >= self._warn_threshold:
+                logger.warning(
+                    "Source '%s' failed %d times in a row", source, s["consecutive_failures"],
+                )
+
+    def summary(self) -> str:
+        if not self._stats:
+            return ""
+        lines = ["Source health report:"]
+        for name, s in sorted(self._stats.items()):
+            rate = s["success"] / s["total"] * 100 if s["total"] else 0
+            lines.append(
+                f"  {name}: {rate:.0f}% success ({s['success']}/{s['total']}), "
+                f"last: {s['last_items']} items"
+            )
+        return "\n".join(lines)
+
+
+_source_health = SourceHealth()
 
 # Domains that rarely contain actual news
 _NOISE_DOMAINS = {
@@ -414,36 +457,76 @@ def _format_rss(items: list[dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
+def _load_company_snapshot() -> dict[str, Any]:
+    """Load company funding/valuation snapshot."""
+    path = _DATA_DIR / "company_snapshot.json"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _format_company_snapshot(snapshot: dict[str, Any]) -> str:
+    """Format company snapshot as structured text for LLM."""
+    companies = snapshot.get("companies", {})
+    if not companies:
+        return ""
+    updated = snapshot.get("updated", "unknown")
+    lines = [
+        f"以下是中美 AI 头部公司融资快照（更新于 {updated}），用于填充公司动态表格的融资列和股价/估值变动列：",
+        "",
+        "| 公司 | 融资 | 估值 | 股票代码 |",
+        "|------|------|------|----------|",
+    ]
+    for name, info in companies.items():
+        funding = info.get("latest_funding") or "—"
+        valuation = info.get("valuation") or "—"
+        stock = info.get("stock") or "—"
+        lines.append(f"| {name} | {funding} | {valuation} | {stock} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _load_prompt() -> str:
     """Load the morning brief prompt template."""
     path = _PROMPT_DIR / "morning_brief.md"
     return path.read_text(encoding="utf-8")
 
 
-def _call_llm(system: str, user: str, max_tokens: int = 8000) -> str:
-    """Call LLM via Anthropic Messages API on ZhiPu."""
+def _call_llm(system: str, user: str, max_tokens: int = 8000, retries: int = 2) -> str:
+    """Call LLM via Anthropic Messages API on ZhiPu, with retry."""
     config = get_config()
     base_url = "https://open.bigmodel.cn/api/anthropic"
     api_key = config.composer.llm_api_key
 
-    response = httpx.post(
-        f"{base_url}/v1/messages",
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        json={
-            "model": "glm-5.1",
-            "max_tokens": max_tokens,
-            "system": system,
-            "messages": [{"role": "user", "content": user}],
-        },
-        timeout=120,
-    )
-    response.raise_for_status()
-    data = response.json()
-    return data["content"][0]["text"].strip()
+    last_error: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            response = httpx.post(
+                f"{base_url}/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "glm-5.1",
+                    "max_tokens": max_tokens,
+                    "system": system,
+                    "messages": [{"role": "user", "content": user}],
+                },
+                timeout=120,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["content"][0]["text"].strip()
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                logger.warning("LLM call attempt %d failed: %s, retrying...", attempt + 1, e)
+            else:
+                logger.error("LLM call failed after %d attempts: %s", retries + 1, e)
+    raise last_error  # type: ignore[misc]
 
 
 class IngestAgent:
@@ -461,6 +544,7 @@ class IngestAgent:
         """Pre-search all keywords, then call LLM once to produce morning brief."""
         # Step 1: Pre-search all keyword groups via SearXNG
         all_results: list[dict[str, str]] = []
+        searxng_ok = True
         for query_group in package.search_queries:
             for keyword in query_group.keywords:
                 try:
@@ -470,22 +554,38 @@ class IngestAgent:
                     )
                     all_results.extend(results)
                 except Exception as e:
+                    searxng_ok = False
                     logger.warning("Search failed for '%s': %s", keyword, e)
+        _source_health.record("SearXNG", searxng_ok, len(all_results))
 
         # Step 2: Dedup
         all_results = _dedup_results(all_results)
         logger.info("After dedup: %d unique SearXNG results", len(all_results))
 
         # Step 3: GitHub trending repos
-        github_repos, github_source = await _github_trending()
+        try:
+            github_repos, github_source = await _github_trending()
+            _source_health.record("GitHub", True, len(github_repos))
+        except Exception as e:
+            github_repos, github_source = [], "unavailable"
+            _source_health.record("GitHub", False, 0)
+            logger.warning("GitHub trending failed: %s", e)
         github_text = _format_github(github_repos, github_source)
 
         # Step 3.5: RSS feeds (cross-dedup against SearXNG)
-        rss_items = await _fetch_rss_feeds()
+        try:
+            rss_items = await _fetch_rss_feeds()
+            _source_health.record("RSS", True, len(rss_items))
+        except Exception as e:
+            rss_items = []
+            _source_health.record("RSS", False, 0)
+            logger.warning("RSS fetch failed: %s", e)
         searxng_urls = {r["url"] for r in all_results}
         rss_items = [r for r in rss_items if r["url"] not in searxng_urls]
         rss_text = _format_rss(rss_items)
         logger.info("RSS: %d items fetched (after cross-dedup)", len(rss_items))
+
+        logger.info(_source_health.summary())
 
         if not all_results and not github_repos and not rss_items:
             today = date.today().isoformat()
@@ -506,6 +606,10 @@ class IngestAgent:
             if history_text:
                 history_section = f"\n{history_text}"
 
+        # Step 4.5: Company snapshot
+        snapshot = _load_company_snapshot()
+        snapshot_text = _format_company_snapshot(snapshot)
+
         prompt_template = _load_prompt()
         today = date.today().isoformat()
 
@@ -515,22 +619,37 @@ class IngestAgent:
             search_results=search_text,
             github_data=github_text,
             rss_data=rss_text,
+            company_snapshot=snapshot_text,
             preference_section=preference_section,
             history_section=history_section,
         )
 
-        # Step 5: Single LLM call
+        # Step 5: Single LLM call (with retry + fallback)
         logger.info(
             "Calling LLM with %d SearXNG + %d GitHub + %d RSS items...",
             len(all_results), len(github_repos), len(rss_items),
         )
-        output = _call_llm(system_prompt, search_text[:2000])
-        logger.info("LLM output: %d chars", len(output))
+        try:
+            output = _call_llm(system_prompt, search_text[:2000])
+            logger.info("LLM output: %d chars", len(output))
+        except Exception as e:
+            logger.error("LLM call failed, attempting fallback: %s", e)
+            if self.brief_history:
+                fallback = self.brief_history.get_last_output()
+                if fallback:
+                    logger.warning("Using last successful brief as fallback")
+                    return (
+                        f"# {package.topic} · {today}\n\n"
+                        f"> ⚠️ 今日 LLM 生成失败，以下为上一次成功生成的早报：\n\n"
+                        f"{fallback}"
+                    )
+            raise
 
-        # Step 6: Save to history for future dedup
+        # Step 6: Save to history + dedup quality check
         if self.brief_history:
             sections = parse_sections(output)
             if sections:
+                self.brief_history.check_overlap(sections)
                 self.brief_history.save(today, sections)
                 self.brief_history.cleanup()
 

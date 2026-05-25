@@ -55,7 +55,7 @@
 
 ━━━━━━━━━━━━━━━━━━━━
 
-📌 数据来源：SearXNG + OpenGithubs + RSS（AIHOT/36氪/量子位/The Rundown AI/财联社）
+📌 数据来源：SearXNG + OpenGithubs + RSS（AIHOT/36氪/量子位/The Rundown AI/财联社/TechCrunch/The Verge）
 ```
 
 ## 要求
@@ -70,7 +70,7 @@
    - 超过 7 天的旧闻（无后续进展的）
 4. **每条新闻一句话解读**（30 字以内），点明核心价值和行业影响
 5. **所有维度严格按日期由近及远排序**：每个维度的表格中，日期最大的（最近）排在第一行，日期最小的排在最后一行。同一天的多条按重要性排序。这是强制要求，必须执行
-6. **关键人物维度说明**：覆盖 AI 领域关键人物的动态（观点/判断/言论）和人事变动（加入/离开/创办公司）。日期列填 M.D 格式。重点覆盖：Yann LeCun、Geoffrey Hinton、Andrej Karpathy、Ilya Sutskever、Sam Altman、Dario Amodei、Jensen Huang，以及国内梁文锋（DeepSeek）、周靖人（阿里）、相关 CEO/CTO 级别人物
+6. **关键人物维度说明**：覆盖 AI 领域关键人物的动态（观点/判断/言论）和人事变动（加入/离开/创办公司）。日期列填 M.D 格式。重点覆盖：Yann LeCun、Geoffrey Hinton、Andrej Karpathy、Ilya Sutskever、Sam Altman、Dario Amodei、Jensen Huang、何恺明、李飞飞、Andrew Ng、Harrison Chase（LangChain）、Lilian Weng（OpenAI）、Jim Fan（Nvidia）、Demis Hassabis（DeepMind）、Yannick Kilian（Mistral），以及国内梁文锋（DeepSeek）、周靖人（阿里）、戴文渊（第四范式）、王小川（百川智能）、李开复（零一万物）、朱啸虎等投资人、相关 CEO/CTO 级别人物
 7. **公司动态表格说明**：事件列以公司名开头（如"OpenAI 发布 GPT-5.5"），不单独列公司列。日期列填事件发生的日期（M.D 格式，如"5.22"）。融资列填写公司最近的融资信息"金额 轮次 (时间)"，如"$100亿 E轮 (2026.3)"；无已知融资信息填"—"。股价/估值变动列：上市公司填股价变动（如"NASDAQ: META $520→$538 (+3.5%)"），非上市公司填估值变动（如"估值 $3000亿 ↑"），无数据填"—"。重点覆盖中美 AI 头部公司——美国：OpenAI、Anthropic、Google、Meta、xAI；中国：DeepSeek、Kimi（月之暗面）、智谱AI、MiniMax、字节跳动（豆包）、阿里（通义千问）、腾讯（混元）
 8. **Top 5 评选标准**：影响范围广、战略意义大、技术突破性强
 9. **Top 5 每条写 4 个维度分析**（公司层面、战略层面、技术视角、启示）
@@ -89,3 +89,5 @@
 {github_data}
 
 {rss_data}
+
+{company_snapshot}
