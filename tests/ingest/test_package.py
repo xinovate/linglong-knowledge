@@ -4,35 +4,49 @@ import tempfile
 from pathlib import Path
 
 from linglong.ingest.package import (
-    DimensionConfig,
-    FilterConfig,
     OutputConfig,
-    SearchConfig,
+    SearchQueryConfig,
     SourcePackage,
-    VerificationSettings,
 )
 
 
-def test_load_package_inline():
-    """Load a package from inline config (as in .linglong.yaml ingest.packages)."""
+def test_load_package_with_search_queries():
+    """Load a package with search queries (v2.0+ format)."""
     package = SourcePackage(
-        name="test-inline",
-        topic="AI 测试",
-        sources=[
-            {"id": "aihot", "type": "aihot", "config": {"endpoint": "daily"}},
+        name="test-brief",
+        topic="AI 早报",
+        search_queries=[
+            SearchQueryConfig(keywords=["OpenAI news 2026", "Anthropic latest"], max_results=5),
         ],
-        dimensions=[
-            DimensionConfig(
-                name="公司决策",
-                search=SearchConfig(keywords=["OpenAI"]),
-                filter=FilterConfig(max_results=5),
-            ),
-        ],
+        output=OutputConfig(format="morning-brief", persist=True),
     )
-    assert package.name == "test-inline"
-    assert len(package.sources) == 1
-    assert package.sources[0].type == "aihot"
-    assert len(package.dimensions) == 1
+    assert package.name == "test-brief"
+    assert len(package.search_queries) == 1
+    assert package.output.format == "morning-brief"
+
+
+def test_package_from_yaml():
+    """Load a package from YAML file."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pkg_file = Path(tmpdir) / "test.yaml"
+        pkg_file.write_text("""
+name: "Test Package"
+topic: "AI"
+search_queries:
+  - keywords:
+      - "OpenAI news"
+      - "Anthropic Claude"
+    max_results: 3
+    max_age_days: 7
+output:
+  format: morning-brief
+  persist: true
+""")
+        pkg = SourcePackage.from_yaml(pkg_file)
+        assert pkg.name == "Test Package"
+        assert len(pkg.search_queries) == 1
+        assert pkg.search_queries[0].max_results == 3
+        assert pkg.output.format == "morning-brief"
 
 
 def test_package_load_all_from_directory():
@@ -40,77 +54,18 @@ def test_package_load_all_from_directory():
     with tempfile.TemporaryDirectory() as tmpdir:
         pkg_file = Path(tmpdir) / "test.yaml"
         pkg_file.write_text("""
-name: "Test Package"
+name: "Test"
 topic: "test"
-sources:
-  - id: "test-source"
-    type: rss
-    config:
-      url: "https://example.com/rss"
 """)
         packages = SourcePackage.load_all([tmpdir])
         assert len(packages) == 1
-        assert packages[0].name == "Test Package"
+        assert packages[0].name == "Test"
 
 
-def test_verification_settings_defaults():
-    """VerificationSettings has sensible defaults."""
-    v = VerificationSettings()
-    assert v.enabled is True
-    assert v.cross_reference_min == 1
-    assert v.max_age_days == 7
-
-
-def test_dimension_config_from_yaml():
-    """Load a package with dimensions."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pkg_file = Path(tmpdir) / "dim-test.yaml"
-        pkg_file.write_text("""
-name: "Dimension Test"
-topic: "AI"
-dimensions:
-  - name: "研究员观点"
-    search:
-      keywords:
-        - "Karpathy AI"
-        - "LeCun world model"
-      engine: bing_cn
-    filter:
-      max_results: 3
-      max_age_days: 7
-  - name: "公司决策"
-    search:
-      keywords:
-        - "OpenAI"
-    filter:
-      max_results: 5
-output:
-  format: morning-brief
-  persist: true
-""")
-        pkg = SourcePackage.from_yaml(pkg_file)
-        assert len(pkg.dimensions) == 2
-        assert pkg.dimensions[0].name == "研究员观点"
-        assert pkg.dimensions[0].search.keywords == ["Karpathy AI", "LeCun world model"]
-        assert pkg.dimensions[0].filter.max_results == 3
-        assert pkg.dimensions[1].filter.max_results == 5
-        assert pkg.output.format == "morning-brief"
-        assert pkg.output.persist is True
-
-
-def test_backward_compatible_no_dimensions():
-    """Package without dimensions still works."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pkg_file = Path(tmpdir) / "legacy.yaml"
-        pkg_file.write_text("""
-name: "Legacy"
-topic: "test"
-sources:
-  - id: "s1"
-    type: rss
-    config:
-      url: "https://example.com/rss"
-""")
-        pkg = SourcePackage.from_yaml(pkg_file)
-        assert pkg.dimensions == []
-        assert pkg.output.format == ""
+def test_package_defaults():
+    """Package has sensible defaults."""
+    pkg = SourcePackage(name="default", topic="test")
+    assert pkg.search_queries == []
+    assert pkg.output.format == ""
+    assert pkg.output.persist is False
+    assert pkg.enabled is True

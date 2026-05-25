@@ -13,7 +13,6 @@ from linglong.composer.composer import Composer
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityFacet, EntityStatus
 from linglong.dispatch.manager import DispatchManager
-from linglong.ingest.executor import PackageExecutor
 from linglong.ingest.package import SourcePackage
 from linglong.knowledge.store import ConcurrentModificationError, KnowledgeStore
 from linglong.knowledge.lint import LintEngine
@@ -36,7 +35,7 @@ def _setup_logging(verbose: bool = False) -> None:
 
 
 def cmd_ingest(args: argparse.Namespace) -> int:
-    """Run ingest packages and return collected entities."""
+    """Run ingest packages via IngestAgent."""
     _setup_logging(args.verbose)
     config = get_config()
 
@@ -49,60 +48,27 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         if not package.enabled:
             continue
 
-        # Agent path: morning-brief format uses IngestAgent
-        if package.output.format == "morning-brief":
-            logger.info("Executing package (agent): %s", package.name)
-            from linglong.ingest.agent import IngestAgent
-            from linglong.ingest.brief_history import BriefHistory
-            from linglong.ingest.feedback import FeedbackStore
+        logger.info("Executing package: %s", package.name)
+        from linglong.ingest.agent import IngestAgent
+        from linglong.ingest.brief_history import BriefHistory
+        from linglong.ingest.feedback import FeedbackStore
 
-            feedback_store = FeedbackStore()
-            history_dir = os.path.expanduser("~/linglong/brief_history")
-            brief_history = BriefHistory(Path(history_dir))
-            agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
-            output = asyncio.run(agent.run(package))
+        feedback_store = FeedbackStore()
+        history_dir = os.path.expanduser("~/linglong/brief_history")
+        brief_history = BriefHistory(Path(history_dir))
+        agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
+        output = asyncio.run(agent.run(package))
 
-            if output:
-                output_dir = os.path.expanduser("~/Downloads")
-                os.makedirs(output_dir, exist_ok=True)
-                today = date.today().isoformat()
-                out_path = os.path.join(output_dir, f"ai-morning-brief-{today}.md")
-                with open(out_path, "w", encoding="utf-8") as f:
-                    f.write(output)
-                print(f"Morning brief written to {out_path}")
-            else:
-                print("No output generated")
-            continue
-
-        # Legacy path: pipeline-based execution
-        all_entities: list[Entity] = []
-        executor = PackageExecutor()
-        logger.info("Executing package (pipeline): %s", package.name)
-        result = asyncio.run(executor.execute(package))
-        entities = result.get("entities", [])
-        all_entities.extend(entities)
-        logger.info("Package %s: %d entities collected", package.name, len(entities))
-
-        if not all_entities:
-            logger.info("No entities collected")
-            continue
-
-        if getattr(args, "write", False):
-            store = KnowledgeStore()
-            written = 0
-            for entity in all_entities:
-                if store.get(entity.id) is None:
-                    store.create(entity)
-                    written += 1
-            logger.info("Written %d new entities to knowledge store", written)
+        if output:
+            output_dir = os.path.expanduser("~/Downloads")
+            os.makedirs(output_dir, exist_ok=True)
+            today = date.today().isoformat()
+            out_path = os.path.join(output_dir, f"ai-morning-brief-{today}.md")
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(output)
+            print(f"Morning brief written to {out_path}")
         else:
-            for i, entity in enumerate(all_entities[:20], 1):
-                title = entity.content.split("\n")[0].lstrip("# ").strip()
-                eid = entity.id[:12] if entity.id else f"#{i:<11}"
-                print(f"  {eid}  {title[:60]}")
-            if len(all_entities) > 20:
-                print(f"  ... and {len(all_entities) - 20} more")
-            print(f"\nTotal: {len(all_entities)} entities. Use --write to save to knowledge store.")
+            print("No output generated")
 
     return 0
 

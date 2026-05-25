@@ -321,15 +321,35 @@ def fetch_rss(url: str, name: str | None = None, max_items: int = 20) -> str:
     """
     try:
         import asyncio
+        import re
 
-        from linglong.ingest.rss import RSSSource
+        import feedparser
+        import httpx
 
-        source = RSSSource(name=name or url, url=url, max_items=max_items)
-        entities = asyncio.run(source.fetch())
+        async def _fetch():
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+                resp = await client.get(
+                    url,
+                    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
+                )
+                resp.raise_for_status()
+            return resp.text
 
-        previews = [_entity_to_preview(e) for e in entities]
+        xml_text = asyncio.run(_fetch())
+        feed = feedparser.parse(xml_text)
+        items = []
+        for entry in feed.entries[:max_items]:
+            summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
+            clean = re.sub(r"<[^>]+>", "", summary)[:300]
+            items.append({
+                "title": getattr(entry, "title", ""),
+                "url": getattr(entry, "link", ""),
+                "snippet": clean,
+                "source": name or url,
+            })
+
         return json.dumps(
-            {"results": previews, "count": len(previews)},
+            {"results": items, "count": len(items)},
             ensure_ascii=False,
         )
     except Exception as exc:
@@ -369,76 +389,33 @@ def record_feedback(
 
 
 def execute_package(package_path: str) -> str:
-    """Execute an ingest package (YAML-defined collection of sources).
+    """Execute an ingest package via IngestAgent.
 
-    Returns collected entities for discussion. Use write_entity to save
-    selected results to the knowledge store.
+    Returns the morning brief output as markdown.
     """
     try:
         import asyncio
+        from pathlib import Path
 
+        from linglong.ingest.agent import IngestAgent
+        from linglong.ingest.brief_history import BriefHistory
+        from linglong.ingest.feedback import FeedbackStore
         from linglong.ingest.package import SourcePackage
 
         package = SourcePackage.from_yaml(package_path)
 
-        # Agent path: morning-brief format uses IngestAgent
-        if package.output.format == "morning-brief":
-            from pathlib import Path
+        feedback_store = FeedbackStore()
+        history_dir = Path.home() / "linglong" / "brief_history"
+        brief_history = BriefHistory(history_dir)
+        agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
+        output = asyncio.run(agent.run(package))
 
-            from linglong.ingest.agent import IngestAgent
-            from linglong.ingest.brief_history import BriefHistory
-            from linglong.ingest.feedback import FeedbackStore
-
-            feedback_store = FeedbackStore()
-            history_dir = Path.home() / "linglong" / "brief_history"
-            brief_history = BriefHistory(history_dir)
-            agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
-            output = asyncio.run(agent.run(package))
-
-            response: dict[str, Any] = {
-                "package": package.name,
-                "format": "morning-brief",
-                "output_length": len(output) if output else 0,
-            }
-            if output:
-                response["output"] = output
-            return json.dumps(response, ensure_ascii=False)
-
-        # Legacy path: pipeline-based execution
-        from linglong.ingest.executor import PackageExecutor
-        from linglong.ingest.history import IngestHistory
-
-        config = get_config()
-        history = None
-        if package.output.persist:
-            history = IngestHistory()
-
-        llm_config = None
-        if config.composer.llm_api_key:
-            llm_config = {
-                "provider": config.composer.llm_provider,
-                "api_key": config.composer.llm_api_key,
-                "model": config.composer.llm_model,
-                "base_url": config.composer.llm_base_url,
-                "temperature": config.composer.llm_temperature,
-                "max_tokens": config.composer.llm_max_tokens,
-            }
-
-        executor = PackageExecutor(history=history, llm_config=llm_config)
-        result = asyncio.run(executor.execute(package))
-
-        entities = result.get("entities", [])
-        previews = [_entity_to_preview(e) for e in entities]
-        response = {
-            "results": previews,
-            "count": len(previews),
-            "total": result.get("total", 0),
-            "filtered": result.get("filtered", 0),
+        response: dict[str, Any] = {
             "package": package.name,
-            "failed": result.get("failed", 0),
+            "output_length": len(output) if output else 0,
         }
-        if result.get("output"):
-            response["output"] = result["output"]
+        if output:
+            response["output"] = output
         return json.dumps(response, ensure_ascii=False)
     except Exception as exc:
         logger.exception("execute_package failed")

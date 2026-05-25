@@ -3,7 +3,7 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -425,22 +425,28 @@ def test_list_entities_with_facet(temp_store):
 
 
 def test_fetch_rss_returns_previews(temp_store):
-    from linglong.core.models import Entity
+    rss_xml = """<?xml version="1.0"?>
+    <rss version="2.0">
+      <channel>
+        <title>Test Feed</title>
+        <item>
+          <title>Test Article</title>
+          <link>https://example.com/article1</link>
+          <description>Article content here</description>
+        </item>
+      </channel>
+    </rss>"""
 
-    fake_entities = [
-        Entity(
-            id="test-1",
-            content="# Test Article\n\nArticle content here",
-            facet=EntityFacet.REFERENCE,
-            created_by="agent:rss",
-            confidence=0.7,
-        ),
-    ]
+    mock_response = MagicMock()
+    mock_response.text = rss_xml
+    mock_response.raise_for_status = MagicMock()
 
-    with patch("linglong.ingest.rss.RSSSource") as mock_cls, \
-         patch("asyncio.run", return_value=fake_entities):
-        mock_cls.return_value.fetch = lambda: None
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
 
+    with patch("httpx.AsyncClient", return_value=mock_client):
         result = fetch_rss("https://example.com/feed.xml", name="test-feed")
         data = json.loads(result)
 
@@ -461,29 +467,21 @@ def test_fetch_rss_handles_error(temp_store):
 
 
 def test_execute_package_returns_results(temp_store):
-    from linglong.core.models import Entity
-
-    fake_entities = [
-        Entity(
-            id="pkg-1",
-            content="# Package Result\n\nContent from package",
-            facet=EntityFacet.REFERENCE,
-            created_by="agent:rss",
-            confidence=0.8,
-        ),
-    ]
-    fake_result = {"entities": fake_entities, "total": 1, "failed": 0, "verified": 1}
-
     with patch("linglong.ingest.package.SourcePackage") as mock_pkg_cls, \
-         patch("linglong.ingest.executor.PackageExecutor") as mock_exec_cls, \
-         patch("asyncio.run", return_value=fake_result):
-        mock_pkg_cls.from_yaml.return_value.name = "test-package"
+         patch("linglong.ingest.agent.IngestAgent") as mock_agent_cls, \
+         patch("linglong.ingest.brief_history.BriefHistory") as mock_bh_cls, \
+         patch("linglong.ingest.feedback.FeedbackStore") as mock_fs_cls, \
+         patch("asyncio.run", return_value="# AI 早报\n\nContent"):
+        mock_pkg = MagicMock()
+        mock_pkg.name = "test-package"
+        mock_pkg_cls.from_yaml.return_value = mock_pkg
+
         result = execute_package("/path/to/package.yaml")
         data = json.loads(result)
 
     assert "error" not in data
-    assert data["count"] == 1
     assert data["package"] == "test-package"
+    assert "output" in data
 
 
 def test_execute_package_handles_error(temp_store):
