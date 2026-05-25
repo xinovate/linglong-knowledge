@@ -115,3 +115,26 @@ class TestGenerateTop5:
     def test_empty_items_returns_empty(self):
         results = generate_top5([])
         assert results == []
+
+    @patch("linglong.ingest.interpreter._call_llm")
+    def test_with_feedback_store(self, mock_call):
+        from linglong.ingest.feedback import FeedbackStore
+
+        mock_call.return_value = json.dumps({"top5": [{"index": 1, "title": "Test", "dimensions": {"company": "c", "strategy": "s", "technology": "t", "insight": "i"}}]})
+        store = FeedbackStore(db_path="/tmp/test_pref_inject.db")
+        store.record("h1", "useful", ["funding"])
+        items = [{"title": "Test", "interpretation": "t", "dimension": "资本决策"}]
+        results = generate_top5(items, feedback_store=store)
+        assert len(results) == 1
+        # Verify preference text was injected into prompt
+        call_args = mock_call.call_args[0][0]
+        assert "偏好" in call_args
+
+    @patch("linglong.ingest.interpreter._call_llm")
+    def test_without_feedback_store(self, mock_call):
+        mock_call.return_value = json.dumps({"top5": [{"index": 1, "title": "T", "dimensions": {"company": "c", "strategy": "s", "technology": "t", "insight": "i"}}]})
+        items = [{"title": "T", "interpretation": "t", "dimension": "公司决策"}]
+        results = generate_top5(items)
+        assert len(results) == 1
+        call_args = mock_call.call_args[0][0]
+        assert "偏好" not in call_args

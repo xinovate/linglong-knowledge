@@ -337,6 +337,37 @@ def fetch_rss(url: str, name: str | None = None, max_items: int = 20) -> str:
         return json.dumps({"error": str(exc)}, ensure_ascii=False)
 
 
+def record_feedback(
+    content_hash: str,
+    feedback: str,
+    tags: list[str] | None = None,
+) -> str:
+    """Record user feedback on an ingest result for preference learning.
+
+    Args:
+        content_hash: Hash identifying the news item.
+        feedback: "useful" or "not_interested".
+        tags: Tags associated with the news item (optional).
+    """
+    try:
+        from linglong.ingest.feedback import FeedbackStore
+
+        store = FeedbackStore()
+        if feedback not in ("useful", "not_interested"):
+            return json.dumps(
+                {"error": "feedback must be 'useful' or 'not_interested'"},
+                ensure_ascii=False,
+            )
+        store.record(content_hash, feedback, tags)
+        return json.dumps(
+            {"status": "recorded", "content_hash": content_hash, "feedback": feedback},
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("record_feedback failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
 def execute_package(package_path: str) -> str:
     """Execute an ingest package (YAML-defined collection of sources).
 
@@ -346,11 +377,36 @@ def execute_package(package_path: str) -> str:
     try:
         import asyncio
 
-        from linglong.ingest.executor import PackageExecutor
-        from linglong.ingest.history import IngestHistory
         from linglong.ingest.package import SourcePackage
 
         package = SourcePackage.from_yaml(package_path)
+
+        # Agent path: morning-brief format uses IngestAgent
+        if package.output.format == "morning-brief":
+            from pathlib import Path
+
+            from linglong.ingest.agent import IngestAgent
+            from linglong.ingest.brief_history import BriefHistory
+            from linglong.ingest.feedback import FeedbackStore
+
+            feedback_store = FeedbackStore()
+            history_dir = Path.home() / "linglong" / "brief_history"
+            brief_history = BriefHistory(history_dir)
+            agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
+            output = asyncio.run(agent.run(package))
+
+            response: dict[str, Any] = {
+                "package": package.name,
+                "format": "morning-brief",
+                "output_length": len(output) if output else 0,
+            }
+            if output:
+                response["output"] = output
+            return json.dumps(response, ensure_ascii=False)
+
+        # Legacy path: pipeline-based execution
+        from linglong.ingest.executor import PackageExecutor
+        from linglong.ingest.history import IngestHistory
 
         config = get_config()
         history = None
@@ -373,7 +429,7 @@ def execute_package(package_path: str) -> str:
 
         entities = result.get("entities", [])
         previews = [_entity_to_preview(e) for e in entities]
-        response: dict[str, Any] = {
+        response = {
             "results": previews,
             "count": len(previews),
             "total": result.get("total", 0),

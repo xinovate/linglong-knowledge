@@ -9,6 +9,7 @@ from linglong.mcp.tools import (
     list_entities,
     list_templates,
     read_entity,
+    record_feedback,
     search_and_read,
     search_similar,
     search_wiki,
@@ -28,4 +29,5 @@ mcp.tool()(list_entities)
 mcp.tool()(get_template)
 mcp.tool()(list_templates)
 mcp.tool()(fetch_rss)
+mcp.tool()(record_feedback)
 mcp.tool()(execute_package)

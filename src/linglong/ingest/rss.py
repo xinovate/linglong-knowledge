@@ -30,7 +30,7 @@ class RSSSource:
     async def fetch(self) -> list[Entity]:
         """Fetch and parse RSS feed."""
         timeout = get_config().ingest.rss_timeout
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             response = await client.get(self.url, timeout=timeout)
             response.raise_for_status()
 

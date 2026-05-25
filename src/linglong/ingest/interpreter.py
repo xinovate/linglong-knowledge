@@ -9,6 +9,10 @@ import httpx
 from linglong.core.config import get_config
 from linglong.core.models import Entity
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from linglong.ingest.feedback import FeedbackStore
+
 logger = logging.getLogger(__name__)
 
 _AUTO_TAG_PROMPT = """你是一位 AI 领域的新闻分类专家。对以下新闻逐条打 1 个主维度标签和 0-2 个辅助标签。
@@ -60,7 +64,8 @@ _TOP5_PROMPT = """你是一位 AI 领域的资深战略分析师。从以下新�
 只返回 JSON，不要其他内容。
 
 今日 AI 新闻（含解读）：
-{items_text}"""
+{items_text}
+{preference_text}"""
 
 
 def _call_llm(system: str, user: str, max_tokens: int = 2000) -> str:
@@ -128,11 +133,13 @@ def interpret_dimension(
 def generate_top5(
     all_items: list[dict[str, str]],
     llm_config: dict[str, Any] | None = None,
+    feedback_store: "FeedbackStore | None" = None,
 ) -> list[dict[str, Any]]:
     """Select Top 5 most valuable items and generate deep analysis.
 
     Args:
         all_items: list of {"title": ..., "interpretation": ..., "dimension": ...}
+        feedback_store: Optional FeedbackStore for preference injection.
 
     Returns:
         Top 5 items with 4-perspective analysis.
@@ -145,8 +152,14 @@ def generate_top5(
         for i, item in enumerate(all_items)
     )
 
+    preference_text = ""
+    if feedback_store:
+        pref = feedback_store.get_preference_text()
+        if pref:
+            preference_text = "\n\n" + pref
+
     try:
-        system = _TOP5_PROMPT.format(items_text=items_text)
+        system = _TOP5_PROMPT.format(items_text=items_text, preference_text=preference_text)
         response = _call_llm(system, items_text, max_tokens=3000)
         data = json.loads(response)
         return data.get("top5", [])

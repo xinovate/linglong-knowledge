@@ -83,6 +83,7 @@ class PackageExecutor:
         top5: list[dict[str, Any]] = []
         if self.llm_config and package.output.format == "morning-brief" and all_entities:
             try:
+                from linglong.ingest.feedback import FeedbackStore
                 from linglong.ingest.interpreter import generate_top5, interpret_dimension
 
                 all_interps = interpret_dimension(all_entities, self.llm_config)
@@ -95,7 +96,8 @@ class PackageExecutor:
                     interpretations[dim_name] = dim_interps
 
                 if all_interps:
-                    top5 = generate_top5(all_interps, self.llm_config)
+                    feedback_store = FeedbackStore()
+                    top5 = generate_top5(all_interps, self.llm_config, feedback_store=feedback_store)
             except Exception as e:
                 logger.warning("LLM interpretation failed (non-fatal): %s", e)
 
