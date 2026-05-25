@@ -237,69 +237,9 @@ class IngestConfig(BaseSettings):
     rss_sources: list[dict[str, str]] = Field(
         default_factory=list, description="RSS source configurations"
     )
-    fetch_interval_minutes: int = Field(default=30, description="Fetch interval in minutes")
-    max_items_per_source: int = Field(default=50, description="Max items to fetch per source")
     packages: list[dict[str, Any]] = Field(
         default_factory=list,
-        description="Inline package definitions (sources, dimensions, output)",
-    )
-    verification_enabled: bool = Field(default=True, description="Enable truth verification engine")
-    default_verification: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "cross_reference_min": 1,
-            "max_age_days": 7,
-            "fallback_max_age_days": 14,
-        },
-        description="Default truth verification settings",
-    )
-
-    # 验证引擎层权重（总和必须为 1.0）
-    verification_weights: dict[str, float] = Field(
-        default_factory=lambda: {
-            "cross_reference": 0.25,
-            "numeric_sanity": 0.2,
-            "time_validity": 0.2,
-            "source_authority": 0.2,
-            "common_sense": 0.15,
-        },
-        description="Truth verification layer weights",
-    )
-    verification_pass_threshold: float = Field(
-        default=0.6, description="Minimum score to pass verification"
-    )
-    verification_signature_length: int = Field(
-        default=100, description="Content signature truncation length"
-    )
-    verification_max_star_count: int = Field(
-        default=500_000, description="Suspicious GitHub star count threshold"
-    )
-
-    # 源适配器超时（秒）
-    rss_timeout: float = Field(default=30.0, description="RSS fetch timeout")
-    web_fetch_timeout: float = Field(default=10.0, description="Web fetch timeout")
-    api_timeout: float = Field(default=10.0, description="API request timeout")
-
-    # 各来源类型默认置信度
-    default_confidence: dict[str, float] = Field(
-        default_factory=lambda: {
-            "rss": 0.7,
-            "web_fetch": 0.65,
-            "api": 0.75,
-            "web_search": 0.6,
-            "sync": 0.95,
-        },
-        description="Default confidence by source type",
-    )
-
-    # 搜索设置
-    proxy: str | None = Field(
-        default=None,
-        description="HTTP proxy for Playwright+Google (e.g. http://127.0.0.1:7890). "
-        "Set to enable Google search; leave empty to use Bing CN.",
-    )
-    search_engine: str = Field(
-        default="auto",
-        description="Search engine: auto (searxng→zhipu→bing_cn), google, bing_cn, zhipu, searxng",
+        description="Inline package definitions",
     )
     searxng_url: str = Field(
         default="http://localhost:8088",
