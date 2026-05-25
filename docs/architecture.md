@@ -105,41 +105,40 @@ graph TD
 
 **定位**：用户的信息采集助手，采集结果交给用户阅读思考，有价值的内容在讨论中沉淀进知识库。
 
-**多源聚合架构**：
+**IngestAgent 架构（v2.0+）**：
+
+v2.0 起早报生成从代码流水线重构为 LLM Agent 单 prompt 模式。预搜索所有数据源后，一次 LLM 调用直接输出结构化 markdown。
 
 ```mermaid
 graph TD
-    subgraph 数据源
-        A1[AIHOT] --> B[并行采集]
-        A2[SearXNG] --> B
-        A3[RSS] --> B
-        A4[API] --> B
+    subgraph 数据采集
+        A1[SearXNG 搜索<br/>~160 条] --> D[聚合去重]
+        A2[GitHub Trending<br/>日/周/月 11 条] --> D
+        A3[RSS 6 源<br/>~130 条] --> D
     end
-    B --> C[聚合所有源]
-    C --> D[5层验证]
-    D --> E[跨天去重]
-    E --> F[维度过滤]
-    F --> G[LLM 批量解读<br/>glm-5.1]
-    G --> H[晨报模板]
+    D --> E[IngestAgent<br/>单次 LLM prompt]
+    E --> F[5 维度 Markdown 早报]
+    G[BriefHistory<br/>跨天去重] -->|近期已播报| E
+    E -->|保存| G
 ```
 
-**信息维度（6 个）**：
+**信息维度（5 个）**：
 
 | 维度 | 采集内容 | 数据源 |
 |------|---------|--------|
-| 研究员观点 | 技术前沿方向 | SearXNG 搜索 |
-| 公司决策 | 产品发布、战略调整 | AIHOT + SearXNG |
-| 资本决策 | 大额融资、投资动向 | AIHOT + SearXNG |
-| 国家政策 | AI 监管、产业政策 | AIHOT + SearXNG |
-| 开源趋势 | AI 新项目爆发 | SearXNG 搜索 |
-| 应用落地 | 模型/Agent/机器人更新 | AIHOT + SearXNG |
+| 关键人物 | 观点/言论/人事变动 | SearXNG + RSS |
+| 公司动态 | 产品发布、融资、股价 | SearXNG + RSS |
+| 政策动态 | AI 监管、产业政策 | SearXNG + RSS |
+| 开源趋势 | AI 新项目 Stars 增长 | OpenGithubs（日/周/月） |
+| 应用落地 | 模型/Agent/机器人更新 | SearXNG + RSS |
 
 **设计要点**：
 - **不写知识库**：采集结果返回给调用方，写入由人决定
-- **多源聚合**：AIHOT + SearXNG + RSS 等所有源聚合后统一 LLM 解读
-- **包配置内联**：定义在 `.linglong.yaml` 的 `ingest.packages` 中
-- 5 层真实性验证（多源交叉、数字合理性、时间有效性、源头权威、常识判断）
-- 支持 CLI 命令和 MCP 工具两种调用方式
+- **LLM Agent 驱动**：预搜索 + 单次 prompt → 直接输出（v2.0+）
+- **RSS 数据源**：6 个订阅源（AIHOT/36氪/量子位/The Rundown AI/财联社/36氪快讯），信噪比高于搜索
+- **BriefHistory 去重**：历史输出注入 prompt，LLM 语义级跨天去重
+- **GitHub Trending**：OpenGithubs 三级 fallback（日/周/月分层）
+- 支持 CLI 和 MCP 两种调用方式
 - 详细设计 → [ingest 设计总览](ingest/design/00-overview.md)
 
 ### knowledge（跨 Agent 知识库）
@@ -398,11 +397,15 @@ services:
 - composer：LLM/规则提炼、博客模板、草稿审核、图片资产管线
 - dispatch：Hexo 发布（git workflow）、本地文件输出、发布队列
 
-### Phase 4（v0.9–v1.2：当前）
+### Phase 4（v0.9–v1.3：已完成）
 - v0.9 ✅：CLI 入口、集成测试、auto-publish、配置外部化
-- v1.0 知识库 ✅：MCP Server、RRF 混合搜索、lint 巡检、Agent 接入、276 测试
-- v1.0 其他模块 ✅：ingest 与知识库解耦、composer/dispatch 输出追踪、pipeline 概念移除
-- v1.2 ingest ✅：SearXNG 搜索 + AIHOT 适配器 + 多源聚合 + LLM 解读 + 晨报模板 + 339 测试
+- v1.0 ✅：MCP Server、RRF 混合搜索、lint 巡检、Agent 接入、276 测试
+- v1.2 ✅：SearXNG 搜索 + AIHOT 适配器 + 多源聚合 + LLM 解读 + 晨报模板
+- v1.3 ✅：ArXiv/GitHub/RSS 信源 + LLM 动态标签 + 反馈闭环
+
+### Phase 5（v2.0–v2.1：当前）
+- v2.0 ✅：IngestAgent LLM 单 prompt 早报 + GitHub Trending 多源 fallback + BriefHistory 维度去重 + 394 测试
+- v2.1 ✅：RSS 订阅源接入（AIHOT/36氪/量子位/The Rundown AI/财联社）+ 交叉去重
 
 ## 参考
 

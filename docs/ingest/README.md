@@ -14,106 +14,91 @@
 
 ## 信息维度
 
-ingest 输出覆盖 AI 领域 6 个维度（v1.3 由 LLM 自动归类）：
+ingest 早报覆盖 AI 领域 5 个维度：
 
 | 维度 | 典型内容 | 数据源 |
 |------|---------|--------|
-| 研究员观点 | 技术前沿方向、新范式 | ArXiv + SearXNG |
-| 公司决策 | 战略调整、产品发布、人事变动 | AIHOT + SearXNG + RSS |
-| 资本决策 | 大额融资、投资机构动向 | AIHOT + SearXNG |
-| 国家政策 | AI 监管、产业政策 | AIHOT + SearXNG |
-| 开源趋势 | AI 新项目、Stars 爆发增长 | GitHub + SearXNG |
-| 应用落地 | 模型/Agent/机器人产品更新 | AIHOT + SearXNG |
+| 关键人物 | 观点/言论/人事变动 | SearXNG + RSS |
+| 公司动态 | 产品发布、融资、股价 | SearXNG + RSS |
+| 政策动态 | AI 监管、产业政策 | SearXNG + RSS |
+| 开源趋势 | AI 新项目 Stars 增长 | OpenGithubs（日/周/月三段） |
+| 应用落地 | 模型/Agent/机器人产品 | SearXNG + RSS |
 
-详细的维度定义、关注列表、精选标准 → [设计总览](design/00-overview.md)
+详细的维度定义、信源实测、实现路线 → [设计总览](design/00-overview.md)
 
 ## 设计原则
 
 1. **ingest 不写知识库** — 采集结果返回给调用方，写入由人决定
 2. **ingest 不做调度** — 由调用方（OpenClaw cron / CLI / MCP）触发
 3. **ingest 不做推送** — 采集后怎么展示是调用方的事
-4. **维度由 LLM 决定** — 不靠搜索关键词预分组，LLM 根据内容自动归类（v1.3）
+4. **LLM Agent 驱动** — 预搜索后单次 LLM prompt 直接输出 markdown（v2.0+）
 
-## 数据流
+## 架构（v2.0+）
+
+v2.0 起早报生成从"代码流水线"重构为"LLM Agent 单 prompt"模式：
 
 ```mermaid
-graph LR
-    A[AIHOT/ArXiv/GitHub/RSS/SearXNG] --> B[SourceAdapter]
-    B --> C[聚合所有源]
-    C --> D[TruthVerification]
-    D --> E[跨天去重]
-    E --> F[LLM Auto Tag<br/>6维度自动归类]
-    F --> G[LLM 批量解读<br/>+ 偏好感知 Top5]
-    G --> H[模板格式化]
-    H --> I[返回结果给调用方]
+graph TD
+    subgraph 数据采集
+        A1[SearXNG<br/>关键词搜索] --> D[聚合去重]
+        A2[OpenGithubs<br/>GitHub Trending<br/>日/周/月三段] --> D
+        A3[RSS 订阅源<br/>AIHOT/36氪/量子位/<br/>The Rundown AI/财联社] --> D
+    end
+
+    D --> E[IngestAgent<br/>单次 LLM prompt]
+    E --> F[5 维度 Markdown 早报]
+
+    subgraph 去重与历史
+        G[BriefHistory<br/>按维度跨天去重<br/>关键人物/政策 14d<br/>公司/应用 7d] -->|近期已播报| E
+        E -->|保存当天输出| G
+    end
 ```
 
-ingest 的职责到 I 为止。后续用户阅读、讨论、决定是否写入知识库，都是独立环节。
+### 数据源
+
+| 数据源 | 类型 | 条目/次 | 说明 |
+|--------|------|---------|------|
+| SearXNG | 自托管搜索 | ~160 | 38 个关键词组，中英文混合 |
+| OpenGithubs | GitHub Contents API | 11 | 日 5 + 周 3 + 月 3，三级 fallback |
+| AIHOT | RSS feed | ~30 | 编辑精选 AI 新闻聚合 |
+| 36氪 | RSS feed | ~30 | 国内科技新闻 |
+| 36氪快讯 | RSSHub | ~20 | 快讯 |
+| 量子位 | RSS feed | ~10 | AI 垂直媒体 |
+| The Rundown AI | RSS feed | ~20 | 英文 AI Newsletter |
+| 财联社电报 | RSSHub | ~20 | 财经快讯 |
+
+### 去重机制
+
+| 层级 | 范围 | 方法 |
+|------|------|------|
+| SearXNG 内部 | URL 去重 | `seen_urls` 集合 |
+| RSS 内部 | URL 去重 | `seen_urls` 集合 |
+| SearXNG ↔ RSS 交叉 | URL 去重 | RSS 排除已出现在 SearXNG 中的 URL |
+| BriefHistory | 跨天语义去重 | 历史输出注入 prompt，LLM 判断是否重复 |
 
 ## 核心组件
 
 | 组件 | 路径 | 说明 |
 |------|------|------|
-| `SourceAdapter` | `ingest/adapter.py` | 抽象基类，所有源适配器实现 `fetch()` + `health_check()` |
+| `IngestAgent` | `ingest/agent.py` | v2.0 LLM Agent：预搜索 + 单 prompt → markdown |
+| `BriefHistory` | `ingest/brief_history.py` | 按维度跨天去重，历史输出注入 prompt |
 | `SourcePackage` | `ingest/package.py` | 采集包定义模型（内联在 .linglong.yaml） |
-| `TruthVerificationEngine` | `ingest/verification.py` | 5 层真实性验证 |
-| `PackageExecutor` | `ingest/executor.py` | 并行执行引擎，聚合所有源后批量解读 |
-| `ArXivAdapter` | `ingest/adapters/arxiv.py` | ArXiv 论文采集（cs.AI/CL/RO） |
-| `GitHubAdapter` | `ingest/adapters/github.py` | GitHub Search API（topic + stars 筛选） |
-| `AIHOTAdapter` | `ingest/adapters/aihot.py` | AIHOT AI 新闻聚合（daily digest + items） |
-| `WebSearchAdapter` | `ingest/adapters/web_search.py` | 搜索引擎采集（SearXNG/Bing CN/Google/ZhiPu） |
-| `RSSAdapter` | `ingest/adapters/rss.py` | RSS 源适配器（复用于 OpenAI Blog 等） |
-| `APIAdapter` | `ingest/adapters/api.py` | REST API 调用 |
-| `WebFetchAdapter` | `ingest/adapters/web_fetch.py` | HTTP 页面抓取 |
-| `IngestHistory` | `ingest/history.py` | SQLite 持久化，跨天去重 |
+| `PackageExecutor` | `ingest/executor.py` | 并行执行引擎（legacy，适配 agent 输出） |
 | `FeedbackStore` | `ingest/feedback.py` | 用户偏好存储 + 权重计算 |
-| `dedup_entities` | `ingest/dedup.py` | 内容哈希 + 标题关键词去重 |
-| `auto_tag` | `ingest/interpreter.py` | LLM 自动打标（6 维度 + 辅助标签） |
-| `interpret_dimension` | `ingest/interpreter.py` | LLM 批量解读（glm-5.1, Anthropic protocol） |
-| `generate_top5` | `ingest/interpreter.py` | Top 5 四维精选（偏好感知） |
-| `format_morning_brief` | `ingest/templates/morning_brief.py` | 晨报 Markdown 模板 |
+| `auto_tag` | `ingest/interpreter.py` | LLM 自动打标（legacy） |
+| `interpret_dimension` | `ingest/interpreter.py` | LLM 批量解读（legacy） |
+| `generate_top5` | `ingest/interpreter.py` | Top 5 四维精选（legacy） |
+| `format_morning_brief` | `ingest/templates/morning_brief.py` | 晨报模板（legacy） |
 
 ## 调用方式
 
 ```bash
-# CLI — 采集并查看结果
+# CLI — 生成早报
 linglong ingest
 
-# CLI — 采集并写入知识库（手动挡，你决定哪些值得保存）
-linglong ingest --write
-
 # MCP — Agent 在对话中按需采集
-# fetch_rss(url) → 查看结果 → 讨论 → write_entity（手动写入）
 # execute_package(path) → 查看结果 → 讨论 → write_entity（手动写入）
-# record_feedback(hash, feedback) → 记录偏好（影响 Top5 精选）
-```
-
-## 真实性验证（5 层）
-
-| 层级 | 检查方法 | 示例 |
-|------|----------|------|
-| 多源交叉验证 | 同一事件在≥2个数据源出现 → 可信 | OpenAI 融资在财新+36kr都有报道 |
-| 数字合理性 | 融资金额在历史合理范围内 | $40B 合理，$122B 异常 |
-| 时间有效性 | 新闻日期在近 3 天内 | 过期内容静默跳过 |
-| 源头权威性 | 优先官方渠道 | 工信部政策 > 自媒体解读 |
-| 常识判断 | 事件是否符合行业逻辑 | 单周增长 172K stars → 异常 |
-
-## 自定义 Adapter
-
-```python
-from linglong.core.models import Entity
-from linglong.ingest.adapter import SourceAdapter, AdapterRegistry
-
-class MyAdapter(SourceAdapter):
-    adapter_type = "my_source"
-
-    async def fetch(self) -> list[Entity]:
-        return []
-
-    def health_check(self) -> bool:
-        return True
-
-AdapterRegistry.register(MyAdapter)
+# record_feedback(hash, feedback) → 记录偏好
 ```
 
 ## 配置
@@ -121,9 +106,15 @@ AdapterRegistry.register(MyAdapter)
 ```yaml
 # .linglong.yaml
 ingest:
-  search_engine: searxng       # searxng | zhipu | google | bing_cn | auto
+  search_engine: searxng
   searxng_url: http://localhost:8088
-  search_timeout: 30.0
+
+  # RSS 订阅源（v2.1 新增）
+  rss_sources:
+    - name: AIHOT
+      url: https://aihot.virxact.com/feed
+    - name: 36氪
+      url: https://36kr.com/feed
 
   packages:
     - name: ai-morning-brief
@@ -131,59 +122,21 @@ ingest:
       output:
         format: morning-brief
         persist: true
-      sources:                    # 顶级数据源
+      sources:
         - id: aihot-daily
           type: aihot
           config:
             endpoint: daily
-        - id: openai-blog
-          type: rss
-          config:
-            url: https://openai.com/blog/rss.xml
-            max_items: 10
-        - id: arxiv-ai
-          type: arxiv
-          config:
-            categories: ["cs.AI", "cs.CL", "cs.RO"]
-            max_results: 10
         - id: github-trending
           type: github
           config:
             topics: ["ai", "llm", "ai-agent"]
-            min_stars: 50
-            since_days: 7
-            max_results: 10
-      search_queries:             # 扁平搜索（v1.3 替换 dimensions）
-        - keywords: ["OpenAI news May 2026", "Anthropic Claude latest"]
+      search_queries:
+        - keywords: ["OpenAI news May 2026"]
           max_results: 5
           max_age_days: 3
 ```
 
-## 搜索引擎
-
-WebSearchAdapter 支持 4 个搜索后端：
-
-| 后端 | 说明 | 适用场景 |
-|------|------|---------|
-| `searxng` | 自托管 SearXNG，JSON API | 推荐，结构化结果，无限流 |
-| `zhipu` | 智谱 web_search，LLM 综合回答 | 综合解读，无来源链接 |
-| `google` | Playwright 无头浏览器 | 需代理，质量好 |
-| `bing_cn` | httpx 直接请求 | 兜底方案，结果质量一般 |
-
-`auto` 模式优先级：searxng → zhipu → google（有代理）→ bing_cn
-
-## Pipeline 阶段
-
-PackageExecutor 执行 7 个阶段：
-
-1. **Fetch all sources** — 采集所有源（AIHOT + ArXiv + GitHub + RSS + SearXNG），并行执行
-2. **Verification** — 5 层真实性验证
-3. **Dedup** — 跨天去重（内容哈希 + 标题关键词重叠）
-4. **Auto Tag** — LLM 自动打标（6 维度 + 辅助标签）
-5. **LLM interpret** — 批量解读 + 偏好感知 Top 5 精选
-6. **Persist** — 写入 ingest_history
-7. **Format** — 模板格式化输出
-
 ## 设计文档
 
-- [设计总览](design/00-overview.md) — 定位、维度、信源实测、动态标签、反馈闭环、实现路线
+- [设计总览](design/00-overview.md) — 定位、维度、信源实测、架构演进、实现路线

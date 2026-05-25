@@ -21,7 +21,7 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | **v1.2** | **ingest 早报能力（SearXNG + AIHOT + LLM 解读 + 晨报）** | **✅** |
 | **v1.3** | **ingest 信源增强 + 动态标签 + 反馈闭环** | **✅** |
 | **v2.0** | **IngestAgent LLM 早报重构 + GitHub Trending + BriefHistory 去重** | **✅** |
-| **v2.1** | **早报数据源 RSS 化 + 产品化（多模板 + 发布队列）** | **🔴 未开始** |
+| **v2.1** | **早报数据源 RSS 化（6 源接入 + 交叉去重 + 时效过滤）** | **✅** |
 
 ## v1.0 已完成
 
@@ -72,14 +72,19 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | 7 | MCP record_feedback 工具 | ingest | ✅ |
 | 8 | 387 测试全通过 | ingest | ✅ |
 
-### v2.1 待做（早报数据源 RSS 化）
+### v2.1 已完成（早报数据源 RSS 化）
 
-| # | 任务 | 模块 | 优先级 | 说明 |
-|---|------|------|--------|------|
-| 1 | 为关键人物/公司动态/政策动态/应用落地找国内可用的高质量 RSS 源 | ingest | **高** | 机器之心、36氪、TechCrunch 等 |
-| 2 | RSS 源接入 IngestAgent prompt（复用现有 rss.py） | ingest | **高** | 按维度配置 RSS feed |
-| 3 | 公司融资快照（JSON 数据文件 + prompt 注入） | ingest | 中 | 避免 LLM 编造融资数据 |
-| 4 | 关键人物关键词扩展（更多国内外 AI 领袖） | ingest | 中 | 持续补充 |
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| 1 | RSS 订阅源配置（.linglong.yaml rss_sources） | config | ✅ |
+| 2 | _fetch_rss_feeds() + _format_rss() 实现 | ingest | ✅ |
+| 3 | RSS 数据注入 IngestAgent prompt（{rss_data} 占位符） | ingest | ✅ |
+| 4 | 6 个 RSS 源接入（AIHOT/36氪/36氪快讯/量子位/The Rundown AI/财联社） | ingest | ✅ |
+| 5 | SearXNG ↔ RSS 交叉 URL 去重 | ingest | ✅ |
+| 6 | User-Agent header（解决量子位 403） | ingest | ✅ |
+| 7 | 应用落地维度新增日期列 | ingest | ✅ |
+| 8 | 时效性过滤（≤7 天）+ 日期倒序排序 | ingest | ✅ |
+| 9 | 394 测试全通过 | ingest | ✅ |
 
 ### v2.2 收尾项
 
@@ -175,3 +180,15 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 **决策**: 开源趋势数据从 OpenGithubs（主）→ wangchujiang.com（备）→ GitHub Search API（兜底），按日/周/月分层展示。
 - **原因**: GitHub 官方 trending 页面国内不可达。OpenGithubs 通过 GitHub Contents API（api.github.com 国内可达）提供结构化日/周/月排行数据。wangchujiang.com 有缓存延迟风险。Search API 只能查新建仓库，非"今日趋势"。
 - **影响**: `_github_trending()` 返回 `(repos, source)` 元组，prompt 标注数据来源。
+
+### ADR-015: RSS 订阅源作为 IngestAgent 一等数据源（v2.1）
+
+**决策**: 在 IngestAgent 中新增 RSS 预采集步骤，RSS 数据和 SearXNG/GitHub 数据一起注入 LLM prompt。
+- **原因**: SearXNG 通用搜索对公司动态、政策动态、应用落地覆盖不足（噪音多、相关结果少）。RSS 源经编辑筛选，信噪比更高。AIHOT RSS feed 质量尤为突出（精选评分 + 编辑推荐理由）。
+- **影响**: 新增 `_fetch_rss_feeds()` + `_format_rss()`，配置在 `.linglong.yaml` 的 `ingest.rss_sources`，prompt 新增 `{rss_data}` 占位符。
+
+### ADR-016: 时效性过滤由 prompt 规则驱动，非 SearXNG time_range（v2.1）
+
+**决策**: 时效性过滤（≤7 天）完全由 prompt 规则约束，不在 SearXNG API 层加 `time_range` 参数。
+- **原因**: 测试发现 SearXNG 实例对 `time_range` 参数支持不稳定（加参数后全部返回 0 结果）。LLM 级过滤更灵活，能理解"同一事件有新进展可保留"等语义。
+- **影响**: prompt 模板新增时效性规则，代码无需对接 SearXNG time_range。
