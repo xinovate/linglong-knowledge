@@ -4,6 +4,7 @@ Pre-searches all keywords via SearXNG, then calls LLM once with the full
 context to produce a structured morning brief in markdown.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -145,6 +146,34 @@ def _dedup_results(results: list[dict[str, str]]) -> list[dict[str, str]]:
             seen.add(url)
             deduped.append(r)
     return deduped
+
+
+async def _search_all_keywords(package: SourcePackage) -> list[dict[str, str]]:
+    """Search all keywords concurrently with semaphore rate limiting."""
+    sem = asyncio.Semaphore(5)
+
+    async def _search_one(keyword: str, max_results: int) -> list[dict[str, str]]:
+        async with sem:
+            try:
+                return await _searxng_search(keyword, max_results)
+            except Exception as e:
+                logger.warning("Search failed for '%s': %s", keyword, e)
+                return []
+
+    tasks: list[asyncio.Task] = []
+    for query_group in package.search_queries:
+        for keyword in query_group.keywords:
+            tasks.append(
+                asyncio.create_task(
+                    _search_one(keyword, query_group.max_results * 2)
+                )
+            )
+
+    results = await asyncio.gather(*tasks)
+    all_results: list[dict[str, str]] = []
+    for batch in results:
+        all_results.extend(batch)
+    return all_results
 
 
 def _format_results(results: list[dict[str, str]]) -> str:
@@ -437,41 +466,53 @@ def _format_github(repos: list[dict[str, str]], source: str) -> str:
 
 
 async def _fetch_rss_feeds() -> list[dict[str, str]]:
-    """Fetch all configured RSS feeds, return [{title, url, snippet, source}]."""
+    """Fetch all configured RSS feeds concurrently, return [{title, url, snippet, source}]."""
     config = get_config()
-    all_items: list[dict[str, str]] = []
-    seen_urls: set[str] = set()
+    sem = asyncio.Semaphore(3)
 
-    for src in config.ingest.rss_sources:
+    async def _fetch_one(src: dict[str, str]) -> list[dict[str, str]]:
         name = src.get("name", src.get("url", "unknown"))
         url = src.get("url", "")
         if not url:
-            continue
+            return []
         if config.ingest.rsshub_access_key and _is_rsshub_url(url):
             sep = "&" if "?" in url else "?"
             url = f"{url}{sep}key={config.ingest.rsshub_access_key}"
-        try:
-            async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-                resp = await client.get(
-                    url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
-                )
-                resp.raise_for_status()
-            feed = feedparser.parse(resp.text)
-            for entry in feed.entries[:30]:
-                link = getattr(entry, "link", "")
-                if not link or link in seen_urls:
-                    continue
-                seen_urls.add(link)
-                summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
-                clean = re.sub(r"<[^>]+>", "", summary)[:300]
-                all_items.append({
-                    "title": getattr(entry, "title", ""),
-                    "url": link,
-                    "snippet": clean,
-                    "source": name,
-                })
-        except Exception as e:
-            logger.warning("RSS fetch failed for %s: %s", name, e)
+        async with sem:
+            try:
+                async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+                    resp = await client.get(
+                        url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
+                    )
+                    resp.raise_for_status()
+                feed = feedparser.parse(resp.text)
+                items: list[dict[str, str]] = []
+                for entry in feed.entries[:30]:
+                    link = getattr(entry, "link", "")
+                    if not link:
+                        continue
+                    summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
+                    clean = re.sub(r"<[^>]+>", "", summary)[:300]
+                    items.append({
+                        "title": getattr(entry, "title", ""),
+                        "url": link,
+                        "snippet": clean,
+                        "source": name,
+                    })
+                return items
+            except Exception as e:
+                logger.warning("RSS fetch failed for %s: %s", name, e)
+                return []
+
+    results = await asyncio.gather(*[_fetch_one(src) for src in config.ingest.rss_sources])
+
+    all_items: list[dict[str, str]] = []
+    seen_urls: set[str] = set()
+    for batch in results:
+        for item in batch:
+            if item["url"] not in seen_urls:
+                seen_urls.add(item["url"])
+                all_items.append(item)
 
     logger.info("RSS: %d items from %d sources", len(all_items), len(config.ingest.rss_sources))
     return all_items
@@ -493,7 +534,8 @@ def _format_rss(items: list[dict[str, str]]) -> str:
 
 def _load_company_snapshot() -> dict[str, Any]:
     """Load company funding/valuation snapshot."""
-    path = _DATA_DIR / "company_snapshot.json"
+    config = get_config()
+    path = Path(config.ingest.company_snapshot_path).expanduser()
     if not path.exists():
         return {}
     with open(path, encoding="utf-8") as f:
@@ -581,44 +623,35 @@ class IngestAgent:
 
     async def run(self, package: SourcePackage) -> str:
         """Pre-search all keywords, then call LLM once to produce morning brief."""
-        # Step 1: Pre-search all keyword groups via SearXNG
-        all_results: list[dict[str, str]] = []
-        searxng_ok = True
-        for query_group in package.search_queries:
-            for keyword in query_group.keywords:
-                try:
-                    results = await _searxng_search(
-                        keyword,
-                        max_results=query_group.max_results * 2,
-                    )
-                    all_results.extend(results)
-                except Exception as e:
-                    searxng_ok = False
-                    logger.warning("Search failed for '%s': %s", keyword, e)
-        _source_health.record("SearXNG", searxng_ok, len(all_results))
+        # Step 1-3: Fetch SearXNG, GitHub, RSS concurrently
+        searxng_results, github_result, rss_items_raw = await asyncio.gather(
+            _search_all_keywords(package),
+            _github_trending(),
+            _fetch_rss_feeds(),
+        )
 
-        # Step 2: Dedup
-        all_results = _dedup_results(all_results)
+        # Process SearXNG results
+        all_results = _dedup_results(searxng_results)
+        _source_health.record("SearXNG", bool(searxng_results), len(all_results))
         logger.info("After dedup: %d unique SearXNG results", len(all_results))
 
-        # Step 3: GitHub trending repos
-        try:
-            github_repos, github_source = await _github_trending()
-            _source_health.record("GitHub", True, len(github_repos))
-        except Exception as e:
+        # Process GitHub results
+        if isinstance(github_result, Exception):
             github_repos, github_source = [], "unavailable"
             _source_health.record("GitHub", False, 0)
-            logger.warning("GitHub trending failed: %s", e)
+            logger.warning("GitHub trending failed: %s", github_result)
+        else:
+            github_repos, github_source = github_result
+            _source_health.record("GitHub", True, len(github_repos))
         github_text = _format_github(github_repos, github_source)
 
-        # Step 3.5: RSS feeds (cross-dedup against SearXNG)
-        try:
-            rss_items = await _fetch_rss_feeds()
-            _source_health.record("RSS", True, len(rss_items))
-        except Exception as e:
-            rss_items = []
+        # Process RSS results (cross-dedup against SearXNG)
+        rss_items = rss_items_raw if not isinstance(rss_items_raw, Exception) else []
+        if isinstance(rss_items_raw, Exception):
             _source_health.record("RSS", False, 0)
-            logger.warning("RSS fetch failed: %s", e)
+            logger.warning("RSS fetch failed: %s", rss_items_raw)
+        else:
+            _source_health.record("RSS", True, len(rss_items))
         searxng_urls = {r["url"] for r in all_results}
         rss_items = [r for r in rss_items if r["url"] not in searxng_urls]
         rss_text = _format_rss(rss_items)

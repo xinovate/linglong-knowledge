@@ -62,9 +62,10 @@ def parse_sections(output: str) -> dict[str, str]:
 class BriefHistory:
     """Per-dimension brief history for deduplication."""
 
-    def __init__(self, history_dir: Path) -> None:
+    def __init__(self, history_dir: Path, dedup_windows: dict[str, int] | None = None) -> None:
         self.history_dir = history_dir
         self.history_dir.mkdir(parents=True, exist_ok=True)
+        self._dedup_windows = dedup_windows or _DEDUP_WINDOWS
 
     def load(self) -> dict[str, str]:
         """Load recent history per dimension.
@@ -74,7 +75,7 @@ class BriefHistory:
         today = date.today()
         result: dict[str, str] = {}
 
-        for dim, window in _DEDUP_WINDOWS.items():
+        for dim, window in self._dedup_windows.items():
             sections: list[str] = []
             for i in range(1, window + 1):
                 d = today - timedelta(days=i)
@@ -101,7 +102,7 @@ class BriefHistory:
 
         lines = ["## 近期已播报内容（请勿重复报道相同事件）", ""]
         for dim, text in history.items():
-            window = _DEDUP_WINDOWS.get(dim, 7)
+            window = self._dedup_windows.get(dim, 7)
             lines.append(f"### {dim}（近 {window} 天）")
             lines.append(text)
             lines.append("")

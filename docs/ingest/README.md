@@ -90,7 +90,66 @@ graph TD
 | `SourcePackage` | `ingest/package.py` | 采集包定义模型（内联在 .linglong.yaml） |
 | `FeedbackStore` | `ingest/feedback.py` | 用户偏好存储 + 权重计算 |
 | `SourceHealth` | `ingest/agent.py` | 信源健康监控（成功率 + 连续失败告警） |
-| `company_snapshot.json` | `ingest/` | 中美 14 家 AI 公司融资/估值快照 |
+| `company_snapshot.json` | `~/linglong/` | 中美 14 家 AI 公司融资/估值快照（外部维护） |
+
+## MCP 工具
+
+| 工具 | 说明 |
+|------|------|
+| `generate_brief()` | 读取 .linglong.yaml 中第一个 package，采集 + LLM 合成 → 返回 markdown 早报 |
+| `execute_package(path)` | 指定 YAML 文件路径执行采集包 |
+| `fetch_rss(url)` | 采集单个 RSS feed，返回条目列表 |
+| `search_web(query, max_results)` | SearXNG 搜索，返回结果列表 |
+| `record_feedback(hash, feedback)` | 记录用户偏好（positive/negative），影响后续权重 |
+
+## MCP 接入
+
+### Claude Code
+
+在 `~/.claude/settings.json` 的对应项目下添加：
+
+```json
+{
+  "mcpServers": {
+    "linglong": {
+      "command": "bash",
+      "args": ["-c", "cd /path/to/linglong && .venv/bin/python -m linglong.mcp"],
+      "env": {
+        "ZHIPU_API_KEY": "your-key",
+        "SEARXNG_API_KEY": "your-key",
+        "RSSHUB_ACCESS_KEY": "your-key"
+      }
+    }
+  }
+}
+```
+
+> MCP 子进程不继承 shell 环境变量，必须通过 `env` 字段注入。config.py 通过 `_PROJECT_ROOT` fallback 自动定位 `.linglong.yaml`。
+
+### OpenClaw
+
+在 `~/.openclaw/openclaw.json` 的 `mcp.servers` 中添加：
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "linglong": {
+        "command": "bash",
+        "args": ["-c", "cd /path/to/linglong && .venv/bin/python -m linglong.mcp"]
+      }
+    }
+  }
+}
+```
+
+> OpenClaw 继承 shell 环境变量，不需要额外 `env` 字段。
+
+### 已知注意事项
+
+- `generate_brief()` 内部用 `_run_async()` (ThreadPoolExecutor) 运行 async 函数，因为 MCP server 自身有事件循环，不能嵌套 `asyncio.run()`
+- RSSHub `ACCESS_KEY` 仅追加到包含 `:1200` 端口的 URL
+- GitHub API 优先用 `gh auth token` 认证（5000 req/hr），未认证仅 60 req/hr
 
 ## 调用方式
 

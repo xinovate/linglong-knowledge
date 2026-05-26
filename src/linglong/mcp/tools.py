@@ -423,9 +423,10 @@ def execute_package(package_path: str) -> str:
 
         package = SourcePackage.from_yaml(package_path)
 
+        config = get_config()
         feedback_store = FeedbackStore()
-        history_dir = Path.home() / "linglong" / "brief_history"
-        brief_history = BriefHistory(history_dir)
+        history_dir = Path(config.ingest.brief_history_dir).expanduser()
+        brief_history = BriefHistory(history_dir, config.ingest.dedup_windows)
         agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
         output = _run_async(agent.run(package))
 
@@ -465,8 +466,8 @@ def generate_brief() -> str:
 
         package = SourcePackage(**config.ingest.packages[0])
         feedback_store = FeedbackStore()
-        history_dir = Path.home() / "linglong" / "brief_history"
-        brief_history = BriefHistory(history_dir)
+        history_dir = Path(config.ingest.brief_history_dir).expanduser()
+        brief_history = BriefHistory(history_dir, config.ingest.dedup_windows)
         agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
         output = _run_async(agent.run(package))
 
