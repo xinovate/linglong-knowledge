@@ -255,6 +255,27 @@ class IngestConfig(BaseSettings):
         default=None, description="RSSHub ACCESS_KEY for authenticated requests"
     )
 
+    # LLM 早报生成
+    llm_max_tokens: int = Field(
+        default=8000, description="LLM max output tokens for brief generation"
+    )
+    llm_retries: int = Field(
+        default=2, description="LLM call retry count on failure"
+    )
+    llm_timeout: int = Field(
+        default=120, description="LLM request timeout in seconds"
+    )
+
+    # GitHub 开源趋势
+    github_trending_limits: dict[str, int] = Field(
+        default_factory=lambda: {"daily": 5, "weekly": 3, "monthly": 3},
+        description="GitHub trending repo counts per period",
+    )
+    github_search_fallback: dict[str, int] = Field(
+        default_factory=lambda: {"since_days": 30, "min_stars": 500},
+        description="GitHub Search API fallback parameters",
+    )
+
 
 class OSSConfig(BaseModel):
     """Alibaba Cloud OSS configuration for image CDN."""

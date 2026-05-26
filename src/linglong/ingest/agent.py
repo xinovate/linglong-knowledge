@@ -192,7 +192,8 @@ async def _github_trending(
     Returns (repos, source) where source indicates the data origin.
     """
     if limits is None:
-        limits = {"daily": 5, "weekly": 3, "monthly": 3}
+        config = get_config()
+        limits = config.ingest.github_trending_limits
 
     # Source 1: OpenGithubs
     repos, source = await _fetch_opengithubs(limits)
@@ -206,7 +207,13 @@ async def _github_trending(
 
     # Source 3: GitHub Search API
     logger.info("All trending sources unavailable, falling back to GitHub Search API")
-    repos = await _github_search_fallback(since_days=30, min_stars=500, limit=sum(limits.values()))
+    config = get_config()
+    fb = config.ingest.github_search_fallback
+    repos = await _github_search_fallback(
+        since_days=fb.get("since_days", 30),
+        min_stars=fb.get("min_stars", 500),
+        limit=sum(limits.values()),
+    )
     return repos, "search-api"
 
 
@@ -520,11 +527,16 @@ def _load_prompt() -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _call_llm(system: str, user: str, max_tokens: int = 8000, retries: int = 2) -> str:
+def _call_llm(system: str, user: str, max_tokens: int | None = None, retries: int | None = None) -> str:
     """Call LLM via Anthropic Messages API on ZhiPu, with retry."""
     config = get_config()
     base_url = "https://open.bigmodel.cn/api/anthropic"
     api_key = config.composer.llm_api_key
+    if max_tokens is None:
+        max_tokens = config.ingest.llm_max_tokens
+    if retries is None:
+        retries = config.ingest.llm_retries
+    timeout = config.ingest.llm_timeout
 
     last_error: Exception | None = None
     for attempt in range(retries + 1):
@@ -537,12 +549,12 @@ def _call_llm(system: str, user: str, max_tokens: int = 8000, retries: int = 2) 
                     "content-type": "application/json",
                 },
                 json={
-                    "model": "glm-5.1",
+                    "model": config.composer.llm_model or "glm-5.1",
                     "max_tokens": max_tokens,
                     "system": system,
                     "messages": [{"role": "user", "content": user}],
                 },
-                timeout=120,
+                timeout=timeout,
             )
             response.raise_for_status()
             data = response.json()
