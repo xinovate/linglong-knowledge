@@ -162,9 +162,20 @@ class Composer:
         """
         store = KnowledgeStore()
         if topic:
-            entities = store.search_similar(
-                query=topic, status=EntityStatus.AUTO_CONFIRMED, limit=50
-            )
+            try:
+                entities = store.search_similar(
+                    query=topic, status=EntityStatus.AUTO_CONFIRMED, limit=50
+                )
+                if not entities:
+                    logger.warning("向量搜索返回空，退化为 FTS")
+                    entities = store.search(
+                        query=topic, status=EntityStatus.AUTO_CONFIRMED, limit=50
+                    )
+            except Exception as e:
+                logger.warning("向量搜索失败，退化为 FTS: %s", e)
+                entities = store.search(
+                    query=topic, status=EntityStatus.AUTO_CONFIRMED, limit=50
+                )
         else:
             entities = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
         fragments = IngestAdapter.adapt_many(entities)
