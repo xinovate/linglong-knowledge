@@ -327,7 +327,7 @@ def fetch_rss(url: str, name: str | None = None, max_items: int = 20) -> str:
         import httpx
 
         config = get_config()
-        if config.ingest.rsshub_access_key:
+        if config.ingest.rsshub_access_key and (":1200/" in url or url.rstrip("/").endswith(":1200")):
             sep = "&" if "?" in url else "?"
             url = f"{url}{sep}key={config.ingest.rsshub_access_key}"
 

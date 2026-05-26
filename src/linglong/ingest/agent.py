@@ -81,6 +81,11 @@ def _is_noise_url(url: str) -> bool:
     return any(host == d or host.endswith("." + d) for d in _NOISE_DOMAINS)
 
 
+def _is_rsshub_url(url: str) -> bool:
+    """Check if a URL points to our RSSHub instance (port 1200)."""
+    return ":1200/" in url or url.rstrip("/").endswith(":1200")
+
+
 async def _searxng_search(query: str, max_results: int = 15) -> list[dict[str, str]]:
     """Search via SearXNG, return [{title, url, snippet}]."""
     config = get_config()
@@ -419,7 +424,7 @@ async def _fetch_rss_feeds() -> list[dict[str, str]]:
         url = src.get("url", "")
         if not url:
             continue
-        if config.ingest.rsshub_access_key:
+        if config.ingest.rsshub_access_key and _is_rsshub_url(url):
             sep = "&" if "?" in url else "?"
             url = f"{url}{sep}key={config.ingest.rsshub_access_key}"
         try:

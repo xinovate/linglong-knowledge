@@ -465,6 +465,34 @@ def test_fetch_rss_handles_error(temp_store):
     assert "error" in data
 
 
+def test_fetch_rss_rsshub_key_only_for_rsshub_urls(temp_store):
+    rss_xml = '<?xml version="1.0"?><rss version="2.0"><channel><title>T</title></channel></rss>'
+    mock_response = MagicMock()
+    mock_response.text = rss_xml
+    mock_response.raise_for_status = MagicMock()
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    config_mock = MagicMock()
+    config_mock.ingest.rsshub_access_key = "test-key"
+
+    with patch("httpx.AsyncClient", return_value=mock_client), \
+         patch("linglong.mcp.tools.get_config", return_value=config_mock):
+        # Non-RSSHub URL should NOT get key
+        fetch_rss("https://techcrunch.com/feed/")
+        called_url = mock_client.get.call_args.args[0]
+        assert "key=" not in called_url
+
+        mock_client.get.reset_mock()
+        # RSSHub URL should get key
+        fetch_rss("http://localhost:1200/36kr/newsflashes")
+        called_url = mock_client.get.call_args.args[0]
+        assert "key=test-key" in called_url
+
+
 # --- generate_brief ---
 
 

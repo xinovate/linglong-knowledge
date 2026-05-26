@@ -554,3 +554,31 @@ class TestApiKeyAuth:
 
         called_url = mock_client.get.call_args.args[0]
         assert "key=rsshub-secret" in called_url
+
+    @pytest.mark.asyncio
+    async def test_rsshub_key_not_added_for_non_rsshub_urls(self):
+        rss_xml = '<?xml version="1.0"?><rss version="2.0"><channel><title>T</title></channel></rss>'
+        mock_response = MagicMock()
+        mock_response.text = rss_xml
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        config_mock = MagicMock()
+        config_mock.ingest.rss_sources = [
+            {"name": "TechCrunch", "url": "https://techcrunch.com/category/artificial-intelligence/feed/"},
+            {"name": "The Verge", "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"},
+        ]
+        config_mock.ingest.rsshub_access_key = "rsshub-secret"
+
+        with patch("linglong.ingest.agent.httpx.AsyncClient", return_value=mock_client), \
+             patch("linglong.ingest.agent.get_config", return_value=config_mock):
+            from linglong.ingest.agent import _fetch_rss_feeds
+            await _fetch_rss_feeds()
+
+        for call in mock_client.get.call_args_list:
+            called_url = call.args[0]
+            assert "key=" not in called_url, f"key should not be in non-RSSHub URL: {called_url}"
