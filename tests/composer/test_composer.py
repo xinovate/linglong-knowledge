@@ -128,7 +128,7 @@ class TestComposerRun:
         dm = DraftManager()
         entry = dm.get_draft(draft_id)
         assert entry is not None
-        assert entry.status == "pending"
+        assert entry.status in ("pending", "needs_review")
 
     def test_run_since_filter(self, composer, store):
         """since parameter should filter entities by timestamp."""

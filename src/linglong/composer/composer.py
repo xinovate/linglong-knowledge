@@ -15,6 +15,8 @@ from linglong.composer.distiller.aggregator import ArticleMaterial, DailyAggrega
 from linglong.composer.distiller.llm_distiller import LLMDistiller
 from linglong.composer.draft import DraftManager
 from linglong.composer.ingest_adapter import IngestAdapter, MemoryFragment
+from linglong.composer.lint import QualityLint
+from linglong.composer.output_log import OutputLog
 from linglong.composer.state import ComposerState
 from linglong.composer.templates.blog import BlogTemplate
 from linglong.core.config import get_config
@@ -54,6 +56,13 @@ class Composer:
         # 状态管理：内容哈希去重
         self.state = ComposerState()
         self.draft_manager = DraftManager()
+
+        # 质量校验
+        lint_cfg = self.config.quality_lint if self.config.quality_lint.get("enabled") else None
+        self.lint = QualityLint(lint_cfg) if lint_cfg else None
+
+        # 溯源记录
+        self.output_log = OutputLog()
 
         # 聚合器：始终需要按天分组
         self.aggregator = DailyAggregator()
@@ -233,6 +242,18 @@ class Composer:
 
         formatted = template.apply(content_with_intro, metadata)
 
+        # 质量校验
+        lint_passed = True
+        if self.lint:
+            lint_result = self.lint.check(formatted, metadata)
+            lint_passed = lint_result.passed
+            if lint_result.issues:
+                for issue in lint_result.issues:
+                    logger.warning("质量校验: %s", issue)
+            if lint_result.warnings:
+                for w in lint_result.warnings:
+                    logger.info("质量警告: %s", w)
+
         # 草稿模式：保存到草稿目录
         if draft and not dry_run:
             fragment_hashes = [f.content_hash for f in fragments]
@@ -242,6 +263,7 @@ class Composer:
                 content=formatted,
                 metadata=metadata,
                 fragment_hashes=fragment_hashes,
+                needs_review=not lint_passed,
             )
             return {
                 "date": date_key,
@@ -251,6 +273,7 @@ class Composer:
                 "draft_id": entry.id,
                 "dispatch_ready": False,
                 "status": "draft_saved",
+                "lint_passed": lint_passed,
             }
 
         # 正常运行模式：返回 dispatch-ready 结果
@@ -280,6 +303,14 @@ class Composer:
                 dispatch = DispatchManager()
                 publish_result = dispatch.publish(article_result, self.config.default_publisher)
                 article_result["publish_result"] = publish_result
+                entity_ids = [f.metadata.get("entity_id", "") for f in fragments]
+                self.output_log.append(
+                    article_id=date_key,
+                    article_title=material.title,
+                    entity_ids=entity_ids,
+                    publisher=self.config.default_publisher,
+                    status="published",
+                )
             except Exception as e:
                 logger.exception("Auto-publish failed for %s: %s", date_key, e)
                 article_result["publish_error"] = str(e)

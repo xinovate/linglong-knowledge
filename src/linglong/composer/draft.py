@@ -21,7 +21,7 @@ class DraftEntry:
     id: str
     title: str
     date: str
-    status: str  # pending | published | discarded
+    status: str  # pending | needs_review | published | discarded
     created_at: str
     published_at: str | None = None
     fragment_hashes: list[str] | None = None
@@ -72,6 +72,7 @@ class DraftManager:
         content: str,
         metadata: dict[str, Any],
         fragment_hashes: list[str],
+        needs_review: bool = False,
     ) -> DraftEntry:
         """Save a draft.
 
@@ -108,7 +109,7 @@ class DraftManager:
             id=draft_id,
             title=title,
             date=date,
-            status="pending",
+            status="needs_review" if needs_review else "pending",
             created_at=datetime.now(UTC).isoformat(),
             fragment_hashes=fragment_hashes,
             markdown_path=str(md_path),

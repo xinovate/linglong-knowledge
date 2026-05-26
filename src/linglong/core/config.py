@@ -138,6 +138,17 @@ class ComposerConfig(BaseSettings):
         default="local", description="Default publisher name for auto-publish"
     )
 
+    # 质量校验
+    quality_lint: dict = Field(
+        default_factory=lambda: {
+            "enabled": True,
+            "use_llm": False,
+            "min_content_length": 500,
+            "min_paragraphs": 3,
+        },
+        description="Quality lint configuration",
+    )
+
 
 class KnowledgeConfig(BaseSettings):
     """Knowledge module configuration."""

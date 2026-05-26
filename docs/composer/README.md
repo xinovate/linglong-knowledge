@@ -36,9 +36,11 @@ graph TD
 | 组件 | 路径 | 说明 |
 |------|------|------|
 | `Composer` | `composer/composer.py` | 编排器 |
+| `QualityLint` | `composer/lint.py` | 质量校验（规则层 + LLM 层） |
+| `OutputLog` | `composer/output_log.py` | 溯源记录（JSONL 审计日志） |
 | `DraftManager` | `composer/draft.py` | 草稿生命周期管理 |
 | `ComposerState` | `composer/state.py` | 内容哈希去重与状态持久化 |
-| `KnowledgeAdapter` | `composer/knowledge_adapter.py` | Entity → MemoryFragment 适配层 |
+| `IngestAdapter` | `composer/ingest_adapter.py` | Entity → MemoryFragment 适配层 |
 | `DailyAggregator` | `composer/distiller/aggregator.py` | 按天聚合记忆片段 |
 | `LLMDistiller` | `composer/distiller/llm_distiller.py` | LLM 智能提炼与主题合并 |
 | `BlogTemplate` | `composer/templates/blog.py` | Hexo 博客模板 |
@@ -88,3 +90,4 @@ composer:
 
 - [图片资产系统](image-assets.md)
 - [模板引擎](templates.md)
+- [设计文档](design/00-overview.md) — 架构图、子设计索引、全局设计决策
