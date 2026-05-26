@@ -81,6 +81,16 @@ graph TD
 | SearXNG ↔ RSS 交叉 | URL 去重 | RSS 排除已出现在 SearXNG 中的 URL |
 | BriefHistory | 跨天语义去重 | 历史输出注入 prompt，LLM 判断是否重复 |
 
+### 缓存机制
+
+`generate_brief()` 支持日内缓存：当天已生成的早报直接返回，避免重复 LLM 调用。
+
+| 配置 | 默认值 | 说明 |
+|------|--------|------|
+| `brief_output_dir` | `~/linglong/briefs` | 缓存目录，按日期存 `{YYYY-MM-DD}.md` |
+| `brief_schedule_time` | `07:30` | 播报时段标记（如 `2026-05-25 07:30 → 2026-05-26 07:30`） |
+| `brief_cache_days` | `14` | 缓存保留天数 |
+
 ## 核心组件
 
 | 组件 | 路径 | 说明 |

@@ -450,6 +450,7 @@ def generate_brief() -> str:
     """
     try:
         import asyncio
+        from datetime import date, timedelta
         from pathlib import Path
 
         from linglong.ingest.agent import IngestAgent
@@ -464,6 +465,21 @@ def generate_brief() -> str:
                 ensure_ascii=False,
             )
 
+        # Cache check: return today's brief if already generated
+        output_dir = Path(config.ingest.brief_output_dir).expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        today = date.today().isoformat()
+        cache_path = output_dir / f"{today}.md"
+
+        if cache_path.exists():
+            cached = cache_path.read_text(encoding="utf-8")
+            return json.dumps({
+                "package": config.ingest.packages[0].get("name", ""),
+                "output_length": len(cached),
+                "cached": True,
+                "output": cached,
+            }, ensure_ascii=False)
+
         package = SourcePackage(**config.ingest.packages[0])
         feedback_store = FeedbackStore()
         history_dir = Path(config.ingest.brief_history_dir).expanduser()
@@ -471,9 +487,20 @@ def generate_brief() -> str:
         agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
         output = _run_async(agent.run(package))
 
+        # Save to cache
+        if output:
+            cache_path.write_text(output, encoding="utf-8")
+
+        # Cleanup old cached briefs
+        cutoff = (date.today() - timedelta(days=config.ingest.brief_cache_days)).isoformat()
+        for f in output_dir.glob("*.md"):
+            if f.stem < cutoff:
+                f.unlink()
+
         response: dict[str, Any] = {
             "package": package.name,
             "output_length": len(output) if output else 0,
+            "cached": False,
         }
         if output:
             response["output"] = output

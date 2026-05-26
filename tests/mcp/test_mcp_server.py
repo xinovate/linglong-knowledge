@@ -529,9 +529,10 @@ def test_generate_brief_no_packages(temp_store):
     assert "No packages" in data["error"]
 
 
-def test_generate_brief_handles_error(temp_store):
+def test_generate_brief_handles_error(temp_store, tmp_path):
     config = get_config()
     config.ingest.packages = [{"name": "test", "topic": "test"}]
+    config.ingest.brief_output_dir = str(tmp_path / "briefs")
     set_config(config)
 
     with patch("linglong.ingest.agent.IngestAgent", side_effect=Exception("Agent failed")):

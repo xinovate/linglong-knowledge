@@ -684,10 +684,14 @@ class IngestAgent:
 
         prompt_template = _load_prompt()
         today = date.today().isoformat()
+        config = get_config()
+        schedule_time = config.ingest.brief_schedule_time
+        time_range = f"{(date.today() - timedelta(days=1)).isoformat()} {schedule_time} → {today} {schedule_time}"
 
         system_prompt = prompt_template.format(
             topic=package.topic,
             date=today,
+            time_range=time_range,
             search_results=search_text,
             github_data=github_text,
             rss_data=rss_text,

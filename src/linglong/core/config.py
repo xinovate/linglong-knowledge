@@ -292,6 +292,20 @@ class IngestConfig(BaseSettings):
         description="Per-dimension lookback days for dedup",
     )
 
+    # 早报缓存
+    brief_output_dir: str = Field(
+        default="~/linglong/briefs",
+        description="Directory for cached daily briefs",
+    )
+    brief_schedule_time: str = Field(
+        default="07:30",
+        description="Daily brief schedule time (HH:MM), used for time range markers",
+    )
+    brief_cache_days: int = Field(
+        default=14,
+        description="Days to keep cached briefs",
+    )
+
 
 class OSSConfig(BaseModel):
     """Alibaba Cloud OSS configuration for image CDN."""
