@@ -266,4 +266,10 @@ ingest:
 
 ## 设计文档
 
-- [设计总览](design/00-overview.md) — 定位、维度、信源实测、架构演进、实现路线
+- [设计总览](design/00-overview.md) — 定位、子设计索引、全局设计决策、架构演进
+- [数据源架构](design/01-data-sources.md) — SearXNG/GitHub/RSS 三路并发
+- [Agent 流水线](design/02-agent-pipeline.md) — 采集→去重→LLM→输出
+- [去重机制](design/03-dedup.md) — URL 级 + BriefHistory 语义级
+- [缓存与调度](design/04-cache.md) — 日内缓存 + 时段标记
+- [Prompt 设计](design/05-prompt.md) — 模板结构 + 占位符 + 15 条规则
+- [MCP 接入](design/06-mcp.md) — 双模式部署 + Token 认证 + 模块工具控制
