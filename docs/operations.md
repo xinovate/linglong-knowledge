@@ -175,3 +175,25 @@ export SEARXNG_API_KEY="your-searxng-secret"
 export RSSHUB_ACCESS_KEY="your-rsshub-secret"
 export EMBEDDING_API_KEY="your-embedding-secret"
 ```
+
+### MCP Client 配置
+
+MCP Server 以子进程方式启动，API Key 需通过 `env` 字段注入（不继承 shell 环境变量）：
+
+```json
+{
+  "mcpServers": {
+    "linglong": {
+      "command": "bash",
+      "args": ["-c", "cd /path/to/linglong && source venv/bin/activate && python -m linglong.mcp"],
+      "env": {
+        "SEARXNG_API_KEY": "your-key",
+        "RSSHUB_ACCESS_KEY": "your-key",
+        "EMBEDDING_API_KEY": "your-key"
+      }
+    }
+  }
+}
+```
+
+**注意**：MCP 子进程不会读取 `~/.bashrc`，必须通过 `env` 显式传入。

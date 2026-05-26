@@ -23,6 +23,9 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | **v2.0** | **IngestAgent LLM 早报重构 + GitHub Trending + BriefHistory 去重** | **✅** |
 | **v2.1** | **早报数据源 RSS 化（6 源接入 + 交叉去重 + 时效过滤）** | **✅** |
 | **v2.2** | **ingest 增强（融资快照 + 关键人物扩展 + 8 RSS + 健康监控 + LLM 容错 + 去重量化）** | **✅** |
+| **v2.3** | **安全加固 + MCP 增强（3 服务 API Key + generate_brief/search_web MCP）** | **✅** |
+| **v2.4** | **Agent 接入（Claude Code MCP 连通 + RSSHub/asyncio/GitHub 修复 + 10 RSS + 331 测试）** | **✅** |
+| **v2.5** | **ingest 质量优化（信息源精度 + 政策覆盖 + LLM 可信度 + 分析去模板化）** | 🔵 |
 
 ## v1.0 已完成
 
@@ -99,6 +102,31 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | 6 | BriefHistory 去重效果量化（token overlap 检测） | ingest | ✅ |
 | 7 | 407 测试全通过 | ingest | ✅ |
 
+### v2.4 已完成（Agent 接入 + Bug 修复）
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| 1 | RSSHub key 仅追加到 RSSHub URL（`:1200` 端口检测），修复非 RSSHub 源 404 | ingest + mcp | ✅ |
+| 2 | MCP `_run_async()` 替代 `asyncio.run()`，修复 MCP 事件循环冲突 | mcp | ✅ |
+| 3 | GitHub API 用 `gh auth token` 认证（5000 req/hr vs 60 未认证） | ingest | ✅ |
+| 4 | Claude Code `settings.json` 配置 linglong MCP（env 注入 API Key） | mcp | ✅ |
+| 5 | 新增 2 个 gov RSS 路由（工信部文件公示 + 发改委新闻动态） | config | ✅ |
+| 6 | 新增 2 个 RSS 源（财联社深度 + TechCrunch AI），共 10 源 | config | ✅ |
+| 7 | 政策搜索关键词扩展（+3 条国内政策关键词，max_results 2→5） | config | ✅ |
+| 8 | 331 测试全通过 | — | ✅ |
+
+### v2.5 待做（ingest 质量优化）
+
+核心瓶颈：**信息源质量 + LLM 合成策略**，不是代码问题。
+
+| # | 优化项 | 说明 | 优先级 |
+|---|--------|------|--------|
+| 1 | SearXNG 中文 AI 新闻覆盖 | 中文关键词搜出的结果相关性低，需更精准的信源或换搜索引擎 | 🟡 |
+| 2 | 政策数据源精度 | gov RSS 路由是通用公告，AI 相关条目密度低，需更精准的政策源 | 🟡 |
+| 3 | 关键人物覆盖 | 配了 ~20 个人物关键词，实际合成覆盖率低，部分人物常缺席 | 🟡 |
+| 4 | LLM 来源可信度判断 | 英文小博客 rumor 和权威媒体被同等对待，需加事实标注（"据 XX 媒体报道"） | 🔴 |
+| 5 | Top 5 分析去模板化 | 四段式（公司/战略/技术/启示）机械重复，应因条目而异 | 低 |
+
 ### v2.3 收尾项
 
 | # | 任务 | 模块 | 优先级 | 说明 |
@@ -114,10 +142,14 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | 9 | 跨 Agent 写入冲突解决 | knowledge | 低 | 多 Agent 同时修改同一 wiki |
 | 10 | API 冻结 + mypy strict | core | 低 | 稳定公开接口 |
 
-### ingest 已知问题（v2.2）
+### ingest 已知问题（v2.4）
 
 - BriefHistory 去重基于历史输出段落注入 prompt，LLM 理解"不重复"指令，但无法 100% 保证不重复 → v2.2 新增 check_overlap() token overlap 检测辅助量化
 - 公司融资快照数据需要手动更新 JSON 文件（当前更新于 2026-05-25）
+- SearXNG 对中文 AI 新闻覆盖不够精准，关键词搜出的结果相关性低 → v2.5 优化
+- 关键人物搜索覆盖率偏低（~20 个关键词仅出 ~4 条），部分中国 AI 人物常缺席 → v2.5 优化
+- LLM 不区分信源可信度，小博客 rumor 和权威媒体被同等对待 → v2.5 加事实标注
+- gov RSS 路由是通用公告，AI 相关条目密度低（工信部/发改委可用，中国政府网 503）→ v2.5 优化
 
 ---
 
@@ -217,7 +249,23 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 - **原因**: 单次 run 涉及数十次 SearXNG 请求，请求级追踪过于细碎。用户关心的是"今天 SearXNG 整体是否正常"，而非某个关键词搜索是否失败。
 - **影响**: `_source_health` 全局实例，每次 run 记录 3 条，连续 3 次失败时 WARN 日志。
 
-### ADR-019: LLM 容错：重试 + 历史输出 fallback（v2.2）
+### ADR-020: RSSHub key 仅追加到 RSSHub URL（v2.4）
+
+**决策**: RSSHub ACCESS_KEY 通过 `?key=xxx` 追加时，先检测 URL 是否指向 RSSHub 实例（`:1200` 端口），非 RSSHub URL 不追加。
+- **原因**: v2.3 实现对所有 RSS URL 统一追加 key，导致 The Verge、TechCrunch 等直接 RSS 源返回 404。
+- **影响**: `_is_rsshub_url()` 检测函数，`agent.py` 和 `mcp/tools.py` 两处调用。
+
+### ADR-021: MCP 内部异步调用用 _run_async()（v2.4）
+
+**决策**: MCP Server 工具函数内的异步调用统一使用 `_run_async()` 替代 `asyncio.run()`。
+- **原因**: MCP Server 运行在自己的事件循环中，`asyncio.run()` 会抛出 "cannot be called from a running event loop" 错误。`_run_async()` 检测运行中的循环，通过 `ThreadPoolExecutor` 在新线程中执行。
+- **影响**: `fetch_rss`、`execute_package`、`generate_brief`、`search_web` 四处替换。
+
+### ADR-022: GitHub API 用 gh auth token 认证（v2.4）
+
+**决策**: IngestAgent 的 GitHub API 调用优先使用 `gh auth token` 获取认证 token。
+- **原因**: 未认证 GitHub API 限制 60 req/hr，40 次 SearXNG + 3 次 GitHub 请求后触发 rate limit 403。认证后提升至 5000 req/hr。
+- **影响**: `_github_headers()` 函数在 `_fetch_opengithubs()` 和 `_github_search_fallback()` 中使用。
 
 **决策**: `_call_llm` 增加 2 次重试，全部失败时 fallback 到 BriefHistory 最近一次成功输出。
 - **原因**: LLM API 偶发 400/500 错误（如 prompt 过长、服务抖动），不应让整个早报生成失败。上次成功的早报作为 fallback，虽不完美但好于无输出。

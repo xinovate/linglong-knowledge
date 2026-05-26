@@ -44,6 +44,7 @@ Codex ──────┘         ↓
 | **v2.1** | **RSS 数据源** | 6 个 RSS 订阅源 + 交叉去重 + 时效过滤 + 394 测试 | ✅ | 2026-05-25 |
 | **v2.2** | **ingest 增强 + 清理** | 融资快照 + 关键人物扩展 + 8 RSS + 健康监控 + LLM 容错 + 去重量化 + legacy 清理（-4164 行）+ 321 测试 | ✅ | 2026-05-25 |
 | **v2.3** | **安全加固 + MCP 增强** | 3 服务 API Key 认证 + nginx 反代 SearXNG + generate_brief/search_web MCP 工具 + 329 测试 | ✅ | 2026-05-25 |
+| **v2.4** | **Agent 接入** | Claude Code MCP 连通 + RSSHub key 修复 + asyncio 修复 + GitHub auth + 10 RSS 源（含 2 gov 路由）+ 331 测试 | ✅ | 2026-05-26 |
 
 ---
 
@@ -57,10 +58,12 @@ Codex ──────┘         ↓
 | `composer/` | ✅ 63 个 | ✅ 1 个 | — | ✅ |
 | `dispatch/` | ✅ 19 个 | ✅ 1 个 | — | ✅ |
 | `mcp/` | ✅ 28 个 | — | — | ✅ |
+
+**总计：331 个测试**
 | `cli/` | ✅ 26 个 | — | — | ✅ |
 | `integration/` | — | — | ✅ 1 个 | ✅ |
 
-**总计：329 个测试**
+**总计：331 个测试**
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
 
@@ -87,11 +90,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
-| `2cf2d50` | refactor(ingest): 清理 IngestConfig + .linglong.yaml 精简 | 2026-05-25 |
-| `a5d8fdf` | refactor(ingest): 移除 v1.x legacy 代码（-4164 行） | 2026-05-25 |
-| `e938736` | test(ingest): 新增 13 个测试 — 快照/健康/重试/fallback/去重 | 2026-05-25 |
-| `2d0833d` | feat(ingest): 信源健康监控 + LLM 容错 + 去重量化 | 2026-05-25 |
-| `268e616` | feat(ingest): 公司融资快照 + 关键人物扩展 + 更多 RSS 源 | 2026-05-25 |
+| `db20f66` | fix(ingest): GitHub API 用 gh auth token 认证，解决 rate limit | 2026-05-26 |
+| `aa00981` | fix(mcp): 用 _run_async 替代 asyncio.run，修复 MCP 事件循环冲突 | 2026-05-26 |
+| `23bb186` | fix(ingest): RSSHub key 仅追加到 RSSHub URL，修复非 RSSHub 源 404 | 2026-05-26 |
+| `4d37281` | docs(journal): v2.2 增强 + v2.3 安全加固 + MCP 增强 | 2026-05-25 |
+| `3371fc3` | feat(security): v2.3 服务安全加固 + MCP 工具增强 | 2026-05-25 |
 
 ---
 
@@ -107,9 +110,11 @@ Codex ──────┘         ↓
 6. ✅ ~~**ingest v2.1 RSS 数据源**~~ — 6 个 RSS 订阅源 + 交叉去重 + 时效过滤，394 测试通过
 7. ✅ ~~**ingest v2.2 增强**~~ — 公司融资快照 + 关键人物扩展 + 8 RSS 源 + 信源健康 + LLM 容错 + 去重量化，321 测试通过
 8. ✅ ~~**v2.3 安全加固 + MCP 增强**~~ — SearXNG nginx 反代 + RSSHub/Embedding API Key + generate_brief/search_web MCP 工具，329 测试通过
-9. 🟡 **OpenClaw 观察期收尾** — 确认 MCP 写入质量，禁用 wiki-maintainer，清理旧数据
-10. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
-11. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
+9. ✅ ~~**v2.4 Agent 接入**~~ — Claude Code MCP 连通 + RSSHub key 修复 + asyncio _run_async + GitHub gh auth + 2 gov RSS 路由，331 测试通过
+10. 🟡 **OpenClaw 接入 linglong MCP** — OpenClaw Gateway 配置 linglong MCP server，验证 generate_brief/search_web/write_entity
+11. 🟡 **v2.5 ingest 质量优化** — 信息源精度 + 政策覆盖 + LLM 来源可信度判断 + 分析去模板化
+12. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
+13. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
 
 **v2.3 收尾项**（非阻塞）：
 - 发布队列与失败重试

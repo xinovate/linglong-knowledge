@@ -42,7 +42,7 @@ graph TD
     subgraph 数据采集
         A1[SearXNG<br/>关键词搜索] --> D[聚合去重]
         A2[OpenGithubs<br/>GitHub Trending<br/>日/周/月三段] --> D
-        A3[RSS 订阅源<br/>AIHOT/36氪/量子位/<br/>The Rundown AI/财联社] --> D
+        A3[RSS 订阅源<br/>AIHOT/36氪/量子位/The Rundown AI/<br/>TechCrunch/The Verge/财联社/<br/>工信部/发改委] --> D
     end
 
     D --> E[IngestAgent<br/>单次 LLM prompt]
@@ -66,6 +66,11 @@ graph TD
 | 量子位 | RSS feed | ~10 | AI 垂直媒体 |
 | The Rundown AI | RSS feed | ~20 | 英文 AI Newsletter |
 | 财联社电报 | RSSHub | ~20 | 财经快讯 |
+| 财联社深度 | RSSHub | ~10 | 深度报道 |
+| TechCrunch AI | RSS feed | ~20 | 英文 AI 新闻 |
+| The Verge AI | RSS feed | ~15 | 英文 AI 新闻 |
+| 工信部文件公示 | RSSHub (gov) | ~15 | AI 大模型备案、产业政策 |
+| 发改委新闻动态 | RSSHub (gov) | ~25 | 数字经济、新基建政策 |
 
 ### 去重机制
 
@@ -109,12 +114,13 @@ ingest:
   searxng_api_key: ${SEARXNG_API_KEY}
   rsshub_access_key: ${RSSHUB_ACCESS_KEY}
 
-  # RSS 订阅源（v2.1 新增）
+  # RSS 订阅源（v2.1 新增，v2.4 扩展至 10 源）
   rss_sources:
     - name: AIHOT
       url: https://aihot.virxact.com/feed
     - name: 36氪
       url: https://36kr.com/feed
+    # ... 更多源见 .linglong.yaml
 
   packages:
     - name: ai-morning-brief
