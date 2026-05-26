@@ -1,6 +1,6 @@
 # D-04 溯源记录设计
 
-> 状态：✅ 已实现 | 最后更新：2026-05-26
+> 状态：✅ 已实现 | 最后更新：2026-05-26 | 依赖：[D-01 流水线](01-pipeline.md)
 
 ---
 
@@ -19,6 +19,36 @@
 - output_log 是追加型，天然支持多次消费记录
 
 **output_log 不过滤实体。** 下次 composer 运行时，已消费的实体仍可被重新编排。去重由 `ComposerState` 的哈希机制处理。
+
+---
+
+## 溯源时序图
+
+```mermaid
+sequenceDiagram
+    participant Composer
+    participant Draft as DraftManager
+    participant Dispatch as DispatchManager
+    participant Log as OutputLog
+    participant FS as ~/linglong/state/
+
+    Composer->>Draft: save_draft()
+    Draft-->>Composer: DraftEntry(id="abc123")
+
+    alt auto_publish=true
+        Composer->>Dispatch: publish(article)
+        Dispatch-->>Composer: PublishResult(success)
+        Composer->>Log: append("abc123", title, entity_ids, "hexo")
+        Log->>FS: 追加到 output_log.jsonl
+    else draft=true
+        Note over Composer,Draft: 暂不写入 output_log
+        Note over Draft: 草稿待人工审核
+    end
+
+    Note over Draft,Log: 草稿手动发布时
+    Draft->>Log: append(article_id, title, entity_ids, publisher)
+    Log->>FS: 追加到 output_log.jsonl
+```
 
 ---
 
@@ -70,13 +100,25 @@ class OutputLog:
 
 ## 调用时机
 
-1. `auto_publish=true` 时：dispatch 发布成功后追加
-2. `draft=true` 时：草稿保存时追加（status=draft）
-3. 草稿手动发布时：`publish_draft()` 成功后更新 status=published
+| 场景 | 调用 | status |
+|------|------|--------|
+| auto_publish 发布成功 | `append(...)` | published |
+| 草稿保存 | 暂不写入 | — |
+| 草稿手动发布 | `append(...)` | published |
 
 ---
 
 ## 与 ComposerState 的关系
+
+```mermaid
+graph LR
+    A[MemoryFragments] --> B["ComposerState<br/>哈希去重<br/>过滤已处理片段"]
+    B --> C[Composer 处理]
+    C --> D["OutputLog<br/>溯源记录<br/>不过滤"]
+
+    style B fill:#4CAF50,color:#fff
+    style D fill:#2196F3,color:#fff
+```
 
 | | ComposerState | OutputLog |
 |---|---|---|

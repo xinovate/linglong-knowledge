@@ -10,36 +10,52 @@
 
 ---
 
-## 流程
+## 完整流程图
 
-```
-1. 提取实体     _extract_fragments(since)
-   KnowledgeStore.search(status=AUTO_CONFIRMED, limit=100)
-   → IngestAdapter.adapt_many(entities)
-   → MemoryFragment 列表
+```mermaid
+flowchart TD
+    START([Composer.run]) --> EXTRACT
 
-2. 去重          ComposerState.filter_new()
-   MD5(source:content) 哈希对比
-   → 排除已处理的片段
+    subgraph EXTRACT["1. 提取实体"]
+        E1["KnowledgeStore.search<br/>status=AUTO_CONFIRMED<br/>limit=100"]
+        E2["IngestAdapter.adapt_many<br/>Entity → MemoryFragment"]
+        E1 --> E2
+    end
 
-3. 分组策略
-   distiller_use_llm=false → DailyAggregator.aggregate() → 按天分组
-   distiller_use_llm=true  → LLMDistiller.group_by_theme() → 按主题分组
+    EXTRACT --> DEDUP["2. ComposerState.filter_new<br/>MD5 哈希去重"]
+    DEDUP --> CHECK_EMPTY{有新片段?}
+    CHECK_EMPTY -->|否| EMPTY([返回空结果])
+    CHECK_EMPTY -->|是| GROUP
 
-4. 逐组处理      _process_day(date_key, fragments)
-   4a. 提炼素材
-       LLM 模式 → LLMDistiller.distill() → ArticleMaterial
-       规则模式 → DailyAggregator + TextAssetGenerator → ArticleMaterial
-   4b. 应用模板
-       BlogTemplate.apply(content, metadata) → formatted markdown
-   4c. 质量校验（v1.1 新增）
-       QualityLint.check(formatted, metadata) → LintResult
-   4d. 保存草稿 / 标记发布
-       draft=true → DraftManager.save_draft()
-       auto_publish → DispatchManager.publish()
+    subgraph GROUP["3. 分组策略"]
+        G1{distiller_use_llm?}
+        G1 -->|false| G2["DailyAggregator<br/>按天聚合"]
+        G1 -->|true| G3["LLMDistiller<br/>按主题分组"]
+    end
 
-5. 溯源记录（v1.1 新增）
-   OutputLog.append(article_id, entity_ids, publisher)
+    GROUP --> PROCESS
+
+    subgraph PROCESS["4. 逐组处理 _process_day()"]
+        P1["提炼素材<br/>LLM 或 规则模式"]
+        P2["BlogTemplate.apply<br/>frontmatter + 引言 + 配图"]
+        P3{"QualityLint<br/>质量校验"}
+        P3 -->|通过| P4["DraftManager.save_draft<br/>status=pending"]
+        P3 -->|未通过| P5["DraftManager.save_draft<br/>status=needs_review"]
+
+        P1 --> P2 --> P3
+    end
+
+    PROCESS --> PUBLISH{auto_publish?}
+    PUBLISH -->|是| DISPATCH["DispatchManager.publish"]
+    PUBLISH -->|否| LOG
+
+    DISPATCH --> LOG["OutputLog.append<br/>溯源记录"]
+    LOG --> RESULT([ComposerResult])
+
+    style EXTRACT fill:#4CAF50,color:#fff
+    style GROUP fill:#2196F3,color:#fff
+    style PROCESS fill:#FF9800,color:#fff
+    style DISPATCH fill:#9C27B0,color:#fff
 ```
 
 ---
@@ -53,6 +69,42 @@
 | 成本 | 零 | LLM 调用 |
 | 效果 | 每天一篇 | 跨天合并同主题 |
 | 适用 | 碎片化记录 | 有明确主题线索的内容 |
+
+---
+
+## _process_day 详细流程
+
+```mermaid
+sequenceDiagram
+    participant Composer
+    participant Distiller as Distiller (LLM/规则)
+    participant Template as BlogTemplate
+    participant Lint as QualityLint
+    participant Draft as DraftManager
+    participant Dispatch as DispatchManager
+    participant Log as OutputLog
+
+    Composer->>Distiller: distill(date, fragments)
+    Distiller-->>Composer: ArticleMaterial
+
+    Composer->>Template: apply(content, metadata)
+    Template-->>Composer: formatted markdown
+
+    Composer->>Lint: check(formatted, metadata)
+    Lint-->>Composer: LintResult
+
+    alt draft=true
+        alt lint 通过
+            Composer->>Draft: save_draft(status=pending)
+        else lint 未通过
+            Composer->>Draft: save_draft(status=needs_review)
+        end
+    else auto_publish=true
+        Composer->>Dispatch: publish(article)
+        Dispatch-->>Composer: PublishResult
+        Composer->>Log: append(entity_ids, article_id)
+    end
+```
 
 ---
 

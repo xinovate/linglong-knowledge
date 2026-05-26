@@ -1,6 +1,6 @@
 # D-02 Agent 流水线
 
-> 状态：✅ 已实现 | 最后更新：2026-05-26
+> 状态：✅ 已实现 | 最后更新：2026-05-26 | 依赖：[D-01 数据源](01-data-sources.md)
 
 ---
 
@@ -10,42 +10,106 @@
 
 ---
 
-## 流程
+## 完整流程图
 
+```mermaid
+flowchart TD
+    START([IngestAgent.run]) --> PARALLEL
+
+    subgraph PARALLEL["三路并发采集 asyncio.gather"]
+        direction TB
+        S1["SearXNG<br/>56 个关键词<br/>Semaphore(5)"]
+        S2["GitHub Trending<br/>日/周/月<br/>三级 fallback"]
+        S3["RSS 11 源<br/>Semaphore(3)"]
+    end
+
+    PARALLEL --> DEDUP
+
+    subgraph DEDUP["URL 去重"]
+        D1["SearXNG seen_urls 去重"]
+        D2["RSS seen_urls 去重"]
+        D3["RSS 排除 SearXNG 已有 URL"]
+    end
+
+    DEDUP --> BUILD
+
+    subgraph BUILD["Prompt 组装"]
+        B1["加载 morning_brief.md 模板"]
+        B2["注入 9 个占位符"]
+        B3["{search_results}<br/>{github_data}<br/>{rss_data}<br/>{company_snapshot}<br/>{history_section}<br/>..."]
+    end
+
+    BUILD --> LLM
+
+    subgraph LLM["LLM 调用"]
+        L1["_call_llm(prompt)"]
+        L2{成功?}
+        L3["重试 (最多 2 次)"]
+    end
+
+    L1 --> L2
+    L2 -->|是| SAVE
+    L2 -->|否| L3
+    L3 --> L1
+    L3 -->|仍失败| FALLBACK["BriefHistory fallback<br/>返回历史输出"]
+
+    SAVE["保存 BriefHistory"] --> OUTPUT(["返回 markdown 早报"])
+
+    style S1 fill:#4CAF50,color:#fff
+    style S2 fill:#2196F3,color:#fff
+    style S3 fill:#FF9800,color:#fff
+    style L1 fill:#9C27B0,color:#fff
+    style FALLBACK fill:#f44336,color:#fff
 ```
-1. 三路并发采集
-   asyncio.gather(
-       _search_all_keywords(package),   # SearXNG
-       _github_trending(),               # GitHub
-       _fetch_rss_feeds(),               # RSS
-   )
 
-2. URL 去重 + 交叉去重
-   SearXNG 内部 URL 去重
-   RSS 内部 URL 去重
-   RSS 排除已出现在 SearXNG 中的 URL
+---
 
-3. Prompt 组装
-   占位符替换：
-   {topic}          包主题
-   {date}           今天日期
-   {time_range}     播报时段
-   {search_results} SearXNG 搜索结果
-   {github_data}    GitHub Trending 表格
-   {rss_data}       RSS 条目
-   {company_snapshot} 公司融资快照
-   {preference_section} 用户偏好
-   {history_section}   BriefHistory 近期已播报
+## MCP 调用流程（generate_brief）
 
-4. LLM 调用
-   _call_llm(prompt)
-   - 读取 config.composer.llm_base_url + llm_model
-   - Anthropic Messages API 格式
-   - 最多 llm_retries=2 次重试
-   - 超时 llm_timeout=120s
+```mermaid
+sequenceDiagram
+    participant Agent as Claude Code / OpenClaw
+    participant MCP as MCP Server
+    participant Cache as ~/linglong/briefs/
+    participant AgentCore as IngestAgent
+    participant LLM as LLM API
 
-5. 保存 BriefHistory
-   保存当天输出，供后续跨天去重
+    Agent->>MCP: generate_brief()
+
+    MCP->>Cache: 检查 {today}.md 是否存在
+    alt 缓存命中
+        Cache-->>MCP: 返回缓存内容
+        MCP-->>Agent: {cached: true, output: "..."}
+    else 缓存未命中
+        Cache-->>MCP: 不存在
+
+        MCP->>AgentCore: _run_async(agent.run(package))
+
+        par 三路并发
+            AgentCore->>AgentCore: _search_all_keywords()
+        and
+            AgentCore->>AgentCore: _github_trending()
+        and
+            AgentCore->>AgentCore: _fetch_rss_feeds()
+        end
+
+        AgentCore->>AgentCore: URL 去重 + Prompt 组装
+        AgentCore->>LLM: _call_llm(prompt)
+
+        alt LLM 成功
+            LLM-->>AgentCore: markdown 早报
+            AgentCore->>AgentCore: 保存 BriefHistory
+        else LLM 失败
+            LLM-->>AgentCore: Error
+            AgentCore->>AgentCore: 重试 (最多 2 次)
+            AgentCore->>AgentCore: BriefHistory fallback
+        end
+
+        AgentCore-->>MCP: markdown 早报
+        MCP->>Cache: 写入 {today}.md
+        MCP->>MCP: 清理过期缓存 (>14 天)
+        MCP-->>Agent: {cached: false, output: "..."}
+    end
 ```
 
 ---
@@ -77,10 +141,12 @@ time_range = f"{(date.today() - timedelta(days=1)).isoformat()} {schedule_time} 
 
 ## 容错
 
-- 单个 SearXNG 查询失败：log warning，返回空列表，不阻断
-- 单个 RSS 源失败：log warning，跳过该源
-- GitHub Trending：三级 fallback
-- LLM 调用失败：重试 llm_retries 次，仍失败则 BriefHistory fallback（返回历史输出）
+| 失败点 | 处理方式 |
+|--------|---------|
+| 单个 SearXNG 查询 | log warning，返回空列表，不阻断整批 |
+| 单个 RSS 源 | log warning，跳过该源 |
+| GitHub Trending | 三级 fallback（OpenGithubs → HTML → Search API） |
+| LLM 调用 | 重试 2 次，仍失败则 BriefHistory fallback |
 
 ---
 
@@ -91,3 +157,4 @@ time_range = f"{(date.today() - timedelta(days=1)).isoformat()} {schedule_time} 
 | `src/linglong/ingest/agent.py` | `IngestAgent.run()` + 所有采集方法 |
 | `src/linglong/ingest/prompts/morning_brief.md` | 早报 prompt 模板 |
 | `src/linglong/core/config.py` | `IngestConfig` 配置模型 |
+| `src/linglong/mcp/tools.py` | `generate_brief()` 缓存 + 调用逻辑 |
