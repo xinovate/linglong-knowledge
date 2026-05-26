@@ -26,6 +26,7 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | **v2.3** | **安全加固 + MCP 增强（3 服务 API Key + generate_brief/search_web MCP）** | **✅** |
 | **v2.4** | **Agent 接入（Claude Code MCP 连通 + RSSHub/asyncio/GitHub 修复 + 10 RSS + 331 测试）** | **✅** |
 | **v2.5** | **ingest 质量优化（信息源精度 + 政策覆盖 + LLM 可信度 + 分析去模板化）** | 🔵 |
+| **v2.6** | **MCP 远程部署（HTTP 传输 + Token 认证 + 模块工具控制）** | ✅ |
 
 ## v1.0 已完成
 

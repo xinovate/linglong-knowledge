@@ -77,6 +77,13 @@ graph TD
 - **时段标记**：`> 播报时段：2026-05-25 07:30 → 2026-05-26 07:30`
 - **Prompt 强化**：每个分类强制去重注释；开源趋势六列格式（类型/分类/链接）
 
+### v2.5：MCP 远程部署
+
+- **双传输模式**：stdio（本地子进程）+ streamable-http（远程服务）
+- **Token 认证**：HTTP 模式 Bearer Token 中间件认证
+- **模块工具控制**：`enabled_modules` 按需暴露 ingest / knowledge 工具组
+- **进程管理**：systemd 守护配置（`deploy/linglong-mcp.service`）
+
 ---
 
 ## 信息维度（5 维度）

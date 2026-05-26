@@ -114,7 +114,11 @@ graph TD
 
 ## MCP 接入
 
-### Claude Code
+支持两种部署模式：本地子进程（stdio）和远程服务（HTTP + Token 认证）。
+
+### 本地部署（stdio）
+
+#### Claude Code
 
 在 `~/.claude/settings.json` 的对应项目下添加：
 
@@ -136,7 +140,7 @@ graph TD
 
 > MCP 子进程不继承 shell 环境变量，必须通过 `env` 字段注入。config.py 通过 `_PROJECT_ROOT` fallback 自动定位 `.linglong.yaml`。
 
-### OpenClaw
+#### OpenClaw（本地）
 
 在 `~/.openclaw/openclaw.json` 的 `mcp.servers` 中添加：
 
@@ -154,6 +158,54 @@ graph TD
 ```
 
 > OpenClaw 继承 shell 环境变量，不需要额外 `env` 字段。
+
+### 远程部署（HTTP + Token）
+
+将 MCP server 部署为长期运行的 HTTP 服务，Agent 远程调用。
+
+#### 1. 服务端配置
+
+`.linglong.yaml` 切换为 HTTP 模式：
+
+```yaml
+mcp:
+  transport: streamable-http
+  host: "0.0.0.0"
+  port: 9900
+  auth_token: ${LL_MCP_AUTH_TOKEN}    # Bearer token（必须设置）
+  enabled_modules:
+    - ingest
+    # - knowledge
+```
+
+启动：`python -m linglong.mcp`（或用 systemd 守护，参考 `deploy/linglong-mcp.service`）
+
+#### 2. OpenClaw 远程接入
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "linglong": {
+        "url": "http://your-server:9900/mcp",
+        "transport": "streamable-http",
+        "headers": {
+          "Authorization": "Bearer your-secret-token"
+        }
+      }
+    }
+  }
+}
+```
+
+### 模块工具控制
+
+`enabled_modules` 控制暴露哪些工具组：
+
+| 模块 | 工具 |
+|------|------|
+| `ingest` | `fetch_rss`, `generate_brief`, `execute_package`, `search_web`, `record_feedback` |
+| `knowledge` | `search_wiki`, `search_similar`, `search_and_read`, `read_entity`, `write_entity`, `update_entity`, `list_entities`, `get_template`, `list_templates` |
 
 ### 已知注意事项
 

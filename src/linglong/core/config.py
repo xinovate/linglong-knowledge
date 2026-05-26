@@ -307,6 +307,31 @@ class IngestConfig(BaseSettings):
     )
 
 
+class MCPConfig(BaseModel):
+    """MCP server configuration."""
+
+    transport: str = Field(
+        default="stdio",
+        description="Transport protocol: stdio | sse | streamable-http",
+    )
+    host: str = Field(
+        default="127.0.0.1",
+        description="HTTP listen host (streamable-http / sse mode)",
+    )
+    port: int = Field(
+        default=9900,
+        description="HTTP listen port (streamable-http / sse mode)",
+    )
+    auth_token: str | None = Field(
+        default=None,
+        description="Bearer token for authentication (None = no auth)",
+    )
+    enabled_modules: list[str] = Field(
+        default_factory=lambda: ["ingest", "knowledge"],
+        description="Which module tool groups to expose: ingest, knowledge",
+    )
+
+
 class OSSConfig(BaseModel):
     """Alibaba Cloud OSS configuration for image CDN."""
 
@@ -390,6 +415,7 @@ class LinglongConfig(BaseSettings):
     ingest: IngestConfig = Field(default_factory=IngestConfig)
     composer: ComposerConfig = Field(default_factory=ComposerConfig)
     dispatch: DispatchConfig = Field(default_factory=DispatchConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
 
     # 路径
     data_dir: Path = Field(
