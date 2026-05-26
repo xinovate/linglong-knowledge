@@ -69,11 +69,14 @@ flowchart TD
 ```
 ~/linglong/data/drafts/
 ├── state.json              # 草稿元数据索引
-├── abc123/                 # 草稿 ID
-│   ├── article.md          # 文章正文
-│   ├── metadata.json       # 元数据（标题、标签、封面等）
-│   └── review.md           # 审核摘要（检查项清单）
-├── def456/
+├── 2026-05-26/             # 按日期分组
+│   ├── abc123/             # 草稿 ID
+│   │   ├── article.md      # 文章正文
+│   │   ├── metadata.json   # 元数据（标题、标签、封面等）
+│   │   └── review.md       # 审核摘要（检查项清单）
+│   └── def456/
+├── 2026-05-25/
+│   └── ...
 └── discard/                # 废弃草稿（可选保留）
     └── xyz789/
 ```

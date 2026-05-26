@@ -3,6 +3,7 @@
 import json
 import shutil
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -49,7 +50,8 @@ class TestDraftManager:
         assert entry.status == "pending"
         assert entry.title == "测试标题"
 
-        draft_dir = self.tmpdir / "drafts" / entry.id
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        draft_dir = self.tmpdir / "drafts" / today / entry.id
         assert (draft_dir / "article.md").exists()
         assert (draft_dir / "review.md").exists()
         assert (draft_dir / "metadata.json").exists()
@@ -116,7 +118,8 @@ class TestDraftManager:
     def test_discard_draft_deletes_files(self):
         """废弃草稿应删除文件"""
         entry = self.dm.save_draft("废弃测试", "2026-05-11", "正文", {"title": "废弃测试"}, ["h1"])
-        draft_dir = self.tmpdir / "drafts" / entry.id
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        draft_dir = self.tmpdir / "drafts" / today / entry.id
 
         assert draft_dir.exists()
         self.dm.discard_draft(entry.id, keep=False)
@@ -128,7 +131,8 @@ class TestDraftManager:
     def test_discard_draft_keep_moves_to_discard_dir(self):
         """废弃草稿带 keep 应移动到 discard 目录"""
         entry = self.dm.save_draft("保留测试", "2026-05-11", "正文", {"title": "保留测试"}, ["h1"])
-        draft_dir = self.tmpdir / "drafts" / entry.id
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        draft_dir = self.tmpdir / "drafts" / today / entry.id
 
         self.dm.discard_draft(entry.id, keep=True)
         assert not draft_dir.exists()

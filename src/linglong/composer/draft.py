@@ -87,7 +87,10 @@ class DraftManager:
             DraftEntry: Draft entry
         """
         draft_id = self._generate_id()
-        draft_dir = self.drafts_dir / draft_id
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        day_dir = self.drafts_dir / today
+        day_dir.mkdir(parents=True, exist_ok=True)
+        draft_dir = day_dir / draft_id
         draft_dir.mkdir(exist_ok=True)
 
         # 写入 Markdown
@@ -276,7 +279,7 @@ class DraftManager:
             logger.warning(f"草稿 {draft_id} 不存在")
             return False
 
-        draft_dir = self.drafts_dir / draft_id
+        draft_dir = Path(entry.markdown_path).parent
 
         if keep:
             discard_dir = self.drafts_dir / "discard" / draft_id
