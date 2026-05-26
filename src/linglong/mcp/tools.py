@@ -1,5 +1,6 @@
 """MCP tool implementations for Linglong knowledge base."""
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -9,6 +10,19 @@ from linglong.core.models import Entity, EntityFacet, EntityStatus
 from linglong.knowledge.store import KnowledgeStore
 
 logger = logging.getLogger(__name__)
+
+
+def _run_async(coro: Any) -> Any:
+    """Run an async coroutine, handling both fresh and existing event loops."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    return asyncio.run(coro)
 
 # Lazy-initialized store instance
 _store: KnowledgeStore | None = None
@@ -340,7 +354,7 @@ def fetch_rss(url: str, name: str | None = None, max_items: int = 20) -> str:
                 resp.raise_for_status()
             return resp.text
 
-        xml_text = asyncio.run(_fetch())
+        xml_text = _run_async(_fetch())
         feed = feedparser.parse(xml_text)
         items = []
         for entry in feed.entries[:max_items]:
@@ -413,7 +427,7 @@ def execute_package(package_path: str) -> str:
         history_dir = Path.home() / "linglong" / "brief_history"
         brief_history = BriefHistory(history_dir)
         agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
-        output = asyncio.run(agent.run(package))
+        output = _run_async(agent.run(package))
 
         response: dict[str, Any] = {
             "package": package.name,
@@ -454,7 +468,7 @@ def generate_brief() -> str:
         history_dir = Path.home() / "linglong" / "brief_history"
         brief_history = BriefHistory(history_dir)
         agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
-        output = asyncio.run(agent.run(package))
+        output = _run_async(agent.run(package))
 
         response: dict[str, Any] = {
             "package": package.name,
@@ -494,7 +508,7 @@ def search_web(query: str, max_results: int = 10) -> str:
                 resp.raise_for_status()
                 return resp.json()
 
-        data = asyncio.run(_search())
+        data = _run_async(_search())
         results = []
         for r in data.get("results", [])[:max_results]:
             results.append({
