@@ -86,6 +86,22 @@ def _is_rsshub_url(url: str) -> bool:
     return ":1200/" in url or url.rstrip("/").endswith(":1200")
 
 
+def _github_headers() -> dict[str, str]:
+    """Return GitHub API headers with token from gh CLI if available."""
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    try:
+        import subprocess
+        token = subprocess.run(
+            ["gh", "auth", "token"],
+            capture_output=True, text=True, timeout=5,
+        ).stdout.strip()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+    except Exception:
+        pass
+    return headers
+
+
 async def _searxng_search(query: str, max_results: int = 15) -> list[dict[str, str]]:
     """Search via SearXNG, return [{title, url, snippet}]."""
     config = get_config()
@@ -203,7 +219,7 @@ async def _fetch_opengithubs(
     today = date.today()
     all_repos: list[dict[str, str]] = []
     seen: set[str] = set()
-    headers = {"Accept": "application/vnd.github.v3+json"}
+    headers = _github_headers()
 
     for period, (repo, path_fn, growth_label) in _TREND_PERIODS.items():
         limit = limits.get(period, 0)
@@ -346,7 +362,7 @@ async def _github_search_fallback(since_days: int, min_stars: int, limit: int) -
             "order": "desc",
             "per_page": "10",
         }
-        headers = {"Accept": "application/vnd.github.v3+json"}
+        headers = _github_headers()
 
         try:
             async with httpx.AsyncClient(timeout=30) as client:
