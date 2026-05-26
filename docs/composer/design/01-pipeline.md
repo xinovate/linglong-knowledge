@@ -6,7 +6,7 @@
 
 ## 概述
 
-`Composer.run()` 是一条完整的内容生产流水线，从知识库提取实体到输出可发布文章。
+`Composer.run()` 是一条完整的内容生产流水线，从知识库提取实体到输出可发布文章。支持无差别拉取和语义查询两种模式。
 
 ---
 
@@ -14,12 +14,19 @@
 
 ```mermaid
 flowchart TD
-    START([Composer.run]) --> EXTRACT
+    START([Composer.run]) --> TOPIC{topic?}
+
+    TOPIC -->|有| SEMANTIC["KnowledgeStore.search_similar<br/>query=topic<br/>向量语义搜索"]
+    TOPIC -->|无| FULL["KnowledgeStore.search<br/>status=AUTO_CONFIRMED<br/>全量拉取 limit=100"]
+
+    SEMANTIC --> ADAPT["IngestAdapter.adapt_many<br/>Entity → MemoryFragment"]
+    FULL --> ADAPT
+
+    ADAPT --> EXTRACT
 
     subgraph EXTRACT["1. 提取实体"]
-        E1["KnowledgeStore.search<br/>status=AUTO_CONFIRMED<br/>limit=100"]
+        E1["KnowledgeStore"]
         E2["IngestAdapter.adapt_many<br/>Entity → MemoryFragment"]
-        E1 --> E2
     end
 
     EXTRACT --> DEDUP["2. ComposerState.filter_new<br/>MD5 哈希去重"]
@@ -69,6 +76,39 @@ flowchart TD
 | 成本 | 零 | LLM 调用 |
 | 效果 | 每天一篇 | 跨天合并同主题 |
 | 适用 | 碎片化记录 | 有明确主题线索的内容 |
+
+---
+
+## 语义查询模式
+
+`Composer.run(topic="agent-mastery 项目实战")` 触发语义查询模式：
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Composer
+    participant Store as KnowledgeStore
+    participant Adapter as IngestAdapter
+
+    User->>Composer: run(topic="agent-mastery 项目实战")
+    Composer->>Store: search_similar(query=topic)<br/>status=AUTO_CONFIRMED, limit=50
+    Store->>Store: 向量相似度匹配<br/>vec_distance_cosine 排序
+    Store-->>Composer: 相关 Entity 列表
+    Composer->>Adapter: adapt_many(entities)
+    Adapter-->>Composer: MemoryFragment 列表
+
+    Note over Composer: 后续流程同标准模式
+```
+
+与标准模式的区别：
+
+| | 标准模式 | 语义查询模式 |
+|---|---|---|
+| 触发 | `run()` / `run(since=...)` | `run(topic="...")` |
+| 知识库查询 | `search(status=..., limit=100)` | `search_similar(query=topic, limit=50)` |
+| 匹配方式 | 全量拉取 | 向量余弦相似度 |
+| LLM 分组 | 自动发现主题 | 围绕指定主题分组 |
+| 适用场景 | 定期全量编排 | 按需生成专题文章 |
 
 ---
 

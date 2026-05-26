@@ -118,11 +118,14 @@ class LLMDistiller:
 
         return json.loads(text)
 
-    def group_by_theme(self, fragments: list[MemoryFragment]) -> dict[str, list[MemoryFragment]]:
+    def group_by_theme(
+        self, fragments: list[MemoryFragment], topic: str | None = None
+    ) -> dict[str, list[MemoryFragment]]:
         """跨天主题合并：让所有片段过 LLM，按主题分组
 
         Args:
             fragments: 所有记忆片段（可跨多天）
+            topic: 可选语义主题，设置后引导 LLM 围绕该主题分组
 
         Returns:
             {theme_key: [frag1, frag2, ...], ...}
@@ -135,7 +138,7 @@ class LLMDistiller:
 
         # 1. 构建 prompt
         fragments_text = self._format_fragments_for_grouping(fragments)
-        prompt = self._build_grouping_prompt(fragments_text)
+        prompt = self._build_grouping_prompt(fragments_text, topic=topic)
 
         # 2. 调用 LLM
         try:
@@ -197,11 +200,18 @@ class LLMDistiller:
             )
         return "\n\n---\n\n".join(sections)
 
-    def _build_grouping_prompt(self, fragments_text: str) -> str:
+    def _build_grouping_prompt(self, fragments_text: str, topic: str | None = None) -> str:
         """构建主题分析 prompt"""
+        topic_instruction = ""
+        if topic:
+            topic_instruction = f"""
+特别要求：用户指定了主题「{topic}」，请围绕此主题进行分组。
+优先提取与该主题相关的片段，无关片段归入"其他杂项"。
+组名应体现「{topic}」的技术焦点。
+"""
         return f"""请分析以下记忆片段，将它们按**技术主题**分组。
 同一技术主题可能分散在多天，请识别出来并合并。
-
+{topic_instruction}
 记忆片段：
 ---
 {fragments_text}

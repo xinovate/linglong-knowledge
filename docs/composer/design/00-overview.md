@@ -24,7 +24,8 @@ graph TD
         A[KnowledgeStore<br/>AUTO_CONFIRMED 实体]
     end
 
-    A -->|search| B[IngestAdapter<br/>Entity → MemoryFragment]
+    A -->|"search(全量)"| B[IngestAdapter<br/>Entity → MemoryFragment]
+    A -->|"search_similar(topic)"| B
     B --> C[ComposerState<br/>哈希去重]
 
     C --> D{分组策略}

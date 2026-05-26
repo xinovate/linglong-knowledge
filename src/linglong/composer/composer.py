@@ -88,6 +88,7 @@ class Composer:
         since: datetime | None = None,
         dry_run: bool = False,
         draft: bool = False,
+        topic: str | None = None,
     ) -> ComposerResult:
         """执行完整流水线
 
@@ -95,14 +96,19 @@ class Composer:
             since: 只处理该时间之后的记忆，None 表示全部
             dry_run: 试运行模式，不实际保存
             draft: 草稿模式，生成文章到草稿目录等待审核
+            topic: 语义查询主题，如 "agent-mastery 项目实战"
+                   设置后用向量搜索从知识库检索相关实体
 
         Returns:
             ComposerResult: 执行结果
         """
         result = ComposerResult()
 
+        if topic:
+            logger.info("语义查询模式: %s", topic)
+
         # 1. 从 KnowledgeStore 提取记忆
-        fragments = self._extract_fragments(since)
+        fragments = self._extract_fragments(since, topic=topic)
         if not fragments:
             logger.warning("没有提取到任何记忆片段")
             return result
@@ -124,7 +130,7 @@ class Composer:
                 result.add_error("theme 策略需要 distiller_use_llm=true")
                 return result
 
-            groups = self.distiller.group_by_theme(fragments)
+            groups = self.distiller.group_by_theme(fragments, topic=topic)
             logger.info(f"主题分析完成，共 {len(groups)} 个主题")
         else:
             # 默认按天聚合
@@ -145,10 +151,22 @@ class Composer:
 
         return result
 
-    def _extract_fragments(self, since: datetime | None = None) -> list[MemoryFragment]:
-        """从 KnowledgeStore 提取片段"""
+    def _extract_fragments(
+        self, since: datetime | None = None, topic: str | None = None
+    ) -> list[MemoryFragment]:
+        """从 KnowledgeStore 提取片段
+
+        Args:
+            since: 只提取该时间之后的实体
+            topic: 语义查询主题，设置后用向量搜索匹配相关实体
+        """
         store = KnowledgeStore()
-        entities = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
+        if topic:
+            entities = store.search_similar(
+                query=topic, status=EntityStatus.AUTO_CONFIRMED, limit=50
+            )
+        else:
+            entities = store.search(status=EntityStatus.AUTO_CONFIRMED, limit=100)
         fragments = IngestAdapter.adapt_many(entities)
 
         if since:
