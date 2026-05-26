@@ -11,9 +11,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
-# YAML 配置文件搜索路径（CWD 优先，home 目录兜底）
+# YAML 配置文件搜索路径（CWD 优先，项目根目录兜底，home 目录兜底）
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _YAML_SEARCH_PATHS = [
     Path(".linglong.yaml"),
+    _PROJECT_ROOT / ".linglong.yaml",
     Path.home() / ".linglong" / "config.yaml",
 ]
 

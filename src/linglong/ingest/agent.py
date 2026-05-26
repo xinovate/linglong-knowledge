@@ -528,9 +528,9 @@ def _load_prompt() -> str:
 
 
 def _call_llm(system: str, user: str, max_tokens: int | None = None, retries: int | None = None) -> str:
-    """Call LLM via Anthropic Messages API on ZhiPu, with retry."""
+    """Call LLM via Anthropic Messages API, with retry."""
     config = get_config()
-    base_url = "https://open.bigmodel.cn/api/anthropic"
+    base_url = (config.composer.llm_base_url or "https://open.bigmodel.cn/api/anthropic").rstrip("/")
     api_key = config.composer.llm_api_key
     if max_tokens is None:
         max_tokens = config.ingest.llm_max_tokens

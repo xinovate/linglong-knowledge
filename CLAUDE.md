@@ -131,6 +131,7 @@ pytest tests/composer/ -v # 指定模块
 2. 优先处理 `PROJECT_OVERVIEW.md` Next Actions 列表
 3. 确保测试通过
 4. **代码改动必须同步更新文档**（见上方文档同步规则）
+5. **每日工作日志在 `journal/YYYY-MM-DD.md`**：开始工作前读当天日志了解上下文，工作完成后更新完成记录、发现与决策
 
 ---
 
