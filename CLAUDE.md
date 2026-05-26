@@ -114,7 +114,7 @@ KnowledgeStore 统一接口：`create` / `get` / `search` / `search_similar` / `
 ## 测试要求
 
 ```bash
-source venv/bin/activate
+source .venv/bin/activate  # 或直接用 .venv/bin/pytest
 pytest                    # 全部
 pytest tests/composer/ -v # 指定模块
 ```
