@@ -122,15 +122,18 @@ class Composer:
         logger.info(f"共提取 {len(fragments)} 条新记忆片段")
 
         # 2. 分组策略
-        strategy = "theme" if self.config.distiller_use_llm else "daily"
-
-        if strategy == "theme":
+        if topic:
+            # topic 模式：所有片段归为 1 组，强制 LLM 提炼
+            distiller = self._get_topic_distiller()
+            groups = {topic: fragments}
+            logger.info("topic 模式: %d 条片段归为 1 组，交给 LLM 提炼", len(fragments))
+        elif self.config.distiller_use_llm:
             if not isinstance(self.distiller, LLMDistiller):
                 logger.error("theme 策略需要 distiller_use_llm=true")
                 result.add_error("theme 策略需要 distiller_use_llm=true")
                 return result
 
-            groups = self.distiller.group_by_theme(fragments, topic=topic)
+            groups = self.distiller.group_by_theme(fragments)
             logger.info(f"主题分析完成，共 {len(groups)} 个主题")
         else:
             # 默认按天聚合
@@ -150,6 +153,20 @@ class Composer:
                 result.add_error(error_msg)
 
         return result
+
+    def _get_topic_distiller(self) -> LLMDistiller:
+        """获取 topic 模式专用的 LLM distiller"""
+        if isinstance(self.distiller, LLMDistiller):
+            return self.distiller
+        llm_config = {
+            "provider": self.config.llm_provider,
+            "model": self.config.llm_model,
+            "api_key": self.config.llm_api_key,
+            "base_url": self.config.llm_base_url,
+            "temperature": self.config.llm_temperature,
+            "max_tokens": self.config.llm_max_tokens,
+        }
+        return LLMDistiller(llm_config)
 
     def _extract_fragments(
         self, since: datetime | None = None, topic: str | None = None
@@ -199,8 +216,17 @@ class Composer:
         """
         logger.info(f"处理 {date_key} 的内容，共 {len(fragments)} 条片段")
 
-        # 3.1 提炼素材（LLM 模式 或 规则模式）
-        if isinstance(self.distiller, LLMDistiller):
+        # 判断是否为 topic 模式（key 不是日期格式）
+        is_topic = not date_key[0].isdigit()
+
+        # 3.1 提炼素材
+        if is_topic:
+            distiller = self._get_topic_distiller()
+            material = distiller.distill(date_key, fragments, topic=date_key)
+            content_with_intro = material.raw_content
+            excerpt = material.excerpt
+            tags = material.tags
+        elif isinstance(self.distiller, LLMDistiller):
             material = self.distiller.distill(date_key, fragments)
             content_with_intro = material.raw_content
             excerpt = material.excerpt

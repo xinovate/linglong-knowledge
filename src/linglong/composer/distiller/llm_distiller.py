@@ -34,12 +34,15 @@ class LLMDistiller:
         self.system_prompt = _load_prompt("system")
         self.user_prompt_template = _load_prompt("user_template")
 
-    def distill(self, date: str, fragments: list[MemoryFragment]) -> ArticleMaterial:
-        """提炼一天的记忆片段为文章素材
+    def distill(
+        self, date: str, fragments: list[MemoryFragment], topic: str | None = None
+    ) -> ArticleMaterial:
+        """提炼记忆片段为文章素材
 
         Args:
-            date: 日期字符串 YYYY-MM-DD
-            fragments: 当天的记忆片段列表
+            date: 日期字符串或主题名
+            fragments: 记忆片段列表
+            topic: 可选主题，设置后 LLM 围绕主题提炼并过滤弱相关片段
 
         Returns:
             ArticleMaterial: 包含 LLM 生成的标题、摘要、正文等
@@ -50,10 +53,13 @@ class LLMDistiller:
 
         # 1. 构建 prompt
         fragments_text = self._format_fragments(fragments)
-        user_prompt = self.user_prompt_template.format(
-            date=date,
-            fragments_text=fragments_text,
-        )
+        if topic:
+            user_prompt = self._build_topic_prompt(topic, fragments_text)
+        else:
+            user_prompt = self.user_prompt_template.format(
+                date=date,
+                fragments_text=fragments_text,
+            )
 
         logger.info(f"调用 LLM 提炼 {date} 的内容，共 {len(fragments)} 条片段")
 
@@ -297,3 +303,41 @@ class LLMDistiller:
         material = ArticleMaterial(date=date, fragments=fragments)
         material.compile_content()
         return material
+
+    def _build_topic_prompt(self, topic: str, fragments_text: str) -> str:
+        """构建主题提炼 prompt"""
+        return f"""请围绕主题「{topic}」，从以下知识片段中提炼一篇博客文章。
+
+**重要**：
+1. 只使用与「{topic}」高度相关的片段，丢弃弱相关或无关的内容
+2. 不是转述片段，而是提炼出围绕该主题的核心洞察
+3. 如果片段不足以支撑一篇完整文章，聚焦最有价值的部分
+
+知识片段：
+---
+{fragments_text}
+---
+
+## 写作要求
+
+### 1. 标题：10-18 个汉字，体现技术判断
+### 2. 摘要：30-40 个汉字，包含问题 + 核心结论
+### 3. 正文三段式：背景 → 实践/探索 → 结论/洞察
+### 4. 标签 3-5 个技术关键词
+### 5. 分类 1-2 个
+
+## 输出格式
+
+严格 JSON，不要 markdown 代码块：
+
+{{
+  "title": "...",
+  "excerpt": "...",
+  "tags": ["tag1", "tag2"],
+  "categories": ["cat1"],
+  "outline": [
+    {{"heading": "## 背景", "content": "具体场景引入..."}},
+    {{"heading": "## 实践", "content": "过程与关键细节..."}},
+    {{"heading": "## 洞察", "content": "可复用的经验提炼..."}}
+  ]
+}}"""
