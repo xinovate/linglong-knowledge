@@ -21,6 +21,8 @@ mappings:
   - code: src/linglong/ingest/
     docs:
       - docs/ingest/README.md
+      - docs/roadmap.md
+      - docs/PROJECT_OVERVIEW.md
 
   - code: src/linglong/dispatch/
     docs:
@@ -30,6 +32,7 @@ mappings:
     docs:
       - docs/api.md
       - docs/architecture.md
+      - docs/PROJECT_OVERVIEW.md
 
   - code: src/linglong/cli.py
     docs:
