@@ -2,6 +2,9 @@
 
 import logging
 
+from starlette.applications import Starlette
+from starlette.routing import Route
+
 from mcp.server.fastmcp import FastMCP
 
 from linglong.core.config import get_config
@@ -54,7 +57,7 @@ def _register_tools(server: FastMCP, modules: list[str]) -> None:
 
 
 def create_server() -> FastMCP:
-    """Create a FastMCP server with tools registered based on config."""
+    """Create a single FastMCP server (stdio mode)."""
     config = get_config()
     server = FastMCP(
         "linglong",
@@ -63,3 +66,36 @@ def create_server() -> FastMCP:
     )
     _register_tools(server, config.mcp.enabled_modules)
     return server
+
+
+def create_http_app() -> Starlette:
+    """Create a Starlette app with per-module MCP routes.
+
+    Each enabled module gets its own FastMCP instance mounted at /mcp/{module}.
+    E.g. enabled_modules=[ingest, knowledge] creates:
+      /mcp/ingest    → ingest tools
+      /mcp/knowledge → knowledge tools
+    """
+    config = get_config()
+    routes: list[Route] = []
+
+    for module in config.mcp.enabled_modules:
+        tools = _TOOL_GROUPS.get(module, [])
+        if not tools:
+            continue
+        server = FastMCP(
+            f"linglong-{module}",
+            streamable_http_path=f"/mcp/{module}",
+        )
+        for tool in tools:
+            server.tool()(tool)
+        app = server.streamable_http_app()
+        routes.extend(app.routes)
+        logger.info(
+            "Module '%s': %d tools at /mcp/%s",
+            module,
+            len(tools),
+            module,
+        )
+
+    return Starlette(routes=routes)

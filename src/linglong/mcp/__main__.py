@@ -3,7 +3,7 @@
 import logging
 
 from linglong.core.config import get_config
-from linglong.mcp.server import create_server
+from linglong.mcp.server import create_http_app, create_server
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Run the MCP server."""
     config = get_config()
-    server = create_server()
     transport = config.mcp.transport
 
     if transport == "stdio":
+        server = create_server()
         logger.info("Starting MCP server (stdio)")
         server.run(transport="stdio")
     else:
@@ -25,23 +25,24 @@ def main() -> None:
             config.mcp.host,
             config.mcp.port,
         )
-        if config.mcp.auth_token:
-            _run_with_auth(server, config)
-        else:
-            server.run(transport=transport)
+        _run_http(config)
 
 
-def _run_with_auth(server, config) -> None:
-    """Run HTTP server with Bearer token authentication."""
+def _run_http(config) -> None:
+    """Run HTTP server with per-module routing and optional auth."""
     import anyio
 
     async def _serve():
         import uvicorn
 
-        from linglong.mcp._auth import TokenAuthMiddleware
+        app = create_http_app()
 
-        app = server.streamable_http_app()
-        app.add_middleware(TokenAuthMiddleware, expected_token=config.mcp.auth_token)
+        if config.mcp.auth_token:
+            from linglong.mcp._auth import TokenAuthMiddleware
+
+            app.add_middleware(TokenAuthMiddleware, expected_token=config.mcp.auth_token)
+            logger.info("Token auth enabled")
+
         uv_config = uvicorn.Config(
             app,
             host=config.mcp.host,

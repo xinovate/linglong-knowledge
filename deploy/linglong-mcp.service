@@ -10,8 +10,14 @@ ExecStart=/opt/linglong/.venv/bin/python -m linglong.mcp
 Restart=always
 RestartSec=5
 
-# 环境变量
+# MCP 配置
+Environment=LL_MCP_TRANSPORT=streamable-http
+Environment=LL_MCP_HOST=127.0.0.1
+Environment=LL_MCP_PORT=9900
+Environment=LL_MCP_ENABLED_MODULES=ingest
 Environment=LL_MCP_AUTH_TOKEN=your-secret-token
+
+# API Keys
 Environment=ZHIPU_API_KEY=your-zhipu-key
 Environment=SEARXNG_API_KEY=your-searxng-key
 Environment=RSSHUB_ACCESS_KEY=your-rsshub-key
