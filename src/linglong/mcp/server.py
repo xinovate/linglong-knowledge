@@ -7,6 +7,7 @@ from starlette.applications import Starlette
 from starlette.routing import Mount
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.server import TransportSecuritySettings
 
 from linglong.core.config import get_config
 from linglong.mcp.tools import (
@@ -84,9 +85,16 @@ def create_http_app() -> Starlette:
         tools = _TOOL_GROUPS.get(module, [])
         if not tools:
             continue
+        allowed_hosts = []
+        if config.mcp.allowed_hosts:
+            allowed_hosts = config.mcp.allowed_hosts
+
         server = FastMCP(
             f"linglong-{module}",
             streamable_http_path=f"/mcp/{module}",
+            transport_security=TransportSecuritySettings(
+                allowed_hosts=allowed_hosts,
+            ),
         )
         for tool in tools:
             server.tool()(tool)

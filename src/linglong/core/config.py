@@ -202,6 +202,10 @@ class MCPConfig(BaseModel):
         default_factory=lambda: ["ingest", "knowledge"],
         description="Which module tool groups to expose: ingest, knowledge, reviewer",
     )
+    allowed_hosts: list[str] = Field(
+        default_factory=list,
+        description="Allowed Host header values for DNS rebinding protection (HTTP mode)",
+    )
 
 
 class OSSConfig(BaseModel):
