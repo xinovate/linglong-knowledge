@@ -1,9 +1,10 @@
 """MCP Server for Linglong knowledge base."""
 
 import logging
+from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
-from starlette.routing import Route
+from starlette.routing import Mount
 
 from mcp.server.fastmcp import FastMCP
 
@@ -71,13 +72,13 @@ def create_server() -> FastMCP:
 def create_http_app() -> Starlette:
     """Create a Starlette app with per-module MCP routes.
 
-    Each enabled module gets its own FastMCP instance mounted at /mcp/{module}.
-    E.g. enabled_modules=[ingest, knowledge] creates:
-      /mcp/ingest    → ingest tools
-      /mcp/knowledge → knowledge tools
+    Each enabled module gets its own FastMCP instance. We extract each
+    app's route (bound to /mcp/{module}) and lifespan, then compose
+    them into a single Starlette app that runs all lifespans.
     """
     config = get_config()
-    routes: list[Route] = []
+    routes = []
+    lifespans = []
 
     for module in config.mcp.enabled_modules:
         tools = _TOOL_GROUPS.get(module, [])
@@ -91,6 +92,8 @@ def create_http_app() -> Starlette:
             server.tool()(tool)
         app = server.streamable_http_app()
         routes.extend(app.routes)
+        if app.router.lifespan_context:
+            lifespans.append(app.router.lifespan_context)
         logger.info(
             "Module '%s': %d tools at /mcp/%s",
             module,
@@ -98,4 +101,13 @@ def create_http_app() -> Starlette:
             module,
         )
 
-    return Starlette(routes=routes)
+    @asynccontextmanager
+    async def _combined_lifespan(app):
+        import contextlib
+
+        async with contextlib.AsyncExitStack() as stack:
+            for ls in lifespans:
+                await stack.enter_async_context(ls(app))
+            yield
+
+    return Starlette(routes=routes, lifespan=_combined_lifespan)
