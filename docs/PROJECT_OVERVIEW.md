@@ -46,7 +46,7 @@ Codex ──────┘         ↓
 | **v2.3** | **安全加固 + MCP 增强** | 3 服务 API Key 认证 + nginx 反代 SearXNG + generate_brief/search_web MCP 工具 + 329 测试 | ✅ | 2026-05-25 |
 | **v2.4** | **Agent 接入** | Claude Code MCP 连通 + RSSHub key 修复 + asyncio 修复 + GitHub auth + 10 RSS 源（含 2 gov 路由）+ 331 测试 | ✅ | 2026-05-26 |
 | **v2.5** | **并发 + 缓存 + MCP 远程部署** | 三路并发拉取 7.5x + 日内缓存 + streamable-http + Token 认证 + 模块工具控制 + systemd + 331 测试 | ✅ | 2026-05-26 |
-| **v2.6** | **composer→reviewer + MCP 远程上线** | 删除 composer 模块 + 新建 reviewer 七维度评审 + MCP 双路径路由 + Redis 动态 Token + HTTPS 部署 + acme.sh SSL + 276 测试 | ✅ | 2026-05-27 |
+| **v2.6** | **composer→reviewer + MCP 远程上线** | 删除 composer 模块 + 新建 reviewer 七维度评审 + MCP 双路径路由 + Redis 动态 Token + Cloudflare Tunnel + 276 测试 | ✅ | 2026-05-27 |
 
 ---
 

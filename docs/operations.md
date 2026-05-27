@@ -32,7 +32,8 @@ git push origin vx.y.z
 - [ ] 全部测试通过
 - [ ] MCP 远程端点 `https://your-domain.com/mcp/ingest` 可达
 - [ ] Redis `linglong-redis` 容器运行正常
-- [ ] SSL 证书未过期（acme.sh 自动续期）
+- [ ] Cloudflare Tunnel `cloudflared-mcp` 服务运行正常
+- [ ] Cloudflare SSL 证书未过期
 
 ### 紧急修复
 
@@ -200,3 +201,67 @@ MCP Server 以子进程方式启动，API Key 需通过 `env` 字段注入（不
 ```
 
 **注意**：MCP 子进程不会读取 `~/.bashrc`，必须通过 `env` 显式传入。
+
+---
+
+## Cloudflare Tunnel 部署
+
+`your-domain.com` 通过 Cloudflare Tunnel 暴露 MCP 服务，绕过阿里云 ICP 域名备案拦截。
+
+### 架构
+
+```
+用户 → https://your-domain.com → Cloudflare CDN → Tunnel → 127.0.0.1:9900 (linglong-mcp)
+```
+
+### 服务清单
+
+| 服务 | 说明 |
+|------|------|
+| `cloudflared-mcp` | Cloudflare Tunnel 守护进程（systemd） |
+| `linglong-mcp` | MCP Server（systemd，监听 127.0.0.1:9900） |
+| `linglong-redis` | Token 认证存储（Docker，127.0.0.1:6379） |
+
+### 关键文件
+
+| 路径 | 说明 |
+|------|------|
+| `/root/.cloudflared/config.yml` | Tunnel 配置（指向 127.0.0.1:9900） |
+| `/root/.cloudflared/cert.pem` | Cloudflare 授权证书 |
+| `/root/.cloudflared/<tunnel-id>.json` | Tunnel 凭证 |
+| `/etc/systemd/system/cloudflared-mcp.service` | systemd 服务 |
+| `/etc/nginx/conf.d/blog.conf` | nginx（博客 443，MCP 已移至 Tunnel） |
+
+### DNS 配置
+
+`your-domain.com` 为 CNAME 记录指向 `cfargotunnel.com`，由 Cloudflare 代理（橙色云）。
+
+### Token 管理
+
+```bash
+# 新增 token
+docker exec linglong-redis redis-cli -a <密码> SET linglong-ingest-<random> active
+
+# 查看所有 token
+docker exec linglong-redis redis-cli -a <密码> KEYS 'linglong-*'
+
+# 删除 token
+docker exec linglong-redis redis-cli -a <密码> DEL linglong-ingest-<random>
+```
+
+### 故障排查
+
+```bash
+# 检查 Tunnel 状态
+systemctl status cloudflared-mcp
+
+# 检查 MCP 服务状态
+systemctl status linglong-mcp
+
+# 测试 MCP 端点
+curl -X POST https://your-domain.com/mcp/ingest \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+```
