@@ -27,6 +27,11 @@ class ConcurrentModificationError(Exception):
     pass
 
 
+def _fts_escape(term: str) -> str:
+    """Escape a term for FTS5 quoted matching."""
+    return term.replace('"', '""')
+
+
 class KnowledgeStore:
     """Unified storage: Filesystem + SQLite + Vector index."""
 
@@ -38,11 +43,9 @@ class KnowledgeStore:
         self._embedding_generator = EmbeddingGenerator()
         self._init_database()
 
-        # 文件锁
         lock_path = self.config.db_path.parent / ".knowledge.lock"
         self._lock = KnowledgeLock(lock_path, timeout=self.config.lock_timeout)
 
-        # SQLite WAL 模式
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(f"PRAGMA journal_mode={self.config.db_mode}")
             conn.execute("PRAGMA busy_timeout=5000")
@@ -144,7 +147,6 @@ class KnowledgeStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(self.db_path) as conn:
-            # 实体表
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS entities (
                     id TEXT PRIMARY KEY,
@@ -169,19 +171,18 @@ class KnowledgeStore:
                 )
             """)
 
-            # 迁移：旧数据库可能没有 content_hash 列
+            # Migration: older DBs may lack this column
             try:
                 conn.execute("ALTER TABLE entities ADD COLUMN content_hash TEXT")
             except sqlite3.OperationalError:
-                pass  # 列已存在
+                pass
 
-            # 迁移：旧数据库可能没有 group 列
+            # Migration: older DBs may lack this column
             try:
                 conn.execute("ALTER TABLE entities ADD COLUMN `group` TEXT")
             except sqlite3.OperationalError:
-                pass  # 列已存在
+                pass
 
-            # FTS5 全文搜索虚拟表
             conn.execute("""
                 CREATE VIRTUAL TABLE IF NOT EXISTS entity_fts USING fts5(
                     id,
@@ -193,7 +194,6 @@ class KnowledgeStore:
                 )
             """)
 
-            # FTS5 同步触发器
             conn.execute("""
                 CREATE TRIGGER IF NOT EXISTS entities_ai AFTER INSERT ON entities BEGIN
                     INSERT INTO entity_fts(rowid, id, content, facet, status)
@@ -215,7 +215,6 @@ class KnowledgeStore:
                 END
             """)
 
-            # 向量虚拟表（sqlite-vec）
             if self.config.vector_enabled:
                 try:
                     if hasattr(conn, "enable_load_extension"):
@@ -338,10 +337,9 @@ class KnowledgeStore:
                     if dup_entity is not None:
                         return dup_entity
 
-            # 解析 [[wikilinks]] 并自动填充 relations
             self._resolve_wikilinks(entity)
 
-            # ① 保存到 SQLite（DB 先行）
+            # Persist to DB first, then filesystem
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
@@ -376,13 +374,11 @@ class KnowledgeStore:
                 )
                 conn.commit()
 
-            # ② 保存到文件系统
             self._save_to_filesystem(entity)
 
-            # ③ 实体持久化后生成嵌入向量（锁外，content hash 守卫）
+            # Embedding generated outside lock; hash guard prevents stale writes
             self._generate_and_store_embedding(entity)
 
-            # 如果生成了嵌入，用 content hash 守卫写入
             if entity.embedding_id:
                 self._write_embedding_with_hash_guard(entity.id, content_hash, entity.embedding_id)
 
@@ -455,15 +451,14 @@ class KnowledgeStore:
             conn.row_factory = sqlite3.Row
 
             if query:
-                # FTS5 全文搜索 — 对查询词逐段加引号，避免连字符等被误解析为列过滤
-                # 将查询按空格拆分后用 OR 连接，支持多词宽松匹配
+                # Quote each token to prevent hyphens being parsed as FTS column filters
                 tokens = query.split()
                 if len(tokens) > 1:
                     escaped_query = " OR ".join(
-                        '"' + t.replace('"', '""') + '"' for t in tokens
+                        f'"{_fts_escape(t)}"' for t in tokens
                     )
                 else:
-                    escaped_query = '"' + query.replace('"', '""') + '"'
+                    escaped_query = f'"{_fts_escape(query)}"'
                 params: list = [escaped_query]
                 fts_conditions = []
 
@@ -493,7 +488,6 @@ class KnowledgeStore:
                 ).fetchall()
                 return [self._row_to_entity(row) for row in rows]
 
-            # 非 FTS 过滤
             conditions = []
             params = []
 
@@ -552,7 +546,6 @@ class KnowledgeStore:
             sqlite_vec.load(conn)
             conn.row_factory = sqlite3.Row
 
-            # 构建带可选状态过滤的基础查询
             conditions = []
             params: list = [json.dumps(query_embedding), limit]
 
@@ -645,12 +638,11 @@ class KnowledgeStore:
         - Versions beyond max_versions are auto-compacted.
         """
         with self._lock:
-            # 获取当前版本用于版本管理
             current = self.get(entity.id)
             if current is None:
                 raise ValueError(f"Entity {entity.id} not found")
 
-            # 乐观锁：检查 entity 是否在读取后被修改
+            # Optimistic lock: reject if modified since read
             if entity.updated_at and current.updated_at != entity.updated_at:
                 raise ConcurrentModificationError(
                     f"Entity {entity.id} was modified at {current.updated_at}, "
@@ -658,21 +650,17 @@ class KnowledgeStore:
                     f"Please re-read and retry."
                 )
 
-            # 判断是否需要产生新版本
             update_mode = entity.metadata.pop("update_mode", None)
             content_changed = current.content != entity.content
 
             if content_changed and update_mode != "append":
-                # 替换模式：产生新版本
-                # current.versions 中的元素可能是 dict（来自 json.loads）
-                # 或 Version 对象（Pydantic 自动转换），统一序列化为 dict
+                # Versions may be dict (from json.loads) or BaseModel (Pydantic); normalize
                 existing_versions = []
                 for v in current.versions:
                     if isinstance(v, dict):
                         existing_versions.append(v)
                     else:
                         d = v.model_dump()
-                        # 将 datetime 对象转为 ISO 字符串以便 JSON 序列化
                         if isinstance(d.get("modified_at"), datetime):
                             d["modified_at"] = d["modified_at"].isoformat()
                         existing_versions.append(d)
@@ -685,7 +673,7 @@ class KnowledgeStore:
                 entity.versions = existing_versions + [version_entry]
                 entity.current_version = current.current_version + 1
 
-                # 版本压缩
+                # Compact oldest versions beyond limit
                 max_versions = self.config.max_versions
                 if len(entity.versions) > max_versions:
                     first = entity.versions[0]
@@ -698,15 +686,12 @@ class KnowledgeStore:
                     }
                     entity.versions = [first_compact] + recent
 
-            # 解析 [[wikilinks]] 并自动填充 relations
             self._resolve_wikilinks(entity)
 
             entity.updated_at = datetime.now(UTC)
 
-            # 更新文件系统
             self._save_to_filesystem(entity)
 
-            # 更新 SQLite
             content_hash = self._content_hash(entity.content)
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
@@ -757,7 +742,7 @@ class KnowledgeStore:
                 )
                 conn.commit()
 
-            # 如果内容变更且向量搜索可用，重新生成嵌入（锁外，content hash 守卫）
+            # Regenerate embedding on content change; hash guard prevents stale writes
             if self._vector_available and self.config.generate_embeddings:
                 old_entity = self.get(entity.id)
                 if old_entity is None or old_entity.content != entity.content:
@@ -908,14 +893,12 @@ class KnowledgeStore:
             entity.archived_at = datetime.now(UTC)
             entity.updated_at = datetime.now(UTC)
 
-            # 从原 facet 目录删除
             old_path = self._get_entity_path(
                 entity.id, entity.facet.value, content=entity.content
             )
             if old_path.exists():
                 old_path.unlink()
 
-            # 写入 archive 目录
             archive_dir = self.wiki_path / "archive"
             archive_dir.mkdir(parents=True, exist_ok=True)
             archive_path = archive_dir / f"{entity.id}.md"
@@ -924,7 +907,6 @@ class KnowledgeStore:
                 encoding="utf-8",
             )
 
-            # 更新 SQLite
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     "UPDATE entities SET archived_at = ?, updated_at = ? WHERE id = ?",
@@ -938,7 +920,7 @@ class KnowledgeStore:
     def delete(self, entity_id: str) -> bool:
         """Delete an entity."""
         with self._lock:
-            # 删除前获取 embedding_id、facet 和 content（用于语义文件名）
+            # Fetch embedding_id, facet, content before deletion (needed for cleanup)
             embedding_id = None
             facet = "concept"
             content = ""
@@ -952,18 +934,15 @@ class KnowledgeStore:
                     facet = row[1] or "concept"
                     content = row[2] or ""
 
-            # 从文件系统删除
             entity_path = self._get_entity_path(entity_id, facet, content=content)
             if entity_path.exists():
                 entity_path.unlink()
 
-            # 从 SQLite 删除
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
                 conn.commit()
                 deleted = cursor.rowcount > 0
 
-            # 删除嵌入向量（如果向量搜索可用）
             if deleted and embedding_id and self._vector_available:
                 with sqlite3.connect(self.db_path) as conn:
                     self._delete_embedding(conn, embedding_id)
@@ -979,7 +958,6 @@ class KnowledgeStore:
         if not links:
             return
 
-        # 构建标题→ID 映射
         all_entities = self.search(limit=10000, include_archived=False)
         title_to_id: dict[str, str] = {}
         for e in all_entities:
@@ -1058,7 +1036,7 @@ class KnowledgeStore:
         if old_path and old_path != entity_path:
             old_path.unlink()
 
-        # 构建 YAML frontmatter（兼容 OpenClaw）
+        # OpenClaw-compatible frontmatter
         fm_lines = [
             f"id: {entity.id}",
             f"type: {entity.facet.value}",
@@ -1075,16 +1053,16 @@ class KnowledgeStore:
         if entity.summary:
             fm_lines.append(f"summary: {entity.summary}")
 
-        file_content = f"---\n" + "\n".join(fm_lines) + f"\n---\n\n{entity.content}\n"
+        file_content = f"---\n{'\n'.join(fm_lines)}\n---\n\n{entity.content}\n"
         entity_path.write_text(file_content, encoding="utf-8")
 
     def _row_to_entity(self, row: sqlite3.Row) -> Entity:
         """Convert database row to Entity."""
-        # facet 列可能尚不存在于旧 schema 中，使用 SOURCE 作为默认值
+        # Gracefully handle older schemas missing this column
         facet_str = row["facet"] if "facet" in row.keys() else None
         facet = EntityFacet(facet_str) if facet_str else EntityFacet.CONCEPT
 
-        # archived_at 列可能尚不存在于旧 schema 中
+        # Gracefully handle older schemas missing this column
         archived_at_raw = row["archived_at"] if "archived_at" in row.keys() else None
 
         group = row["group"] if "group" in row.keys() else None

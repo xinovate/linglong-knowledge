@@ -60,19 +60,17 @@ def init_bare(target_dir: Path | None = None) -> Path:
     wiki_path.mkdir(parents=True, exist_ok=True)
     (wiki_path / "archive").mkdir(exist_ok=True)
 
-    # 写配置模板
     config_path = base / ".linglong.yaml"
     if not config_path.exists():
         config_path.write_text(_DEFAULT_CONFIG_TEMPLATE, encoding="utf-8")
-        logger.info("已创建配置模板：%s", config_path)
+        logger.info("Created config template: %s", config_path)
     else:
-        logger.info("配置文件已存在：%s", config_path)
+        logger.info("Config file already exists: %s", config_path)
 
-    # 为每个 facet 创建目录
     for facet in EntityFacet:
         (wiki_path / facet.value).mkdir(exist_ok=True)
 
-    logger.info("知识库已初始化：%s", wiki_path)
+    logger.info("Knowledge base initialized: %s", wiki_path)
     return wiki_path
 
 
@@ -90,7 +88,7 @@ def init_from_backup(backup_dir: Path, target_dir: Path | None = None) -> Path:
     target_wiki = target_dir / "wiki"
 
     if target_wiki.exists():
-        # 合并而非覆盖
+        # Merge, don't overwrite existing files
         for facet_dir in backup_wiki.iterdir():
             if facet_dir.is_dir():
                 target_facet = target_wiki / facet_dir.name
@@ -101,12 +99,11 @@ def init_from_backup(backup_dir: Path, target_dir: Path | None = None) -> Path:
     else:
         shutil.copytree(backup_wiki, target_wiki)
 
-    # 确保配置文件存在
     config_path = target_dir / ".linglong.yaml"
     if not config_path.exists():
         config_path.write_text(_DEFAULT_CONFIG_TEMPLATE, encoding="utf-8")
 
-    logger.info("从备份恢复：%s", backup_dir)
+    logger.info("Restoring from backup: %s", backup_dir)
     return target_wiki
 
 
@@ -118,10 +115,9 @@ def init_from_openclaw(openclaw_path: Path | None = None, target_dir: Path | Non
     from linglong.core.models import Entity, EntityFacet
     from linglong.knowledge.store import KnowledgeStore
 
-    # 先初始化空知识库
     wiki_path = init_bare(target_dir)
 
-    # 定位 OpenClaw wiki
+
     if openclaw_path is None:
         openclaw_path = Path.home() / ".openclaw" / "workspace" / "memory" / "wiki"
 
@@ -147,7 +143,7 @@ def init_from_openclaw(openclaw_path: Path | None = None, target_dir: Path | Non
         store.create(entity)
         count += 1
 
-    logger.info("从 OpenClaw 导入 %d 条知识", count)
+    logger.info("Imported %d entities from OpenClaw", count)
     return wiki_path
 
 
@@ -166,7 +162,6 @@ def init_from_git(repo_url: str, target_dir: Path | None = None) -> Path:
     base = target_dir or Path.home() / "linglong"
     wiki_path = base / "wiki"
 
-    # clone 到临时目录
     tmp_dir = base / ".tmp_clone"
     if tmp_dir.exists():
         shutil.rmtree(tmp_dir)
@@ -184,10 +179,9 @@ def init_from_git(repo_url: str, target_dir: Path | None = None) -> Path:
     except FileNotFoundError:
         raise RuntimeError("git command not found. Please install git.")
 
-    # 初始化目录结构
     init_bare(target_dir=base)
 
-    # 复制 md 文件到 reference 分面
+
     source_dir = wiki_path / "reference"
     source_dir.mkdir(parents=True, exist_ok=True)
     count = 0
@@ -197,10 +191,9 @@ def init_from_git(repo_url: str, target_dir: Path | None = None) -> Path:
             shutil.copy2(md_file, dest)
             count += 1
 
-    # 清理临时目录
     shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    logger.info("已从 Git 初始化知识库：%s → %s (%d files)", repo_url, wiki_path, count)
+    logger.info("Initialized knowledge base from git: %s → %s (%d files)", repo_url, wiki_path, count)
     return wiki_path
 
 
@@ -211,41 +204,34 @@ def init_interactive(target_dir: Path | None = None) -> Path:
     """
     base = target_dir or Path.home() / "linglong"
 
-    print("=== Linglong 知识库初始化向导 ===\n")
+    logger.info("=== Linglong 知识库初始化向导 ===")
 
-    # Wiki 路径
     default_wiki = base / "wiki"
     wiki_input = input(f"Wiki 目录 [{default_wiki}]: ").strip()
     wiki_path = Path(wiki_input) if wiki_input else default_wiki
 
-    # DB 路径
     default_db = base / "db" / "knowledge.db"
     db_input = input(f"数据库路径 [{default_db}]: ").strip()
     db_path = Path(db_input) if db_input else default_db
 
-    # 向量搜索
     vector_input = input("启用向量搜索？[y/N]: ").strip().lower()
     vector_enabled = vector_input in ("y", "yes")
 
-    # 写入模式
     write_input = input("写入模式 (confirm/auto) [confirm]: ").strip()
     write_mode = write_input if write_input in ("confirm", "auto") else "confirm"
 
-    # 自动 lint
     lint_input = input("写入后自动巡检？[y/N]: ").strip().lower()
     auto_lint = lint_input in ("y", "yes")
 
-    # 定时巡检
     schedule_input = input("是否启用定时巡检？[y/N]: ").strip().lower()
     lint_schedule = None
     if schedule_input in ("y", "yes"):
         cron_input = input("定时巡检时间（cron 格式，默认 0 2 * * *）: ").strip()
         lint_schedule = cron_input if cron_input else "0 2 * * *"
 
-    # 初始化目录
     init_bare(target_dir=base)
 
-    # 生成配置
+
     schedule_line = f"  lint_schedule: {lint_schedule}" if lint_schedule else "  # lint_schedule: \"0 2 * * *\""
     config_content = f"""# Linglong 知识库配置
 # 由 linglong init --interactive 生成
@@ -263,6 +249,6 @@ knowledge:
     config_path = base / ".linglong.yaml"
     config_path.write_text(config_content, encoding="utf-8")
 
-    print(f"\n知识库已初始化：{wiki_path}")
-    print(f"配置文件：{config_path}")
+    logger.info("知识库已初始化：%s", wiki_path)
+    logger.info("配置文件：%s", config_path)
     return wiki_path

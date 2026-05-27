@@ -11,7 +11,6 @@ from .openai_compatible_client import OpenAICompatibleClient
 
 logger = logging.getLogger(__name__)
 
-# 已知 provider 到 base_url 的映射
 _DEFAULT_BASE_URLS = {
     "openai": "https://api.openai.com",
     "deepseek": "https://api.deepseek.com",
@@ -30,18 +29,16 @@ def create_llm_client(config: dict[str, Any]) -> LLMClient:
     """
     provider = config.get("provider", "openai").lower()
 
-    # 自动补全 base_url（如果配置中未指定）
     if "base_url" not in config and provider in _DEFAULT_BASE_URLS:
         config = dict(config)
         config["base_url"] = _DEFAULT_BASE_URLS[provider]
 
-    logger.info(f"创建 LLM 客户端: provider={provider}, model={config.get('model')}")
+    logger.info("Creating LLM client: provider=%s, model=%s", provider, config.get('model'))
 
-    # 当前所有已知 provider 都走 OpenAI-compatible 协议
-    # 未来如果有非兼容协议（如 Claude 原生 SDK），在此处分支
+    # All known providers use the OpenAI-compatible protocol
+    # Branch here for non-compatible protocols (e.g. Claude native SDK) in the future
     if provider in ("openai", "deepseek", "mimo", "zhipu", "openai_compatible"):
         return OpenAICompatibleClient(config)
 
-    # 默认兜底
-    logger.warning(f"未知 provider '{provider}'，使用 OpenAI-compatible 客户端")
+    logger.warning("Unknown provider '%s', falling back to OpenAI-compatible client", provider)
     return OpenAICompatibleClient(config)

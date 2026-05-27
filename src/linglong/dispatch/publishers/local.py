@@ -40,29 +40,25 @@ class LocalPublisher(Publisher):
             PublishResult: 发布结果
         """
         try:
-            # 判断内容类型
             content_path = Path(content)
             try:
                 is_zip = content_path.exists() and content_path.suffix == ".zip"
             except OSError:
-                # 内容过长不是有效路径 → 视为文章
+                # Long content is not a valid path — treat as article
                 is_zip = False
             if is_zip:
-                # 图片包模式
                 return self._publish_zip(content_path, metadata)
             else:
-                # 文章模式
                 return self._publish_article(content, metadata)
 
         except Exception as e:
-            logger.exception(f"本地发布失败: {e}")
+            logger.exception("Local publish failed: %s", e)
             return PublishResult(success=False, error=str(e))
 
     def _publish_article(self, content: str, metadata: dict[str, Any]) -> PublishResult:
         """发布单篇文章"""
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 生成文件名
         date_str = metadata.get("date", datetime.now().strftime("%Y-%m-%d"))
         title = metadata.get("title", "untitled")
         safe_title = title.replace(" ", "_").replace("/", "_")[:30]
@@ -70,19 +66,17 @@ class LocalPublisher(Publisher):
         filename = f"{date_str}_{safe_title}.md"
         output_path = self.output_dir / filename
 
-        # 检查覆盖
         if output_path.exists() and not self.overwrite:
-            logger.warning(f"文件已存在，跳过: {output_path}")
+            logger.warning("File already exists, skipping: %s", output_path)
             return PublishResult(
                 success=False,
                 error=f"文件已存在: {output_path}",
             )
 
-        # 写入文件
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-        logger.info(f"文章已输出: {output_path}")
+        logger.info("Article exported: %s", output_path)
         return PublishResult(
             success=True,
             url=str(output_path),
@@ -93,7 +87,6 @@ class LocalPublisher(Publisher):
         """发布图片包（复制 zip 到输出目录）"""
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 生成输出文件名
         date_str = datetime.now().strftime("%Y%m%d")
         source_name = metadata.get("source", "images")
         count = metadata.get("image_count", len(metadata.get("images", [])))
@@ -101,9 +94,7 @@ class LocalPublisher(Publisher):
         filename = f"{source_name}_{date_str}_{count}.zip"
         output_path = self.output_dir / filename
 
-        # 检查覆盖
         if output_path.exists() and not self.overwrite:
-            # 添加序号
             for i in range(1, 100):
                 alt_filename = f"{source_name}_{date_str}_{count}_{i}.zip"
                 alt_path = self.output_dir / alt_filename
@@ -111,10 +102,9 @@ class LocalPublisher(Publisher):
                     output_path = alt_path
                     break
 
-        # 复制文件
         shutil.copy2(zip_path, output_path)
 
-        logger.info(f"图片包已输出: {output_path}")
+        logger.info("Image pack exported: %s", output_path)
         return PublishResult(
             success=True,
             url=str(output_path),
@@ -130,5 +120,5 @@ class LocalPublisher(Publisher):
             test_file.unlink()
             return True
         except Exception as e:
-            logger.error(f"本地发布器健康检查失败: {e}")
+            logger.error("Local publisher health check failed: %s", e)
             return False

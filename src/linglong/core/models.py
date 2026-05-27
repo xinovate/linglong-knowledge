@@ -95,22 +95,22 @@ class ConfidenceScore(float):
 class EntityStatus(StrEnum):
     """Status of a knowledge entity."""
 
-    RAW = "raw"  # 刚采集
-    PENDING_REVIEW = "pending_review"  # 待审核
-    CONFIRMED = "confirmed"  # 人工确认
-    AUTO_CONFIRMED = "auto_confirmed"  # 高置信度自动确认
-    REJECTED = "rejected"  # 审核后拒绝
+    RAW = "raw"
+    PENDING_REVIEW = "pending_review"
+    CONFIRMED = "confirmed"
+    AUTO_CONFIRMED = "auto_confirmed"
+    REJECTED = "rejected"
 
 
 class EntityFacet(StrEnum):
     """Knowledge entity classification."""
 
-    CONCEPT = "concept"          # 抽象知识
-    EXPERIENCE = "experience"    # 实战经验
-    METHODOLOGY = "methodology"  # 方法论、框架、流程
-    PROJECT = "project"          # 项目记录、里程碑
-    REFERENCE = "reference"      # 外部参考、资料
-    PERSONAL = "personal"        # 个人数据、情感、偏好
+    CONCEPT = "concept"
+    EXPERIENCE = "experience"
+    METHODOLOGY = "methodology"
+    PROJECT = "project"
+    REFERENCE = "reference"
+    PERSONAL = "personal"
 
 
 class Relation(BaseModel):
@@ -145,38 +145,32 @@ class Entity(BaseModel):
     archived_at: datetime | None = Field(default=None, description="Archive timestamp")
     summary: str | None = Field(default=None, description="AI-generated summary for quick browsing")
 
-    # 作者信息
     created_by: AgentID = Field(description="Agent that created this entity")
     confirmed_by: HumanID | None = Field(
         default=None, description="Human who confirmed this entity"
     )
     confirmed_at: datetime | None = None
 
-    # 质量
     confidence: ConfidenceScore = Field(default=0.5, description="AI confidence score")
     status: EntityStatus = Field(default=EntityStatus.RAW)
 
-    # 来源追踪
     sources: list[Source] = Field(default_factory=list)
 
-    # 关联关系
     relations: list[Relation] = Field(default_factory=list)
 
-    # 版本历史
     versions: list[Version] = Field(default_factory=list)
     current_version: int = Field(default=1)
 
-    # 时间戳
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    # 向量嵌入（单独存储在 sqlite-vec 中）
+    # Stored separately in sqlite-vec
     embedding_id: str | None = None
 
-    # 向量搜索距离（仅由 search_similar 填充）
+    # Populated by search_similar only
     distance: float | None = None
 
-    # 附加元数据（如 frontmatter、wikilinks）
+    # Extra metadata (frontmatter, wikilinks, etc.)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(
@@ -214,16 +208,13 @@ class Task(BaseModel):
     task_type: str  # "rss_fetch", "distill", "publish", etc.
     status: TaskStatus = TaskStatus.PENDING
 
-    # 调度
     scheduled_at: datetime
     executed_at: datetime | None = None
     completed_at: datetime | None = None
 
-    # 上下文
-    entity_id: str | None = None  # 关联实体（如有）
+    entity_id: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
 
-    # 结果
     result: dict[str, Any] | None = None
     error: str | None = None
 

@@ -25,25 +25,24 @@ logger = logging.getLogger(__name__)
 
 _WIKILINK_PATTERN = re.compile(r"\[\[(.*?)\]\]")
 
-# OpenClaw wiki 第一级目录 → Linglong wiki 子目录映射
-# 按设计文档 02-directory-structure.md 的 OpenClaw 13 目录 → 7 Facet 映射
+# OpenClaw wiki top-level dir → Linglong wiki subdirectory mapping
 _WIKI_DIR_TO_SUBDIR: dict[str, str] = {
     "projects": "projects",
     "references": "references",
     "problems": "problems",
-    "concepts": "",         # concept 扁平，子目录保留原名
-    "experiences": "",      # experience 扁平，子目录保留原名
-    "methodologies": "",    # methodology 扁平
-    "user": "",             # personal 扁平
-    "emotion": "",          # 合入 personal 扁平
-    "soul": "diary",        # 合入 personal/diary/
-    "infra": "infra",       # 合入 personal/infra/
-    "dashboards": "",       # 不迁移
-    "templates": "",        # 不迁移
-    "todo": "",             # 合入 personal 扁平
+    "concepts": "",         # flat, subdirectory names preserved
+    "experiences": "",      # flat, subdirectory names preserved
+    "methodologies": "",    # flat
+    "user": "",             # flat under personal
+    "emotion": "",          # merged into personal, flat
+    "soul": "diary",        # merged into personal/diary/
+    "infra": "infra",       # merged into personal/infra/
+    "dashboards": "",       # not migrated
+    "templates": "",        # not migrated
+    "todo": "",             # merged into personal, flat
 }
 
-# 目录级 facet 覆盖：某些目录的文件无论 frontmatter type 是什么都应归入特定 facet
+# Directory-level facet override: files in these dirs always get the specified facet
 _DIR_FACET_OVERRIDE: dict[str, EntityFacet] = {
     "user": EntityFacet.PERSONAL,
     "emotion": EntityFacet.PERSONAL,
@@ -59,7 +58,7 @@ _DIR_FACET_OVERRIDE: dict[str, EntityFacet] = {
 }
 
 TYPE_TO_FACET: dict[str, EntityFacet] = {
-    # 标准分面
+    # Standard facets
     "concept": EntityFacet.CONCEPT,
     "entity": EntityFacet.CONCEPT,
     "experience": EntityFacet.EXPERIENCE,
@@ -67,7 +66,7 @@ TYPE_TO_FACET: dict[str, EntityFacet] = {
     "personal": EntityFacet.PERSONAL,
     "source": EntityFacet.REFERENCE,
     "synthesis": EntityFacet.CONCEPT,
-    # OpenClaw 特有类型 — 内容类
+    # OpenClaw-specific types — content
     "article": EntityFacet.REFERENCE,
     "tutorial": EntityFacet.METHODOLOGY,
     "debug-log": EntityFacet.EXPERIENCE,
@@ -83,7 +82,7 @@ TYPE_TO_FACET: dict[str, EntityFacet] = {
     "meeting": EntityFacet.PERSONAL,
     "idea": EntityFacet.CONCEPT,
     "bookmark": EntityFacet.REFERENCE,
-    # OpenClaw 特有类型 — 补充
+    # OpenClaw-specific types — supplementary
     "skill": EntityFacet.EXPERIENCE,
     "template": EntityFacet.METHODOLOGY,
     "user": EntityFacet.PERSONAL,
@@ -92,10 +91,10 @@ TYPE_TO_FACET: dict[str, EntityFacet] = {
     "feedback": EntityFacet.EXPERIENCE,
     "problem": EntityFacet.CONCEPT,
     "dashboard": EntityFacet.CONCEPT,
-    # OpenClaw 特有类型 — 源码分析
+    # OpenClaw-specific types — source code analysis
     "source-code-note": EntityFacet.REFERENCE,
     "source-code-analysis": EntityFacet.REFERENCE,
-    # OpenClaw 特有类型 — 项目子文档
+    # OpenClaw-specific types — project sub-documents
     "test-report": EntityFacet.PROJECT,
     "dependency-map": EntityFacet.PROJECT,
     "design-spec": EntityFacet.PROJECT,
@@ -158,10 +157,9 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
     file_type = post.get("type", "reference")
     facet = TYPE_TO_FACET.get(file_type, EntityFacet.REFERENCE)
 
-    # 推导子目录：取 relative_path 的前两级
     parts = Path(relative_path).parts
 
-    # 目录级 facet 覆盖：按所在目录强制指定 facet
+    # Directory-level facet override takes precedence
     if parts:
         top_dir = parts[0]
         dir_facet = _DIR_FACET_OVERRIDE.get(top_dir)
@@ -171,7 +169,7 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
     if len(parts) >= 2:
         top_dir = parts[0]
         subdir = _WIKI_DIR_TO_SUBDIR.get(top_dir, "")
-        # 保留 OpenClaw 二级目录名（如 concepts/skills/ → concept/skills/）
+        # Preserve OpenClaw second-level dir name (e.g. concepts/skills/ → concept/skills/)
         if not subdir and len(parts) >= 3:
             subdir = parts[1]
     if subdir:
@@ -185,7 +183,7 @@ def _file_to_entity(file_path: Path, relative_path: str) -> Entity:
         url=relative_path,
     )
 
-    # 保留原始创建时间（frontmatter created → Entity created_at）
+    # Preserve original creation time (frontmatter created → Entity created_at)
     entity_kwargs: dict = dict(
         id=entity_id,
         content=post.content,

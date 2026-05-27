@@ -32,7 +32,6 @@ def _parse_agents_md(content: str) -> dict:
     """Parse AGENTS.md claude-mem content into metadata dict."""
     metadata: dict = {"source_type": "agents-md"}
 
-    # 提取 <claude-mem-context> 标签之间的内容
     start_tag = "<claude-mem-context>"
     end_tag = "</claude-mem-context>"
     start_idx = content.find(start_tag)
@@ -44,7 +43,6 @@ def _parse_agents_md(content: str) -> dict:
 
     lines = inner.splitlines()
 
-    # 解析 $CMEM 行获取项目名和更新时间
     for line in lines:
         if line.strip().startswith("# $CMEM"):
             parts = line.strip().split()
@@ -54,11 +52,10 @@ def _parse_agents_md(content: str) -> dict:
                 metadata["last_updated"] = " ".join(parts[3:])
             break
 
-    # 解析 Stats 行
     for line in lines:
         if line.strip().startswith("Stats:"):
             metadata["stats_line"] = line.strip()
-            # 尝试提取观察记录数量
+
             try:
                 obs_part = line.strip().split("|")[0]
                 obs_count_str = obs_part.replace("Stats:", "").strip().split()[0]
@@ -67,8 +64,6 @@ def _parse_agents_md(content: str) -> dict:
                 pass
             break
 
-    # 提取观察记录标题（含 🔵 🟣 🔴 🔄 ✅ ⚖️ 的行）
-    # 跳过表头行如 "Legend:", "Format:", "Stats:"
     observations: list[str] = []
     emoji_markers = ("🔵", "🟣", "🔴", "🔄", "✅", "⚖️")
     skip_prefixes = ("Legend:", "Format:", "Stats:")

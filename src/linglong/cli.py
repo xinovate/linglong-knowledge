@@ -138,7 +138,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
         logger.error("Unknown source: %s", args.source)
         return 1
 
-    # CLI 参数覆盖路径
+    # CLI argument overrides configured path
     if args.path:
         path = Path(args.path)
     elif path is not None:
@@ -155,7 +155,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
-# 知识库子命令
+# Knowledge base subcommands
 # ---------------------------------------------------------------------------
 
 
@@ -172,7 +172,6 @@ def cmd_write(args: argparse.Namespace) -> int:
     config = get_config()
     auto_mode = config.knowledge.write_mode == "auto"
 
-    # 去重检查
     store = KnowledgeStore()
     existing = store.search(query=args.title, facet=facet, limit=5)
     if existing and not args.force:
@@ -183,7 +182,6 @@ def cmd_write(args: argparse.Namespace) -> int:
                 if not args.yes and not auto_mode:
                     return 1
 
-    # 确认
     if not args.yes and not auto_mode:
         print(f"分类：{facet.value}")
         print(f"标题：{args.title}")
@@ -297,7 +295,6 @@ def cmd_update(args: argparse.Namespace) -> int:
         print(f"错误：未找到 {args.entity_id}")
         return 1
 
-    # 查看版本历史
     if args.history:
         print(f"版本历史 (current: v{entity.current_version}):")
         for v in entity.versions:
@@ -305,7 +302,6 @@ def cmd_update(args: argparse.Namespace) -> int:
         print(f"  v{entity.current_version} | {entity.updated_at} | current")
         return 0
 
-    # 查看指定版本
     if args.show_version:
         ver_num = args.show_version
         if ver_num == entity.current_version:
@@ -320,13 +316,12 @@ def cmd_update(args: argparse.Namespace) -> int:
                 return 1
         return 0
 
-    # 更新操作
     if args.content:
         entity.content = args.content
     elif args.from_file:
         entity.content = Path(args.from_file).read_text(encoding="utf-8")
     elif args.append:
-        entity.content = entity.content + "\n\n" + args.append
+        entity.content = f"{entity.content}\n\n{args.append}"
     elif args.metadata:
         for kv in args.metadata:
             key, _, value = kv.partition("=")
@@ -454,7 +449,6 @@ def cmd_lint(args: argparse.Namespace) -> int:
         print("✅ 知识库健康，无问题")
         return 0
 
-    # 按严重度分组
     by_severity: dict[str, list] = {"error": [], "warning": [], "info": []}
     for r in results:
         by_severity[r.severity.value].append(r)
@@ -539,7 +533,6 @@ def cmd_migrate(args: argparse.Namespace) -> int:
     store = KnowledgeStore()
 
     if args.dry_run:
-        # 预览：列出待迁移文件
         md_files = list(source.rglob("*.md"))
         print(f"将迁移 {len(md_files)} 个文件：")
         for f in md_files[:20]:
@@ -548,7 +541,6 @@ def cmd_migrate(args: argparse.Namespace) -> int:
             print(f"  ... 还有 {len(md_files) - 20} 个")
         return 0
 
-    # 迁移：逐个读取 md 文件并创建 Entity
     md_files = list(source.rglob("*.md"))
     count = 0
     for md_file in md_files:
@@ -564,7 +556,6 @@ def cmd_migrate(args: argparse.Namespace) -> int:
 
     print(f"迁移完成：{count} 个文件")
 
-    # 重建索引
     gen = IndexGenerator(store.wiki_path)
     gen.generate_all()
     print("索引已重建")
@@ -576,17 +567,14 @@ def cmd_stats(args: argparse.Namespace) -> int:
     """Show knowledge base statistics."""
     store = KnowledgeStore()
 
-    # 总数
     all_entities = store.search(limit=10000)
     total = len(all_entities)
 
-    # 按 facet 统计
     facet_counts: dict[str, int] = {}
     for facet in EntityFacet:
         results = store.search(facet=facet, limit=10000)
         facet_counts[facet.value] = len(results)
 
-    # 最近更新
     recent = store.search(limit=5)
 
     print("知识库统计")
@@ -811,10 +799,10 @@ def main(argv: list[str] | None = None) -> int:
     _reg_migrate(kb_sp).set_defaults(func=cmd_migrate)
     _reg_kb_sync(kb_sp).set_defaults(func=cmd_kb_sync)
 
-    # ========== ingest（独立采集工具）==========
+    # ========== ingest (standalone collection tool) ==========
     _reg_ingest(sub).set_defaults(func=cmd_ingest)
 
-    # ========== publish（发布）==========
+    # ========== publish ==========
     _reg_publish(sub).set_defaults(func=cmd_publish)
 
     args = parser.parse_args(argv)

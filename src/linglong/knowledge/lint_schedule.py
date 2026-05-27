@@ -103,23 +103,23 @@ def run_daemon(stale_days: int = 90) -> None:
     cron_expr = config.knowledge.lint_schedule
 
     if not cron_expr:
-        logger.error("未配置 lint_schedule，请在 .linglong.yaml 中设置 knowledge.lint_schedule")
+        logger.error("lint_schedule not configured; set knowledge.lint_schedule in .linglong.yaml")
         sys.exit(1)
 
     try:
         job = parse_cron_to_schedule(cron_expr)
     except CronParseError as exc:
-        logger.error("cron 解析失败: %s", exc)
+        logger.error("Cron parse failed: %s", exc)
         sys.exit(1)
 
     # Register the job
     job.do(lambda: run_lint_and_log(stale_days=stale_days))
 
     log_path = Path.home() / ".linglong" / "logs" / "lint-schedule.log"
-    logger.info("lint daemon 启动，schedule=%s，日志=%s", cron_expr, log_path)
+    logger.info("Lint daemon starting, schedule=%s, log=%s", cron_expr, log_path)
 
     # Run once immediately
-    logger.info("执行首次巡检...")
+    logger.info("Running initial lint...")
     run_lint_and_log(log_path=log_path, stale_days=stale_days)
 
     # Graceful shutdown handler
@@ -127,7 +127,7 @@ def run_daemon(stale_days: int = 90) -> None:
 
     def _on_signal(signum, frame):
         nonlocal shutdown_requested
-        logger.info("收到信号 %s，准备退出...", signum)
+        logger.info("Received signal %s, shutting down...", signum)
         shutdown_requested = True
 
     signal.signal(signal.SIGTERM, _on_signal)
@@ -137,4 +137,4 @@ def run_daemon(stale_days: int = 90) -> None:
         schedule.run_pending()
         time.sleep(1)
 
-    logger.info("lint daemon 已退出")
+    logger.info("Lint daemon exited")

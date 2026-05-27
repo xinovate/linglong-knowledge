@@ -6,7 +6,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# 可选依赖 — 仅 OSS 上传功能需要
+# Optional dependency — only needed for OSS upload
 try:
     import oss2
 except ImportError:
@@ -73,7 +73,6 @@ class OSSUploader:
         Returns:
             (替换后的 content, 更新后的 metadata)
         """
-        # 收集所有本地图片路径
         path_map: dict[str, str] = {}  # local_path → cdn_url
 
         for key in ("background", "background_image", "article_image", "cover_image"):
@@ -81,7 +80,7 @@ class OSSUploader:
                 continue
             value = metadata[key]
             if isinstance(value, dict):
-                # 多尺寸变体 dict
+                # Multi-size variant dict
                 for variant_name, path_str in value.items():
                     local = Path(path_str).expanduser()
                     if local.exists() and str(local) not in path_map:
@@ -96,12 +95,10 @@ class OSSUploader:
         if not path_map:
             return content, metadata
 
-        # 替换 content 中的本地路径
         rewritten = content
         for local_path, cdn_url in path_map.items():
             rewritten = rewritten.replace(local_path, cdn_url)
 
-        # 替换 metadata 中的本地路径
         updated_metadata = {}
         for key, value in metadata.items():
             if isinstance(value, dict):
@@ -120,7 +117,6 @@ class OSSUploader:
         """检查 OSS Bucket 是否可访问。"""
         try:
             bucket = self._get_bucket()
-            # 尝试列出少量对象验证连通性
             bucket.list_objects(max_keys=1)
             return True
         except Exception as e:

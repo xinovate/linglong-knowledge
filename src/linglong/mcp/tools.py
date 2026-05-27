@@ -127,7 +127,7 @@ def search_and_read(
             content = entity.content
             truncated = False
             if max_content_length > 0 and len(content) > max_content_length:
-                content = content[:max_content_length] + "\n\n... [truncated]"
+                content = f"{content[:max_content_length]}\n\n... [truncated]"
                 truncated = True
             full_results.append(
                 {
@@ -168,7 +168,7 @@ def update_entity(entity_id: str, content: str, append: bool = False) -> str:
             )
 
         if append:
-            entity.content = entity.content + "\n\n" + content
+            entity.content = f"{entity.content}\n\n{content}"
             entity.metadata["update_mode"] = "append"
         else:
             entity.content = content

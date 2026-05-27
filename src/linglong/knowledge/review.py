@@ -56,7 +56,7 @@ class ReviewEngine:
         cfg = self._config
         trusted = set(cfg.review_trusted_sources)
 
-        # 规则 1：高置信度 + 可信来源 → 自动确认
+        # Rule 1: high confidence + trusted source -> auto-confirm
         self.rules.append(
             Rule(
                 name="high_confidence_trusted",
@@ -69,7 +69,7 @@ class ReviewEngine:
             )
         )
 
-        # 规则 2：低置信度 → 标记待审核
+        # Rule 2: low confidence -> flag for review
         self.rules.append(
             Rule(
                 name="low_confidence",
@@ -79,7 +79,7 @@ class ReviewEngine:
             )
         )
 
-        # 规则 3：敏感内容 → 需要人工确认
+        # Rule 3: sensitive content -> require human confirmation
         self.rules.append(
             Rule(
                 name="sensitive_content",
@@ -89,7 +89,7 @@ class ReviewEngine:
             )
         )
 
-        # 规则 4：内容过短 → 标记待审核
+        # Rule 4: content too short -> flag for review
         self.rules.append(
             Rule(
                 name="too_short",
@@ -99,7 +99,7 @@ class ReviewEngine:
             )
         )
 
-        # 规则 5：personal 分面 → 需人工确认（隐私相关）
+        # Rule 5: personal facet -> require human confirmation (privacy)
         self.rules.append(
             Rule(
                 name="personal_requires_review",
@@ -111,7 +111,7 @@ class ReviewEngine:
             )
         )
 
-        # 规则 6：source 分面高置信度 → 自动确认
+        # Rule 6: source facet + high confidence -> auto-confirm
         self.rules.append(
             Rule(
                 name="source_auto_confirm",
@@ -125,7 +125,6 @@ class ReviewEngine:
             )
         )
 
-        # 按优先级排序（高优先）
         self.rules.sort(key=lambda r: r.priority, reverse=True)
 
     def review(self, entity: Entity) -> Entity:
@@ -136,7 +135,7 @@ class ReviewEngine:
                 entity = self._apply_action(entity, action, rule.name)
                 break
         else:
-            # 无规则匹配，保持待审核
+            # No rule matched; keep pending review as default
             entity.status = EntityStatus.PENDING_REVIEW
 
         return entity
@@ -149,7 +148,6 @@ class ReviewEngine:
             entity.status = EntityStatus.PENDING_REVIEW
         elif action == Action.REQUIRE_HUMAN_CONFIRM:
             entity.status = EntityStatus.PENDING_REVIEW
-            # 添加元数据标记需要人工确认
             entity.sources.append(
                 type(
                     "Source",
@@ -169,12 +167,10 @@ class ReviewEngine:
         """Check if entity contains sensitive information."""
         content_lower = entity.content.lower()
 
-        # 检查敏感关键词
         for category in self._config.review_sensitive_categories:
             if category in content_lower:
                 return True
 
-        # 检查可能的密码/密钥
         if re.search(r"password\s*[:=]\s*\S+", content_lower):
             return True
         if re.search(r"api[_-]?key\s*[:=]\s*\S+", content_lower):

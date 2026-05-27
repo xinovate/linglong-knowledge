@@ -7,21 +7,20 @@ from dataclasses import dataclass
 @dataclass
 class WikiLink:
     """A parsed wiki link."""
-    target: str       # 链接目标（页面名）
-    display: str      # 显示文本（可能与 target 不同）
-    position: int     # 在原文中的起始位置
+    target: str
+    display: str
+    position: int
 
 
 class WikiLinksParser:
     """Parse [[target]] and [[target|display]] links from Markdown."""
 
-    # 匹配 [[...]] 但排除代码块内的
+    # Matches [[...]] but must be filtered against code blocks
     _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
     _CODE_BLOCK_RE = re.compile(r"(`{3,}.*?`{3,}|`[^`]+`)", re.DOTALL)
 
     def parse(self, content: str) -> list[WikiLink]:
         """Extract all wiki links from content, skipping code blocks."""
-        # 找到所有代码块的范围
         code_ranges = [
             (m.start(), m.end())
             for m in self._CODE_BLOCK_RE.finditer(content)
@@ -29,7 +28,6 @@ class WikiLinksParser:
 
         links = []
         for m in self._WIKILINK_RE.finditer(content):
-            # 检查是否在代码块内
             if any(start <= m.start() < end for start, end in code_ranges):
                 continue
 

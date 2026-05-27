@@ -22,9 +22,9 @@ class LintSeverity(str, Enum):
 @dataclass
 class LintResult:
     """A single lint finding."""
-    rule: str           # 规则名称
+    rule: str
     severity: LintSeverity
-    message: str        # 问题描述
+    message: str
     entity_id: str | None = None
     facet: str | None = None
     details: dict = field(default_factory=dict)
@@ -54,12 +54,10 @@ class LintEngine:
         if results is None:
             results = self.run_all(stale_days=stale_days)
 
-        # 先处理 index_consistency
         for r in results:
             if r.fixed:
                 continue
             if r.rule == "index_consistency" and r.entity_id:
-                # 删除孤立文件（优先使用 details 中记录的实际路径）
                 orphan_path = r.details.get("path")
                 if orphan_path:
                     orphan = self.store.wiki_path / orphan_path
@@ -72,7 +70,6 @@ class LintEngine:
                     r.fixed = True
                     r.message += " (已修复：删除孤立文件)"
 
-        # 再处理 wikilinks — 按实体聚合后批量修复
         wikilink_results = [r for r in results if r.rule == "wikilinks" and not r.fixed and r.entity_id]
         if wikilink_results:
             self._fix_wikilinks(wikilink_results)
@@ -83,7 +80,6 @@ class LintEngine:
         """Batch-fix dead wikilinks by converting [[target]] to plain text."""
         import re
 
-        # 按 entity_id 聚合死链目标
         entity_dead_links: dict[str, set[str]] = {}
         for r in results:
             entity_id = r.entity_id
@@ -114,7 +110,6 @@ class LintEngine:
                 entity.content = new_content
                 try:
                     self.store.update(entity)
-                    # 标记该实体相关的所有 wikilink 结果为已修复
                     for r in results:
                         if r.entity_id == entity_id and r.details.get("target") in dead_targets:
                             r.fixed = True
@@ -130,19 +125,16 @@ class LintEngine:
         if not wiki_path.exists():
             return results
 
-        # 检查每个分面目录
         for facet in EntityFacet:
             facet_dir = wiki_path / facet.value
             if not facet_dir.exists():
                 continue
 
             for md_file in facet_dir.rglob("*.md"):
-                # 验证文件在 SQLite 中存在
-                # 文件名格式：{slug}-{id[:8]}.md 或 {id}.md
+                # Filename convention: {slug}-{id[:8]}.md or {id}.md
                 stem = md_file.stem
                 if "-" in stem:
                     partial_id = stem.rsplit("-", 1)[-1]
-                    # 用后8位模糊匹配数据库
                     import sqlite3
                     with sqlite3.connect(self.store.db_path) as conn:
                         row = conn.execute(
@@ -177,12 +169,10 @@ class LintEngine:
         """Check that all [[links]] point to existing entities."""
         results = []
 
-        # 获取所有实体标题/ID 集合
         all_entities = self.store.search(limit=10000, include_archived=True)
         known_ids = {e.id for e in all_entities}
         known_titles: set[str] = set()
         for e in all_entities:
-            # 从 content 提取标题（第一行 # heading）
             for line in e.content.split("\n"):
                 if line.startswith("# "):
                     known_titles.add(line[2:].strip())
@@ -210,12 +200,11 @@ class LintEngine:
         results = []
         entities = self.store.search(limit=1000)
 
-        # 简单去重：检查标题重复
         seen_titles: dict[str, str] = {}
         reported_pairs: set[tuple[str, str]] = set()
 
         for e in entities:
-            # 豁免 memory 目录的标题重复（diary 和 task-record 的标题重复是正常的）
+            # Diary/task-record entries legitimately share titles
             sub_dir = e.metadata.get("_subdir", "") if e.metadata else ""
             if sub_dir in ("diary", "task-record"):
                 continue
@@ -242,7 +231,6 @@ class LintEngine:
                 else:
                     seen_titles[title] = e.id
 
-        # 向量语义去重检测
         try:
             for e in entities:
                 sub_dir = e.metadata.get("_subdir", "") if e.metadata else ""
@@ -260,8 +248,8 @@ class LintEngine:
                         continue
                     if candidate.distance is None:
                         continue
-                    # vec_distance_cosine 返回的是余弦距离，范围 [0, 2]
-                    # 相似度 = 1 - distance/2，阈值 0.95 对应 distance < 0.1
+                    # vec_distance_cosine returns cosine distance in [0, 2];
+                    # similarity = 1 - distance/2, so threshold 0.95 means distance < 0.1
                     similarity = 1.0 - candidate.distance / 2.0
                     if similarity > 0.95:
                         pair = tuple(sorted([e.id, candidate.id]))

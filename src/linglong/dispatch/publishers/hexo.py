@@ -37,21 +37,16 @@ class HexoPublisher(Publisher):
     def publish(self, content: str, metadata: dict[str, Any]) -> PublishResult:
         """发布到 Hexo 博客"""
         try:
-            # 1. 确保目录存在
             self.posts_path.mkdir(parents=True, exist_ok=True)
 
-            # 2. 生成文件名
             filename = self._generate_filename(metadata)
             file_path = self.posts_path / filename
 
-            # 3. 写入文件
             file_path.write_text(content, encoding="utf-8")
 
             if self.use_git_workflow:
-                # Git 工作流：add → commit → push
                 return self._git_publish(file_path, metadata, filename)
             else:
-                # Local 工作流：hexo generate → deploy
                 return self._local_publish(file_path, metadata, filename)
 
         except Exception as e:
@@ -59,18 +54,15 @@ class HexoPublisher(Publisher):
 
     def health_check(self) -> bool:
         """检查 Hexo 环境"""
-        # 检查博客目录是否存在
         if not self.hexo_path.exists():
             return False
 
         if self.use_git_workflow:
-            # Git 模式：检查目标目录是否是 git 仓库
             result = subprocess.run(
                 ["git", "-C", str(self.hexo_path), "rev-parse", "--git-dir"], capture_output=True
             )
             return result.returncode == 0
         else:
-            # Local 模式：检查 hexo 命令是否可用
             result = subprocess.run(["hexo", "--version"], capture_output=True)
             return result.returncode == 0
 
@@ -81,7 +73,6 @@ class HexoPublisher(Publisher):
         try:
             title = metadata.get("title", "untitled")
 
-            # 准备环境变量（代理）
             env = os.environ.copy()
             if self.git_proxy:
                 env["HTTP_PROXY"] = self.git_proxy
@@ -106,7 +97,7 @@ class HexoPublisher(Publisher):
                 env=env,
             )
             if commit_result.returncode != 0:
-                # 可能是无变更（文件内容相同），不算错误
+                # No-op if nothing changed
                 if (
                     "nothing to commit" in commit_result.stdout
                     or "nothing to commit" in commit_result.stderr
@@ -127,23 +118,22 @@ class HexoPublisher(Publisher):
             if push_result.returncode != 0:
                 return PublishResult(success=False, error=f"git push 失败: {push_result.stderr}")
 
-            # 4. SSH 远程触发服务器生成（可选）
             if self.ssh_host:
-                logger.info(f"SSH 远程触发: {self.ssh_host}")
+                logger.info("SSH remote trigger: %s", self.ssh_host)
                 ssh_result = subprocess.run(
                     ["ssh", self.ssh_host, self.ssh_command],
                     capture_output=True,
                     text=True,
                 )
                 if ssh_result.returncode != 0:
-                    logger.warning(f"SSH 远程触发失败: {ssh_result.stderr}")
+                    logger.warning("SSH remote trigger failed: %s", ssh_result.stderr)
                     return PublishResult(
                         success=True,
                         url=f"{self.site_url}/{metadata.get('slug', '')}",
                         message=f"文章已提交并推送: {filename}（SSH 触发失败: {ssh_result.stderr.strip()[:100]}）",
                     )
                 else:
-                    logger.info("SSH 远程触发成功")
+                    logger.info("SSH remote trigger succeeded")
 
             return PublishResult(
                 success=True,
@@ -159,7 +149,6 @@ class HexoPublisher(Publisher):
     ) -> PublishResult:
         """Local 工作流：hexo generate → deploy"""
         try:
-            # 执行 hexo generate
             result = subprocess.run(
                 ["hexo", "generate"], cwd=self.hexo_path, capture_output=True, text=True
             )
@@ -167,7 +156,6 @@ class HexoPublisher(Publisher):
             if result.returncode != 0:
                 return PublishResult(success=False, error=f"hexo generate 失败: {result.stderr}")
 
-            # 自动部署（如果开启）
             if self.auto_deploy:
                 deploy_result = subprocess.run(
                     ["hexo", "deploy"], cwd=self.hexo_path, capture_output=True, text=True
@@ -192,7 +180,6 @@ class HexoPublisher(Publisher):
         title = metadata.get("title", "untitled")
         date = metadata.get("date", "")
 
-        # 清理标题中的特殊字符
         clean_title = title.replace(" ", "-").replace("/", "-").replace("\\", "-")
 
         if date:

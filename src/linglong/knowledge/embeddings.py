@@ -29,7 +29,7 @@ class EmbeddingGenerator:
         if not text or not text.strip():
             return None
 
-        url = self.config.embedding_url.rstrip("/") + "/embeddings"
+        url = f"{self.config.embedding_url.rstrip('/')}/embeddings"
         payload: dict[str, Any] = {
             "model": self.config.embedding_model,
             "input": [text],

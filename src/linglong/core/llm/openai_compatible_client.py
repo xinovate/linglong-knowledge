@@ -78,10 +78,9 @@ class OpenAICompatibleClient(LLMClient):
         }
 
         if system:
-            # 插入 system 消息到开头
             payload["messages"] = [{"role": "system", "content": system}] + messages
 
-        logger.debug(f"LLM 请求: {url} model={self.model}")
+        logger.debug("LLM request: %s model=%s", url, self.model)
 
         try:
             resp = requests.post(
@@ -94,22 +93,21 @@ class OpenAICompatibleClient(LLMClient):
             data = resp.json()
 
             if "choices" not in data or not data["choices"]:
-                raise RuntimeError(f"LLM 返回异常: {data}")
+                raise RuntimeError(f"LLM returned unexpected response: {data}")
 
             content = data["choices"][0].get("message", {}).get("content", "")
             usage = data.get("usage", {})
             logger.info(
-                f"LLM 响应: prompt_tokens={usage.get('prompt_tokens')}, "
-                f"completion_tokens={usage.get('completion_tokens')}, "
-                f"model={self.model}"
+                "LLM response: prompt_tokens=%s, completion_tokens=%s, model=%s",
+                usage.get('prompt_tokens'), usage.get('completion_tokens'), self.model,
             )
             return content.strip()
 
         except requests.HTTPError as e:
-            logger.error(f"LLM HTTP 错误: {e.response.status_code} {e.response.text}")
+            logger.error("LLM HTTP error: %s %s", e.response.status_code, e.response.text)
             raise
         except Exception as e:
-            logger.exception(f"LLM 调用失败: {e}")
+            logger.exception("LLM call failed: %s", e)
             raise
 
     def _chat_anthropic(
@@ -140,7 +138,7 @@ class OpenAICompatibleClient(LLMClient):
         elif self.temperature:
             payload["temperature"] = self.temperature
 
-        logger.debug(f"LLM 请求 (anthropic): {url} model={self.model}")
+        logger.debug("LLM request (anthropic): %s model=%s", url, self.model)
 
         try:
             resp = requests.post(
@@ -158,15 +156,14 @@ class OpenAICompatibleClient(LLMClient):
             )
             usage = data.get("usage", {})
             logger.info(
-                f"LLM 响应: input_tokens={usage.get('input_tokens')}, "
-                f"output_tokens={usage.get('output_tokens')}, "
-                f"model={self.model}"
+                "LLM response: input_tokens=%s, output_tokens=%s, model=%s",
+                usage.get('input_tokens'), usage.get('output_tokens'), self.model,
             )
             return content.strip()
 
         except requests.HTTPError as e:
-            logger.error(f"LLM HTTP 错误: {e.response.status_code} {e.response.text}")
+            logger.error("LLM HTTP error: %s %s", e.response.status_code, e.response.text)
             raise
         except Exception as e:
-            logger.exception(f"LLM 调用失败: {e}")
+            logger.exception("LLM call failed: %s", e)
             raise
