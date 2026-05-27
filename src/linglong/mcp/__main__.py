@@ -37,11 +37,18 @@ def _run_http(config) -> None:
 
         app = create_http_app()
 
-        if config.mcp.auth_token:
+        if config.mcp.auth_token or config.mcp.redis_url:
             from linglong.mcp._auth import TokenAuthMiddleware
 
-            app.add_middleware(TokenAuthMiddleware, expected_token=config.mcp.auth_token)
-            logger.info("Token auth enabled")
+            app.add_middleware(
+                TokenAuthMiddleware,
+                expected_token=config.mcp.auth_token or "",
+                redis_url=config.mcp.redis_url,
+            )
+            if config.mcp.redis_url:
+                logger.info("Token auth enabled (Redis)")
+            else:
+                logger.info("Token auth enabled (static)")
 
         uv_config = uvicorn.Config(
             app,

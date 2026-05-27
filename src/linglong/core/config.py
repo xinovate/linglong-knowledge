@@ -206,6 +206,10 @@ class MCPConfig(BaseModel):
         default_factory=list,
         description="Allowed Host header values for DNS rebinding protection (HTTP mode)",
     )
+    redis_url: str = Field(
+        default="",
+        description="Redis URL for dynamic token auth (e.g. redis://:password@127.0.0.1:6379/0)",
+    )
 
 
 class OSSConfig(BaseModel):
