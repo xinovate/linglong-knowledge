@@ -13,10 +13,10 @@ mappings:
       - docs/knowledge/README.md
       - docs/knowledge/design/
 
-  - code: src/linglong/composer/
+  - code: src/linglong/reviewer/
     docs:
-      - docs/composer/README.md
-      - docs/composer/
+      - docs/api.md
+      - docs/architecture.md
 
   - code: src/linglong/ingest/
     docs:

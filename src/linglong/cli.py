@@ -781,13 +781,6 @@ def _reg_ingest(sub):
     return p
 
 
-def _reg_compose(sub):
-    p = sub.add_parser("compose", help="Run composer pipeline")
-    p.add_argument("--dry-run", action="store_true", help="Dry run mode")
-    p.add_argument("--draft", action="store_true", help="Draft mode")
-    return p
-
-
 def _reg_publish(sub):
     p = sub.add_parser("publish", help="Publish a markdown file")
     p.add_argument("file", help="Markdown file to publish")

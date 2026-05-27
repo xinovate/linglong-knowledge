@@ -25,13 +25,9 @@ knowledge:
   max_versions: 10
   db_mode: wal
 
-composer:
-  distiller_use_llm: false
-  template_name: blog
-  auto_publish: true
-  default_publisher: local
-  image_assets:
-    enabled: false
+reviewer:
+  llm_model: gpt-4
+  passing_score: 6.0
 
 dispatch:
   enabled: true

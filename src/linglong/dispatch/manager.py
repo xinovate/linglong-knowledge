@@ -42,7 +42,7 @@ class DispatchManager:
         """Publish a dispatch-ready payload.
 
         Args:
-            payload: dict with ``content``, ``metadata``, ``draft_id``
+            payload: dict with ``content`` and ``metadata``
             publisher_name: Target publisher; defaults to ``DispatchConfig.default_publisher``
 
         Returns:

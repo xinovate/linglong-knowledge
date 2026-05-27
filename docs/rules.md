@@ -53,7 +53,7 @@ from linglong.knowledge.store import KnowledgeStore
 
 **文件命名**：`tests/{module}/test_{component}.py`
 
-**类命名**：`Test{ClassName}`（如 `TestComposer`、`TestKnowledgeStore`）
+**类命名**：`Test{ClassName}`（如 `TestReviewer`、`TestKnowledgeStore`）
 
 **方法命名**：`test_{行为描述}`（如 `test_create_entity`、`test_search_by_status`）
 
@@ -111,11 +111,11 @@ assert entity.status == EntityStatus.AUTO_CONFIRMED
 
 | Type | 含义 | 示例 |
 |------|------|------|
-| `feat` | 新功能 | `feat(distiller): 接入 LLM 智能提炼` |
-| `fix` | 缺陷修复 | `fix(composer): 修复状态隔离问题` |
+| `feat` | 新功能 | `feat(reviewer): 接入 LLM 七维度评分` |
+| `fix` | 缺陷修复 | `fix(ingest): 修复 RSSHub key 追加问题` |
 | `docs` | 文档更新 | `docs: 重组文档结构为模块化目录` |
-| `refactor` | 重构 | `refactor(template): 提取 frontmatter 构建逻辑` |
-| `test` | 测试 | `test(distiller): 增加回退路径测试` |
+| `refactor` | 重构 | `refactor(config): 提取 ReviewerConfig` |
+| `test` | 测试 | `test(reviewer): 增加规则校验测试` |
 | `chore` | 构建/工具 | `chore(deps): 增加 watchdog 依赖` |
 
 ### Scope 对照
@@ -125,7 +125,7 @@ assert entity.status == EntityStatus.AUTO_CONFIRMED
 | `core` | `src/linglong/core/` |
 | `ingest` | `src/linglong/ingest/` |
 | `knowledge` | `src/linglong/knowledge/` |
-| `composer` | `src/linglong/composer/` |
+| `reviewer` | `src/linglong/reviewer/` |
 | `dispatch` | `src/linglong/dispatch/` |
 | `cli` | CLI 入口 |
 | `config` | `config.py` |
@@ -172,7 +172,7 @@ src/linglong/
 ├── core/               # 共享基础设施（models, config）
 ├── ingest/             # 数据获取（RSS, API, Web, 验证）
 ├── knowledge/          # 知识库存储（SQLite, 向量, Review, 同步）
-├── composer/           # 内容生产（提炼, 模板, 资产, 草稿）
+├── reviewer/           # 文章评审（七维度评分, 规则校验）
 └── dispatch/           # 多平台分发（Hexo, Local）
 ```
 
@@ -186,7 +186,7 @@ pip install -e ".[dev]"
 
 # 测试
 pytest                         # 全部
-pytest tests/composer/ -v      # 指定模块
+pytest tests/reviewer/ -v      # 指定模块
 
 # 代码质量
 black src/ tests/              # 格式化

@@ -23,14 +23,14 @@ CREATE TABLE output_log (
 ```
 
 **作用**：
-- composer 读取知识库时可跳过已输出的 entity，避免重复消费
+- reviewer 评审通过后可标记已审 entity，避免重复消费
 - 可追溯"这篇文章用了哪些知识"
 
 ## 发布流程
 
 ```mermaid
 graph TD
-    A[ComposerResult<br/>dispatch_ready=True] --> B[DispatchManager]
+    A[Article<br/>content + metadata] --> B[DispatchManager]
     B --> O{OSS 启用?}
     O -->|是| P[OSSUploader<br/>上传图片 + URL 替换]
     O -->|否| C
@@ -116,12 +116,7 @@ export LL_OSS_ACCESS_KEY_SECRET=xxx
 
 ```bash
 # CLI
-linglong publish <draft_id>    # 发布指定草稿
-
-# 自动发布（在 .linglong.yaml 中开启）
-composer:
-  auto_publish: true
-  default_publisher: hexo
+linglong publish <file>    # 发布指定 Markdown 文件
 ```
 
 ```python
@@ -129,7 +124,10 @@ composer:
 from linglong.dispatch.manager import DispatchManager
 
 dispatch = DispatchManager()
-result = dispatch.publish(article_info, publisher_name="hexo")
+result = dispatch.publish(
+    {"content": "...", "metadata": {"title": "...", "date": "2026-05-27"}},
+    publisher_name="hexo",
+)
 ```
 
 ## 配置
@@ -157,4 +155,4 @@ dispatch:
 ## 相关文档
 
 - [博客写作风格指南](blog-style.md)
-- [图片资产系统](../composer/image-assets.md)
+- [Reviewer 模块](../api.md)

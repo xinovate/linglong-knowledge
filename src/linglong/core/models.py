@@ -210,7 +210,7 @@ class Task(BaseModel):
     """Scheduled task for cross-module orchestration."""
 
     id: str
-    project: str  # "ingest", "knowledge", "composer", "dispatch"
+    project: str  # "ingest", "knowledge", "reviewer", "dispatch"
     task_type: str  # "rss_fetch", "distill", "publish", etc.
     status: TaskStatus = TaskStatus.PENDING
 

@@ -29,7 +29,7 @@ git push origin vx.y.z
 ### 发布后
 
 - [ ] `pip install -e .` 导入无错误
-- [ ] Composer 运行无报错
+- [ ] 全部测试通过
 
 ### 紧急修复
 
@@ -59,13 +59,13 @@ git push origin vx.y.z
 
 - **严重程度**: 低
 - **状态**: 已修复，需验证长期稳定性
-- **说明**: 迁移后改为 ComposerState 内容哈希去重
+- **说明**: 迁移后改为按内容哈希去重
 
 ### DEBT-010: Composer State 使用内容哈希而非 entity_id
 
 - **严重程度**: 低
-- **状态**: 已解决（v1.0 新增 output_log 表，按 entity_id 追踪输出状态）
-- **说明**: 原先使用内容哈希去重，v1.0 改为基于 entity_id 的 output_log 追踪
+- **状态**: 已关闭（composer 模块已在 v2.5 移除）
+- **说明**: 原 composer 的 State 组件已随模块一并删除
 
 ### 已解决
 
@@ -73,7 +73,7 @@ git push origin vx.y.z
 |------|------|----------|
 | DEBT-001 | 旧 pipeline 代码未清理 | 2026-05-12 |
 | DEBT-002 | Entity 模型字段不完整 | 2026-05-12 |
-| DEBT-004 | Composer 从 pipeline 迁移 | 2026-05-12 |
+| DEBT-004 | Composer 从 pipeline 迁移（已移除） | 2026-05-12 |
 | DEBT-005 | 缺少 lint/format 工具 | 2026-05-12 |
 | DEBT-006 | tests/ 覆盖率不足 | 2026-05-12 |
 | DEBT-008 | 封面图生成冲突 | 2026-05-13 |

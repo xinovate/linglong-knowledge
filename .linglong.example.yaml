@@ -50,29 +50,14 @@ ingest:
   verification_enabled: true
   verification_pass_threshold: 0.6
 
-# 内容生产
-composer:
+# 文章评审
+reviewer:
   # LLM 设置
-  # llm_provider: openai
-  # llm_model: gpt-4
-  # llm_api_key: ""          # 建议用环境变量 LL_COMPOSER_LLM_API_KEY
+  # llm_provider: zhipu
+  # llm_model: glm-5.1
+  # llm_api_key: ""          # 建议用环境变量 LL_REVIEWER_LLM_API_KEY
   # llm_base_url: ""
-
-  distiller_use_llm: false
-  template_name: blog
-  drafts_dir: ~/linglong/data/drafts
-
-  # 自动发布
-  auto_publish: false
-  default_publisher: local
-
-  # 图片资产
-  # image_assets:
-  #   enabled: true
-  #   sources:
-  #     - name: tuchong
-  #       url_file: ~/Downloads/resource.txt
-  #       resolve_via: playwright
+  passing_score: 6.0
 
 # 多平台分发
 dispatch:

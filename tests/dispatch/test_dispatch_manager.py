@@ -47,7 +47,6 @@ def test_dispatch_manager_publish_routing():
     """DispatchManager routes payload to configured publisher."""
     manager = DispatchManager()
     payload = {
-        "draft_id": "test-123",
         "content": "# Hello",
         "metadata": {"title": "Hello", "date": "2026-05-12"},
     }

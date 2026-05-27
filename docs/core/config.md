@@ -26,7 +26,7 @@ data_dir: ~/linglong/data
 
 knowledge:      # 知识库配置
 ingest:         # 信息采集配置
-composer:       # 内容生产配置
+reviewer:       # 文章评审配置
 dispatch:       # 分发配置
 ```
 
@@ -72,7 +72,7 @@ search_queries:
 |----------|---------------|
 | `LL_DEBUG` | `debug` |
 | `LL_KNOWLEDGE_WIKI_PATH` | `knowledge.wiki_path` |
-| `LL_COMPOSER_LLM_MODEL` | `composer.llm_model` |
+| `LL_REVIEWER_LLM_MODEL` | `reviewer.llm_model` |
 | `LL_DISPATCH_DEFAULT_PUBLISHER` | `dispatch.default_publisher` |
 | `LL_INGEST_SEARXNG_URL` | `ingest.searxng_url` |
 
@@ -86,14 +86,15 @@ config.knowledge.wiki_path        # 知识库路径
 config.ingest.searxng_url         # SearXNG 地址
 config.ingest.rss_sources         # RSS 订阅源
 config.ingest.packages            # 包定义列表
-config.composer.image_assets.enabled  # 图片资产开关
-config.dispatch.default_publisher     # 默认发布器
+config.reviewer.llm_model         # 评审 LLM 模型
+config.reviewer.passing_score     # 评审及格分
+config.dispatch.default_publisher # 默认发布器
 ```
 
 YAML 支持 `${ENV_VAR}` 语法引用环境变量：
 
 ```yaml
-composer:
+reviewer:
   llm_api_key: ${ZHIPU_API_KEY}  # 自动从环境变量读取
 ```
 
