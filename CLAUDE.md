@@ -2,10 +2,10 @@
 
 ## 项目定位
 
-Linglong 是**跨 Agent 知识中枢**，串联信息采集 → 讨论沉淀 → 内容生产 → 多平台分发。
+Linglong 是**跨 Agent 知识中枢**，串联信息采集 → 讨论沉淀 → 文章评审 → 多平台分发。
 
 ```
-ingest（采集，不写知识库）→ 用户阅读思考 → 知识库 → composer → dispatch
+ingest（采集，不写知识库）→ 用户阅读思考 → 知识库 → reviewer（评审）→ dispatch
 ```
 
 ---
@@ -27,8 +27,8 @@ ingest（采集，不写知识库）→ 用户阅读思考 → 知识库 → com
 
 - **ingest 不写知识库** — 采集结果返回给对话，写入由人决定
 - **知识库只接受讨论沉淀** — 人和 Agent 讨论筛选后通过 MCP/CLI 写入
-- **composer 只读 knowledge**，不直接读文件系统
-- **composer 不处理发布**，发布逻辑在 dispatch
+- **Agent 写文章，reviewer 评审打分** — writer 负责生产，reviewer 负责质量把关（7 维度评分）
+- **reviewer 不处理发布**，发布逻辑在 dispatch
 - **dispatch 发布后写 output_log** — 记录 entity_id + publisher + published_at
 
 关键模型字段：`facet`（六分面）| `confidence`（AI 置信度）| `status`（审核状态）| `created_by`（`agent:claude`/`agent:openclaw`）

@@ -2,19 +2,19 @@
 
 ## 愿景
 
-Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 → 讨论沉淀 → 内容生产 → 多平台分发** 的完整闭环。
+Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 → 讨论沉淀 → 文章评审 → 多平台分发** 的完整闭环。
 
 ## 版本演进
 
 | 版本 | 主题 | 状态 |
 |------|------|------|
 | v0.1 | 项目骨架 | ✅ |
-| v0.2 | core + ingest + knowledge + composer 骨架 | ✅ |
+| v0.2 | core + ingest + knowledge + reviewer 骨架 | ✅ |
 | v0.3 | 人工审核层（Draft Mode + Git Workflow Publisher） | ✅ |
 | v0.4 | 知识库统一（向量搜索、OpenClaw wiki 同步、跨 Agent Schema） | ✅ |
 | v0.5 | ingest 通用化（RSS/API/WebFetch、验证引擎） | ✅ |
 | v0.6 | 多 Agent 接入（Claude Code memory、Codex 同步） | ✅ |
-| v0.7 | composer 产品化（LLM 提炼、Prompt 外部化） | ✅ |
+| v0.7 | reviewer 产品化（LLM 评审、Prompt 外部化） | ✅ |
 | v0.8 | dispatch 正式化（DispatchManager、HexoPublisher、LocalPublisher） | ✅ |
 | v0.9 | 稳定化（CLI、集成测试、auto-publish、配置外部化） | ✅ |
 | v1.0 | 模块边界对齐 + 知识库封版 | ✅ |
@@ -135,13 +135,12 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 | 1 | OpenClaw 观察期收尾 | agent | 🟡 | 确认 MCP 写入质量，禁用 wiki-maintainer |
 | 2 | Codex CLI 接入 | agent | 🔴 | 当前仅预留，未实际接入 |
 | 3 | 拥挤 facet 根目录清理 | knowledge | 🟡 | concept/methodology/project 根目录未分组条目 |
-| 4 | IngestAdapter → KnowledgeAdapter 重命名 | composer | 低 | 名称与 ingest 模块混淆 |
-| 5 | output_log 输出追踪 | knowledge | 中 | 发布后记录 entity_id + publisher |
-| 6 | 发布队列 + 失败重试 | dispatch | 中 | DispatchManager 当前直连发布 |
-| 7 | 多模板（周报/PPT/视频脚本） | composer | 中 | 当前只有博客模板 |
-| 8 | AI 封面图生成 | composer | 低 | 图片资产管线已搭建，缺 AI 生成 |
-| 9 | 跨 Agent 写入冲突解决 | knowledge | 低 | 多 Agent 同时修改同一 wiki |
-| 10 | API 冻结 + mypy strict | core | 低 | 稳定公开接口 |
+| 4 | output_log 输出追踪 | knowledge | 中 | 发布后记录 entity_id + publisher |
+| 5 | 发布队列 + 失败重试 | dispatch | 中 | DispatchManager 当前直连发布 |
+| 6 | 跨 Agent 写入冲突解决 | knowledge | 低 | 多 Agent 同时修改同一 wiki |
+| 7 | API 冻结 + mypy strict | core | 低 | 稳定公开接口 |
+
+> **注意**：composer 模块已在 v2.5 中移除，替换为 reviewer（文章评审引擎）。原 composer 收尾项（IngestAdapter 重命名、多模板、AI 封面图）已归档。
 
 ### ingest 已知问题（v2.4）
 
@@ -183,11 +182,11 @@ Linglong 作为所有 AI Agent 的统一知识底座，串联 **信息采集 →
 
 ### ADR-007: entity 输出追踪 output_log（v1.0）
 
-**决策**: composer + dispatch 发布后记录 entity_id + publisher + published_at，避免重复消费。
+**决策**: reviewer + dispatch 发布后记录 entity_id + publisher + published_at，避免重复消费。
 
 ### ADR-008: 移除 pipeline 子命令分组（v1.0）
 
-**决策**: 移除 `linglong pipeline` 子命令分组。`ingest`、`compose`、`publish` 改为顶层命令。
+**决策**: 移除 `linglong pipeline` 子命令分组。`ingest`、`review`、`publish` 改为顶层命令。
 - **原因**: ingest 与知识库解耦后不再是流水线的一环，pipeline 概念不再适用。
 
 ### ADR-009: 多源聚合架构（v1.2）

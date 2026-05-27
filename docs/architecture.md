@@ -36,15 +36,15 @@ Linglong 是一个**跨 Agent 知识中枢**，采用模块化设计，支持从
 │  │  └─────────┘                                                 │   │
 │  │                                                              │   │
 │  │  ┌──────────┐   ┌──────────┐   ┌──────────┐                 │   │
-│  │  │ knowledge│ → │ composer │ → │ dispatch │                 │   │
-│  │  │ 知识库   │   │ 编译     │   │ 分发     │                 │   │
+│  │  │ knowledge│ → │ reviewer │ → │ dispatch │                 │   │
+│  │  │ 知识库   │   │ 评审     │   │ 分发     │                 │   │
 │  │  └──────────┘   └──────────┘   └──────────┘                 │   │
 │  │       ↑             ↑              ↓                         │   │
 │  │       └─────────────┴──────────────┘                         │   │
 │  │                 output_log（已输出追踪）                       │   │
 │  │                                                              │   │
 │  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │ core（共享基础设施：模型、配置、工具）                │   │   │
+│  │  │ core（共享基础设施：模型、配置、LLM、工具）           │   │   │
 │  │  └──────────────────────────────────────────────────────┘   │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
@@ -56,7 +56,7 @@ Linglong 是一个**跨 Agent 知识中枢**，采用模块化设计，支持从
 graph LR
     A[信息采集<br/>ingest] -->|返回定制化信息| B[用户阅读思考]
     B -->|讨论中沉淀| C[知识沉淀<br/>knowledge]
-    C --> D[内容生产<br/>composer]
+    C --> D[文章评审<br/>reviewer]
     D --> E[多平台分发<br/>dispatch]
     E -->|output_log| C
 
@@ -72,18 +72,20 @@ graph LR
 
 ```mermaid
 graph TD
-    subgraph composer 流水线
-        A[KnowledgeStore] -->|search| B[KnowledgeAdapter]
-        B --> C[DailyAggregator]
-        C --> D{distiller_use_llm?}
-        D -->|是| E[LLMDistiller]
-        D -->|否| F[规则聚合]
-        E --> G[BlogTemplate]
-        F --> G
-        G --> H{auto_publish?}
-        H -->|是| I[DispatchManager]
-        H -->|否| J[ComposerResult]
-        I -->|写 output_log| J
+    subgraph reviewer 评审流程
+        A[Agent 写文章] --> B[reviewer 评审]
+        B --> C{7 维度评分}
+        C -->|格式| D1[format]
+        C -->|内容丰富度| D2[content_richness]
+        C -->|结构| D3[structure]
+        C -->|表达自然度| D4[expression_naturalness]
+        C -->|坑点覆盖| D5[pitfall_coverage]
+        C -->|可读性| D6[readability]
+        C -->|准确性| D7[accuracy]
+        D1 & D2 & D3 & D4 & D5 & D6 & D7 --> E[综合评分]
+        E -->|通过| F[DispatchManager]
+        E -->|不通过| G[返回修改建议]
+        F -->|写 output_log| H[发布完成]
     end
 ```
 
@@ -197,47 +199,43 @@ storage:
                └──────────┘
 ```
 
-### composer（知识编译引擎）
+### reviewer（文章评审引擎）
 
 **职责**：
-- 从知识库读取各 Agent 产出的碎片
-- **主题聚类**：识别"这周一直在研究 Rust 并发"，自动聚合成深度文章
-- **跨天合并**：跨天、跨 Agent 的内容聚合
-- **LLM 提炼**：总结、加解读、生成封面图提示词
-- **多格式输出**：博客（Hexo）、早报、周报、PPT 大纲（抖音口播脚本）、Twitter 线程
-- **内容验证**：检查是否符合模板规范
+- 对 Agent 生成的文章进行多维度评审打分
+- **7 维度评分**：格式（format）、内容丰富度（content_richness）、结构（structure）、表达自然度（expression_naturalness）、坑点覆盖（pitfall_coverage）、可读性（readability）、准确性（accuracy）
+- **质量把关**：不合格文章返回修改建议，合格文章进入发布队列
+- **评分溯源**：记录评分依据和改进建议
 
 **设计要点**：
-- 输入：只从 knowledge 读取（已沉淀的知识，非原始 ingest 数据）
-- 输出：写入 dispatch 队列
-- 不直接处理发布
-- 草稿模式支持人工审核
-- **输出追踪**：发布后记录 entity_id + publisher + published_at 到 output_log 表，避免重复消费
+- Agent（writer）负责写文章，reviewer（editor/grader）负责评审
+- LLM 客户端位于 `core/llm/`（共享基础设施），供 reviewer 和其他模块使用
+- 配置：`ReviewerConfig` 控制 LLM 模型、评分阈值等
+- 不直接处理发布，发布逻辑在 dispatch
+- MCP 工具：`review_article(content, source_entity_ids)` 供 Agent 调用
 
-**编译流程**：
+**评审流程**：
 
 ```
-知识库（已沉淀的知识）
+Agent 生成的文章
            │
            ▼
    ┌───────────────┐
-   │KnowledgeAdapter│  ← 统一读取接口
+   │  Reviewer     │  ← LLM 驱动的评审引擎
+   │  7 维度评分    │
    └───────┬───────┘
            │
-   ┌───────┴───────┐
-   │  ThemeAggregator│  ← 按主题聚类（跨天、跨 Agent）
-   └───────┬───────┘
+     ┌─────┴─────┐
+     │ 综合评分    │
+     └─────┬─────┘
            │
-   ┌───────┴───────┐
-   │  LLM Distiller  │  ← 提炼、总结、加解读
-   └───────┬───────┘
-           │
-   ┌───────┴───────┐
-   │  TemplateEngine │  ← 套用博客/早报/PPT/视频脚本模板
-   └───────┬───────┘
-           │
-           ▼
-    成品（Markdown / PPT / 视频脚本）
+    ┌──────┴──────┐
+    │             │
+  通过           不通过
+    │             │
+    ▼             ▼
+ dispatch     返回修改建议
+ （发布）    （给 Agent 重写）
 ```
 
 ### dispatch（智能分发器）
@@ -273,7 +271,7 @@ graph LR
 
 ```mermaid
 graph LR
-    A[knowledge<br/>知识沉淀] --> B[composer<br/>内容生产]
+    A[knowledge<br/>知识沉淀] --> B[reviewer<br/>文章评审]
     B --> C[dispatch<br/>多平台分发]
     C -->|output_log| A
 ```
@@ -397,10 +395,10 @@ services:
 ## 演进路线
 
 ### Phase 1–3（v0.1–v0.8：已完成）
-- core：共享模型、配置中心（`.linglong.yaml`）
+- core：共享模型、配置中心（`.linglong.yaml`）、LLM 客户端
 - ingest：RSS/API/Web 数据获取、真实性验证引擎
 - knowledge：SQLite + sqlite-vec、Review 引擎、OpenClaw/Claude/Codex 同步
-- composer：LLM/规则提炼、博客模板、草稿审核、图片资产管线
+- reviewer：文章评审（7 维度评分）、质量把关、修改建议
 - dispatch：Hexo 发布（git workflow）、本地文件输出、发布队列
 
 ### Phase 4（v0.9–v1.3：已完成）

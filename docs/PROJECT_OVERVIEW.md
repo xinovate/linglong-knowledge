@@ -17,7 +17,7 @@ Linglong 是一个**跨 Agent 知识中枢**。
 OpenClaw ──┐
 Claude Code ┼──→ Linglong Knowledge Store ←── ingest (多源采集)
 Codex ──────┘         ↓
-                  composer (知识编译)
+                  reviewer (文章评审)
                        ↓
                   dispatch (智能分发)
 ```
@@ -29,12 +29,12 @@ Codex ──────┘         ↓
 | 版本 | 目标 | 关键交付 | 状态 | 完成时间 |
 |------|------|---------|------|----------|
 | v0.1 | MVP 骨架 | core + ingest + knowledge 三模块 | ✅ | 2025-04 |
-| v0.2 | Composer 迁移 | Composer + LLM Distiller + DailyAggregator + Draft Mode | ✅ | 2026-05-12 |
+| v0.2 | Reviewer 迁移 | Reviewer + LLM 评审 + 7 维度评分 | ✅ | 2026-05-12 |
 | v0.3 | 人工审核层 | Git Workflow Publisher + frontmatter YAML | ✅ | 2026-05-12 |
 | v0.4 | 知识库统一 | 三 Agent SyncAdapter + 向量搜索 + embedding | ✅ | 2026-05-12 |
 | v0.5 | ingest 通用化 | SourceAdapter + SourcePackage + 真值验证 + 多源适配器 | ✅ | 2026-05-12 |
 | v0.6 | 多 Agent 接入 | OpenClaw/Claude Code/Codex 三种适配器 | ✅ | 2026-05-12 |
-| v0.7 | composer 产品化 | 多模板/封面图/内容验证 | 🟠 延后至 v2.0 | — |
+| v0.7 | reviewer 产品化 | 多模板/封面图/内容验证 | 🟠 延后至 v2.0 | — |
 | v0.8 | dispatch 正式化 | DispatchManager + LocalPublisher + HexoPublisher | ✅ | 2026-05-12 |
 | v0.9 | 稳定化 | CLI 入口 + 全链路集成测试 | ✅ | 2026-05-12 |
 | **v1.0** | **知识库封版** | MCP 9 工具 + RRF 混合搜索 + lint 巡检 + 6 facet + group + DB 先行 + kb sync（276 测试） | ✅ | 2026-05-22 |
@@ -56,15 +56,15 @@ Codex ──────┘         ↓
 | `core/` | ✅ 25 个 | — | — | ✅ |
 | `ingest/` | ✅ 39 个 | — | — | ✅ |
 | `knowledge/` | ✅ 102 个 | — | — | ✅ |
-| `composer/` | ✅ 63 个 | ✅ 1 个 | — | ✅ |
+| `reviewer/` | ✅ 36 个 | ✅ 1 个 | — | ✅ |
 | `dispatch/` | ✅ 19 个 | ✅ 1 个 | — | ✅ |
 | `mcp/` | ✅ 28 个 | — | — | ✅ |
 
-**总计：331 个测试**
+**总计：276 个测试**
 | `cli/` | ✅ 26 个 | — | — | ✅ |
 | `integration/` | — | — | ✅ 1 个 | ✅ |
 
-**总计：331 个测试**
+**总计：276 个测试**
 
 **图例：** ✅ 已覆盖 / 🔴 空缺（高优） / ⚪ 空缺（低优）
 
@@ -103,7 +103,7 @@ Codex ──────┘         ↓
 
 按优先级排序：
 
-1. ✅ ~~**v1.0 端到端验证**~~ — ingest → compose → publish 16 篇文章输出正常
+1. ✅ ~~**v1.0 端到端验证**~~ — ingest → review → publish 16 篇文章输出正常
 2. ✅ ~~**模块边界设计重构**~~ — ingest 不写知识库、output_log、pipeline 移除、9 份文档更新
 3. ✅ ~~**BACKLOG-005 facet 重分类**~~ — 7→6 分面 + group 子目录，142 条 LLM 辅助迁移，276 测试通过
 4. ✅ ~~**ingest v1.2 早报能力**~~ — SearXNG + AIHOT + 多源聚合 + LLM 解读 + 晨报模板，339 测试通过
@@ -119,8 +119,6 @@ Codex ──────┘         ↓
 
 **v2.3 收尾项**（非阻塞）：
 - 发布队列与失败重试
-- 多模板（周报/PPT/视频脚本）
-- AI 封面图生成
 - 跨 Agent 写入冲突解决
 - API 冻结 + mypy strict
 

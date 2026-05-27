@@ -28,28 +28,6 @@ def test_cli_ingest_no_packages(tmp_path, monkeypatch):
     assert code == 1
 
 
-def test_cli_compose_dry_run(tmp_path, monkeypatch):
-    """compose --dry-run should succeed with empty store."""
-    from linglong.core.config import LinglongConfig, set_config
-
-    config = LinglongConfig(
-        data_dir=tmp_path / "data",
-        knowledge=LinglongConfig().knowledge.model_copy(
-            update={
-                "wiki_path": tmp_path / "wiki",
-                "db_path": tmp_path / "knowledge.db",
-            }
-        ),
-        composer=LinglongConfig().composer.model_copy(
-            update={"drafts_dir": tmp_path / "drafts"}
-        ),
-    )
-    set_config(config)
-
-    code = main(["compose", "--dry-run"])
-    assert code == 0
-
-
 # ---------------------------------------------------------------------------
 # 知识库子命令测试
 # ---------------------------------------------------------------------------

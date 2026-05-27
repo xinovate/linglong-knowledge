@@ -20,134 +20,18 @@ _YAML_SEARCH_PATHS = [
 ]
 
 
-class ImageAssetSpecConfig(BaseModel):
-    """Image asset specification (size, quality, output)."""
+class ReviewerConfig(BaseSettings):
+    """Reviewer module configuration."""
 
-    min_width: int = Field(default=800, description="Minimum image width in pixels")
-    min_height: int = Field(default=600, description="Minimum image height in pixels")
-    quality: int = Field(default=85, description="JPEG compression quality (1-100)")
-    output_dir: str = Field(
-        default="~/linglong/images", description="Output directory for processed images"
-    )
-    variants: dict[str, int] = Field(
-        default_factory=lambda: {
-            "thumb": 400,
-            "medium": 800,
-            "large": 1200,
-        },
-        description="Image size variants: name → max width in pixels",
-    )
+    model_config = SettingsConfigDict(env_prefix="LL_REVIEWER_")
 
-
-class ImageAssetSourceConfig(BaseModel):
-    """Image source configuration (URL list file)."""
-
-    name: str = Field(description="Source name (e.g. tuchong, unsplash)")
-    url_file: str = Field(description="Path to URL list file")
-    headers: dict[str, str] = Field(
-        default_factory=lambda: {"User-Agent": "Mozilla/5.0", "Referer": "https://tuchong.com/"},
-        description="HTTP headers for downloading",
-    )
-    default_usage: str = Field(
-        default="both",
-        description="Default usage when not marked in URL file: background, article_image, or both",
-    )
-    resolve_via: str = Field(
-        default="direct",
-        description="URL resolution method: direct (image URLs) or playwright (page URLs needing browser)",
-    )
-    headless: bool = Field(default=True, description="Playwright headless mode")
-    delay_range: list[int] = Field(
-        default=[3, 8], description="Random delay range in seconds between page visits"
-    )
-    max_count: int = Field(default=50, description="Max URLs to resolve per run")
-
-
-class ImageAssetSelectionConfig(BaseModel):
-    """Image selection strategy configuration."""
-
-    strategy: str = Field(default="random", description="Selection strategy: random")
-    dedup_days: int = Field(default=30, description="Days to remember used URLs for dedup")
-
-
-class ImageAssetConfig(BaseModel):
-    """Top-level image asset configuration for Composer."""
-
-    enabled: bool = Field(default=False, description="Enable image asset fetching")
-    specs: dict[str, ImageAssetSpecConfig] = Field(
-        default_factory=lambda: {
-            "background": ImageAssetSpecConfig(
-                min_width=1920, min_height=1080, quality=90,
-                output_dir="~/linglong/images/backgrounds",
-            ),
-            "article_image": ImageAssetSpecConfig(
-                min_width=800, min_height=600, quality=85,
-                output_dir="~/linglong/images/articles",
-            ),
-        },
-        description="Image specifications keyed by usage (background, article_image)",
-    )
-    sources: list[ImageAssetSourceConfig] = Field(
-        default_factory=list, description="Image source configurations"
-    )
-    selection: ImageAssetSelectionConfig = Field(
-        default_factory=ImageAssetSelectionConfig, description="Selection strategy"
-    )
-
-
-class ComposerConfig(BaseSettings):
-    """Composer module configuration."""
-
-    model_config = SettingsConfigDict(env_prefix="LL_COMPOSER_")
-
-    # LLM 设置
     llm_provider: str = Field(default="openai", description="LLM provider")
     llm_model: str = Field(default="gpt-4", description="LLM model name")
     llm_api_key: str | None = Field(default=None, description="LLM API key")
     llm_base_url: str | None = Field(default=None, description="LLM base URL")
-    llm_temperature: float = Field(default=0.7, description="LLM temperature")
+    llm_temperature: float = Field(default=0.3, description="LLM temperature for review")
     llm_max_tokens: int = Field(default=4096, description="LLM max tokens")
-
-    # 提炼器设置
-    distiller_use_llm: bool = Field(default=False, description="Use LLM distiller")
-    distiller_theme_threshold: float = Field(
-        default=0.7, description="Theme grouping similarity threshold"
-    )
-    distiller_max_themes: int = Field(default=5, description="Max themes per aggregation")
-
-    # 资产设置
-    assets_excerpt_length: int = Field(default=200, description="Excerpt length")
-    assets_cover_enabled: bool = Field(default=False, description="Enable cover generation")
-    image_assets: ImageAssetConfig = Field(
-        default_factory=ImageAssetConfig, description="Image asset fetching configuration"
-    )
-
-    # 模板设置
-    template_name: str = Field(default="blog", description="Default template")
-
-    # 草稿设置
-    drafts_dir: Path = Field(
-        default=Path.home() / "linglong" / "data" / "drafts", description="Drafts directory"
-    )
-
-    # 分发设置
-    auto_publish: bool = Field(
-        default=False, description="Auto-publish dispatch-ready articles via DispatchManager"
-    )
-    default_publisher: str = Field(
-        default="local", description="Default publisher name for auto-publish"
-    )
-
-    # 质量校验
-    quality_lint: dict = Field(
-        default_factory=lambda: {
-            "enabled": True,
-            "use_llm": False,
-            "min_content_length": 500,
-            "min_paragraphs": 3,
-        },
-        description="Quality lint configuration",
-    )
+    passing_score: float = Field(default=6.0, description="Minimum passing score (0-10)")
 
 
 class KnowledgeConfig(BaseSettings):
@@ -178,35 +62,18 @@ class KnowledgeConfig(BaseSettings):
         default=True, description="Auto-generate embeddings on entity create/update"
     )
 
-    # 写入设置
-    write_mode: str = Field(
-        default="confirm", description="Write mode: confirm or auto"
-    )
-    search_mode: str = Field(
-        default="on_demand", description="Search mode: on_demand or deep"
-    )
-    auto_index: bool = Field(
-        default=True, description="Auto-update index on write"
-    )
-    max_versions: int = Field(
-        default=10, description="Max version history per entity"
-    )
+    write_mode: str = Field(default="confirm", description="Write mode: confirm or auto")
+    search_mode: str = Field(default="on_demand", description="Search mode: on_demand or deep")
+    auto_index: bool = Field(default=True, description="Auto-update index on write")
+    max_versions: int = Field(default=10, description="Max version history per entity")
 
-    # 并发设置
-    lock_timeout: int = Field(
-        default=5, description="File lock timeout in seconds"
-    )
-    db_mode: str = Field(
-        default="wal", description="SQLite journal mode"
-    )
-    auto_lint: bool = Field(
-        default=False, description="Auto-run lint after write operations"
-    )
+    lock_timeout: int = Field(default=5, description="File lock timeout in seconds")
+    db_mode: str = Field(default="wal", description="SQLite journal mode")
+    auto_lint: bool = Field(default=False, description="Auto-run lint after write operations")
     lint_schedule: str | None = Field(
         default=None, description="定时巡检的 cron 表达式，如 '0 2 * * *'"
     )
 
-    # 审核引擎设置
     review_high_confidence_threshold: float = Field(
         default=0.9, description="High confidence threshold for auto-confirm"
     )
@@ -225,12 +92,10 @@ class KnowledgeConfig(BaseSettings):
         description="Sensitive content categories to flag",
     )
 
-    # 同步适配器置信度
     sync_confidence: float = Field(
         default=0.95, description="Default confidence for synced entities"
     )
 
-    # 同步源路径
     openclaw_wiki_path: Path | None = Field(
         default=None, description="Path to OpenClaw wiki directory"
     )
@@ -268,7 +133,6 @@ class IngestConfig(BaseSettings):
         default=None, description="RSSHub ACCESS_KEY for authenticated requests"
     )
 
-    # LLM 早报生成
     llm_max_tokens: int = Field(
         default=8000, description="LLM max output tokens for brief generation"
     )
@@ -279,7 +143,6 @@ class IngestConfig(BaseSettings):
         default=120, description="LLM request timeout in seconds"
     )
 
-    # GitHub 开源趋势
     github_trending_limits: dict[str, int] = Field(
         default_factory=lambda: {"daily": 5, "weekly": 3, "monthly": 3},
         description="GitHub trending repo counts per period",
@@ -289,7 +152,6 @@ class IngestConfig(BaseSettings):
         description="GitHub Search API fallback parameters",
     )
 
-    # 早报去重
     brief_history_dir: str = Field(
         default="~/linglong/brief_history",
         description="Directory for brief history JSON files (dedup)",
@@ -303,7 +165,6 @@ class IngestConfig(BaseSettings):
         description="Per-dimension lookback days for dedup",
     )
 
-    # 早报缓存
     brief_output_dir: str = Field(
         default="~/linglong/briefs",
         description="Directory for cached daily briefs",
@@ -339,7 +200,7 @@ class MCPConfig(BaseModel):
     )
     enabled_modules: list[str] = Field(
         default_factory=lambda: ["ingest", "knowledge"],
-        description="Which module tool groups to expose: ingest, knowledge",
+        description="Which module tool groups to expose: ingest, knowledge, reviewer",
     )
 
 
@@ -395,7 +256,6 @@ class DispatchConfig(BaseSettings):
         description="Publisher configurations",
     )
 
-    # Hexo 发布器默认值
     hexo_site_url: str = Field(
         default="https://www.linglong.wiki", description="Hexo site base URL"
     )
@@ -404,7 +264,6 @@ class DispatchConfig(BaseSettings):
         description="Custom SSH deploy command (None uses default git workflow)",
     )
 
-    # OSS image CDN
     oss: OSSConfig = Field(default_factory=OSSConfig, description="OSS image CDN configuration")
 
 
@@ -417,18 +276,15 @@ class LinglongConfig(BaseSettings):
         env_file_encoding="utf-8",
     )
 
-    # 通用
     debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
 
-    # 模块配置
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
     ingest: IngestConfig = Field(default_factory=IngestConfig)
-    composer: ComposerConfig = Field(default_factory=ComposerConfig)
+    reviewer: ReviewerConfig = Field(default_factory=ReviewerConfig)
     dispatch: DispatchConfig = Field(default_factory=DispatchConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
-    # 路径
     data_dir: Path = Field(
         default=Path.home() / "linglong" / "data", description="Data directory"
     )
@@ -438,15 +294,9 @@ class LinglongConfig(BaseSettings):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.knowledge.wiki_path.mkdir(parents=True, exist_ok=True)
         self.knowledge.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.composer.drafts_dir.mkdir(parents=True, exist_ok=True)
         (Path.home() / "linglong" / "state").mkdir(parents=True, exist_ok=True)
-        # 图片资产输出目录
-        if self.composer.image_assets.enabled:
-            for spec in self.composer.image_assets.specs.values():
-                Path(spec.output_dir).expanduser().mkdir(parents=True, exist_ok=True)
 
 
-# 全局配置实例
 _config: LinglongConfig | None = None
 
 
@@ -476,22 +326,14 @@ def _interpolate_env(data: Any) -> Any:
 
 
 def _load_yaml_to_config(yaml_path: Path) -> LinglongConfig:
-    """从 YAML 文件构造 LinglongConfig。
-
-    YAML 值作为 init 参数传入（Pydantic 优先级最高），
-    未在 YAML 中指定的字段回退到环境变量/默认值。
-    支持 ${ENV_VAR} 语法引用环境变量。
-    """
+    """从 YAML 文件构造 LinglongConfig。"""
     data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     data = _interpolate_env(data)
     return LinglongConfig(**data)
 
 
 def get_config() -> LinglongConfig:
-    """Get or create global configuration.
-
-    搜索顺序：.linglong.yaml (CWD) → ~/.linglong/config.yaml → 纯 env/默认值
-    """
+    """Get or create global configuration."""
     global _config
     if _config is None:
         yaml_path = _find_yaml_config()

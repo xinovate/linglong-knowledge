@@ -553,3 +553,44 @@ def search_web(query: str, max_results: int = 10) -> str:
     except Exception as exc:
         logger.exception("search_web failed")
         return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def review_article(
+    content: str,
+    source_entity_ids: list[str] | None = None,
+) -> str:
+    """Review an article for quality before publishing. Evaluates format, content richness, structure, expression, and accuracy. Passes with score >= 6.0.
+
+    Args:
+        content: Full article markdown content (including frontmatter).
+        source_entity_ids: Optional knowledge entity IDs used as sources for accuracy checks.
+    """
+    try:
+        from linglong.reviewer.reviewer import Reviewer
+
+        reviewer = Reviewer()
+        result = reviewer.review(content, source_entity_ids=source_entity_ids)
+
+        dimensions_data = [
+            {
+                "name": d.name,
+                "score": d.score,
+                "passed": d.passed,
+                "suggestions": d.suggestions,
+            }
+            for d in result.dimensions
+        ]
+
+        return json.dumps(
+            {
+                "total_score": result.total_score,
+                "passed": result.passed,
+                "summary": result.summary,
+                "dimensions": dimensions_data,
+                "rule_issues": result.rule_issues,
+            },
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("review_article failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)

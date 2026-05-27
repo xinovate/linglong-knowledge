@@ -572,8 +572,8 @@ def _load_prompt() -> str:
 def _call_llm(system: str, user: str, max_tokens: int | None = None, retries: int | None = None) -> str:
     """Call LLM via Anthropic Messages API, with retry."""
     config = get_config()
-    base_url = (config.composer.llm_base_url or "https://open.bigmodel.cn/api/anthropic").rstrip("/")
-    api_key = config.composer.llm_api_key
+    base_url = (config.reviewer.llm_base_url or "https://open.bigmodel.cn/api/anthropic").rstrip("/")
+    api_key = config.reviewer.llm_api_key
     if max_tokens is None:
         max_tokens = config.ingest.llm_max_tokens
     if retries is None:
@@ -591,7 +591,7 @@ def _call_llm(system: str, user: str, max_tokens: int | None = None, retries: in
                     "content-type": "application/json",
                 },
                 json={
-                    "model": config.composer.llm_model or "glm-5.1",
+                    "model": config.reviewer.llm_model or "glm-5.1",
                     "max_tokens": max_tokens,
                     "system": system,
                     "messages": [{"role": "user", "content": user}],

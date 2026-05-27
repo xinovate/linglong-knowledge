@@ -14,6 +14,7 @@ from linglong.mcp.tools import (
     list_templates,
     read_entity,
     record_feedback,
+    review_article,
     search_and_read,
     search_similar,
     search_web,
@@ -37,6 +38,7 @@ _TOOL_GROUPS: dict[str, list[object]] = {
         get_template,
         list_templates,
     ],
+    "reviewer": [review_article],
 }
 
 

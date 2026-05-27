@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 
 from linglong.core.config import (
-    ComposerConfig,
     DispatchConfig,
     IngestConfig,
     KnowledgeConfig,
     LinglongConfig,
+    ReviewerConfig,
     get_config,
     set_config,
 )
@@ -34,7 +34,7 @@ class TestLinglongConfig:
         assert config.log_level == "INFO"
         assert isinstance(config.knowledge, KnowledgeConfig)
         assert isinstance(config.ingest, IngestConfig)
-        assert isinstance(config.composer, ComposerConfig)
+        assert isinstance(config.reviewer, ReviewerConfig)
         assert isinstance(config.dispatch, DispatchConfig)
 
     def test_ensure_directories(self):
@@ -45,16 +45,14 @@ class TestLinglongConfig:
 
             assert config.data_dir.exists()
             assert config.knowledge.wiki_path.exists()
-            assert config.composer.drafts_dir.exists()
 
-    def test_composer_defaults(self):
-        """Test ComposerConfig defaults."""
-        config = ComposerConfig()
+    def test_reviewer_defaults(self):
+        """Test ReviewerConfig defaults."""
+        config = ReviewerConfig()
         assert config.llm_provider == "openai"
         assert config.llm_model == "gpt-4"
-        assert config.llm_temperature == 0.7
-        assert config.distiller_use_llm is False
-        assert config.template_name == "blog"
+        assert config.llm_temperature == 0.3
+        assert config.passing_score == 6.0
 
     def test_knowledge_defaults(self):
         """Test KnowledgeConfig defaults."""

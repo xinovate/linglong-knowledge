@@ -60,39 +60,23 @@ class TestLoadYamlToConfig:
         yaml_file = tmp_path / "config.yaml"
         data = {
             "knowledge": {"vector_enabled": False, "vector_dimensions": 384},
-            "composer": {"llm_model": "gpt-3.5-turbo"},
+            "reviewer": {"llm_model": "gpt-3.5-turbo"},
         }
         yaml_file.write_text(yaml.dump(data))
 
         config = _load_yaml_to_config(yaml_file)
         assert config.knowledge.vector_enabled is False
         assert config.knowledge.vector_dimensions == 384
-        assert config.composer.llm_model == "gpt-3.5-turbo"
+        assert config.reviewer.llm_model == "gpt-3.5-turbo"
 
-    def test_loads_image_assets(self, tmp_path):
-        """Loads image_assets nested config from YAML."""
+    def test_loads_reviewer_config(self, tmp_path):
+        """Loads reviewer config from YAML."""
         yaml_file = tmp_path / "config.yaml"
-        data = {
-            "composer": {
-                "image_assets": {
-                    "enabled": True,
-                    "sources": [
-                        {
-                            "name": "tuchong",
-                            "url_file": "~/Downloads/resource.txt",
-                            "resolve_via": "playwright",
-                        }
-                    ],
-                }
-            }
-        }
+        data = {"reviewer": {"passing_score": 7.0}}
         yaml_file.write_text(yaml.dump(data))
 
         config = _load_yaml_to_config(yaml_file)
-        assert config.composer.image_assets.enabled is True
-        assert len(config.composer.image_assets.sources) == 1
-        assert config.composer.image_assets.sources[0].name == "tuchong"
-        assert config.composer.image_assets.sources[0].resolve_via == "playwright"
+        assert config.reviewer.passing_score == 7.0
 
     def test_missing_fields_use_defaults(self, tmp_path):
         """YAML with partial config uses defaults for missing fields."""
@@ -102,7 +86,7 @@ class TestLoadYamlToConfig:
         config = _load_yaml_to_config(yaml_file)
         assert config.debug is True
         assert config.log_level == "INFO"  # default
-        assert config.composer.llm_model == "gpt-4"  # default
+        assert config.reviewer.llm_model == "gpt-4"  # default
 
     def test_empty_yaml(self, tmp_path):
         """Empty YAML file creates config with all defaults."""

@@ -9,7 +9,6 @@ import sys
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
-from linglong.composer.composer import Composer
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityFacet, EntityStatus
 from linglong.dispatch.manager import DispatchManager
@@ -73,31 +72,18 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_compose(args: argparse.Namespace) -> int:
-    """Run composer pipeline."""
-    _setup_logging(args.verbose)
-    composer = Composer()
-    result = composer.run(dry_run=args.dry_run, draft=args.draft)
-    logger.info("Composer result: %s", result)
-    if not result.success:
-        return 1
-    return 0
-
-
 def cmd_publish(args: argparse.Namespace) -> int:
-    """Publish a draft by ID."""
+    """Publish a markdown file via dispatch."""
     _setup_logging(args.verbose)
-    from linglong.composer.draft import DraftManager
 
-    dm = DraftManager()
-    entry = dm.get_draft(args.draft_id)
-    if entry is None:
-        logger.error("Draft not found: %s", args.draft_id)
+    file_path = Path(args.file)
+    if not file_path.exists():
+        logger.error("File not found: %s", file_path)
         return 1
 
-    payload = dm.publish_draft(entry.id)
+    content = file_path.read_text(encoding="utf-8")
     dispatch = DispatchManager()
-    result = dispatch.publish(payload, args.publisher)
+    result = dispatch.publish(content, {"title": file_path.stem}, publisher_name=args.publisher)
     if not result.success:
         logger.error("Publish failed: %s", result.error)
         return 1
@@ -803,8 +789,8 @@ def _reg_compose(sub):
 
 
 def _reg_publish(sub):
-    p = sub.add_parser("publish", help="Publish a draft")
-    p.add_argument("draft_id", help="Draft ID to publish")
+    p = sub.add_parser("publish", help="Publish a markdown file")
+    p.add_argument("file", help="Markdown file to publish")
     p.add_argument("--publisher", default=None, help="Publisher name")
     return p
 
@@ -834,9 +820,6 @@ def main(argv: list[str] | None = None) -> int:
 
     # ========== ingest（独立采集工具）==========
     _reg_ingest(sub).set_defaults(func=cmd_ingest)
-
-    # ========== compose（内容生产）==========
-    _reg_compose(sub).set_defaults(func=cmd_compose)
 
     # ========== publish（发布）==========
     _reg_publish(sub).set_defaults(func=cmd_publish)
