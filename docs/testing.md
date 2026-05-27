@@ -16,24 +16,22 @@ graph TD
 |------|----------|
 | `core.config` | LinglongConfig 加载、默认值、YAML 配置 |
 | `core.models` | Entity 构造、AgentID 验证、ConfidenceScore 边界 |
-| `composer.state` | 内容哈希计算、去重逻辑、状态流转 |
-| `composer.draft` | DraftManager 保存/列出/发布/废弃 |
-| `composer.distiller` | KnowledgeAdapter、DailyAggregator、ArticleMaterial |
+| `reviewer.reviewer` | 规则校验（frontmatter/字数/代码块）、LLM 评分解析 |
 
 ### 集成测试
 
 跨模块协作，使用 Mock 替代外部依赖。
 
 - **KnowledgeStore + Entity**: 写入 → search 按 status 过滤
-- **Composer 编排**: 注入 fixture → 验证完整调用链
-- **Draft 生命周期**: draft=True → 读取 → 发布 → 废弃
+- **Reviewer + LLM**: 注入 fixture → 验证评分/建议输出
+- **DispatchManager + LocalPublisher**: 内容 → 文件发布
 
 ### 端到端测试
 
 手动执行，验证 CLI 主流程。
 
-- `Composer.run(dry_run=True)` — 不触发发布
-- `Composer.run(draft=True)` — 草稿保存到独立目录
+- `linglong kb write/read/search` — 知识库 CRUD
+- `linglong review <file>` — 文件审稿
 - 真实 KnowledgeStore — 验证输出格式
 
 ## Mock 原则
@@ -56,7 +54,7 @@ graph TD
 ```bash
 pytest                          # 全部测试
 pytest tests/core/ -v           # core 模块
-pytest tests/composer/ -v       # composer 模块
+pytest tests/reviewer/ -v       # reviewer 模块
 pytest --cov=linglong           # 带覆盖率
 ```
 
@@ -67,7 +65,7 @@ tests/
 ├── core/           # core 模块测试
 ├── ingest/         # ingest 模块测试
 ├── knowledge/      # knowledge 模块测试
-├── composer/       # composer 模块测试
+├── reviewer/       # reviewer 模块测试
 ├── dispatch/       # dispatch 模块测试
 └── integration/    # 端到端集成测试
 ```
