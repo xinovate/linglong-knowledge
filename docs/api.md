@@ -399,6 +399,23 @@ MCP Server 支持两种部署模式，通过 `mcp.transport` 配置：
 }
 ```
 
+#### Token 认证
+
+远程 MCP 支持 Redis 动态 Token 认证。Token 格式：`linglong-{module}-{random}`。
+
+```bash
+# 新增 token（服务器上执行）
+docker exec linglong-redis redis-cli -a <密码> SET linglong-ingest-<random> active
+
+# 查看所有 token
+docker exec linglong-redis redis-cli -a <密码> KEYS 'linglong-*'
+
+# 删除 token
+docker exec linglong-redis redis-cli -a <密码> DEL linglong-ingest-<random>
+```
+
+配置 `mcp.redis_url` 启用 Redis 认证，不配置则降级为静态 `auth_token`。
+
 #### 注意事项
 
 - MCP Server 运行在自己的事件循环中，内部使用 `_run_async()`（ThreadPoolExecutor）处理异步调用

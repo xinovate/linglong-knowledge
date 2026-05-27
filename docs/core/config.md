@@ -75,6 +75,7 @@ search_queries:
 | `LL_REVIEWER_LLM_MODEL` | `reviewer.llm_model` |
 | `LL_DISPATCH_DEFAULT_PUBLISHER` | `dispatch.default_publisher` |
 | `LL_INGEST_SEARXNG_URL` | `ingest.searxng_url` |
+| `LL_MCP_REDIS_URL` | `mcp.redis_url` |
 
 ## 代码中使用
 

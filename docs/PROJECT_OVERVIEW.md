@@ -46,6 +46,7 @@ Codex ──────┘         ↓
 | **v2.3** | **安全加固 + MCP 增强** | 3 服务 API Key 认证 + nginx 反代 SearXNG + generate_brief/search_web MCP 工具 + 329 测试 | ✅ | 2026-05-25 |
 | **v2.4** | **Agent 接入** | Claude Code MCP 连通 + RSSHub key 修复 + asyncio 修复 + GitHub auth + 10 RSS 源（含 2 gov 路由）+ 331 测试 | ✅ | 2026-05-26 |
 | **v2.5** | **并发 + 缓存 + MCP 远程部署** | 三路并发拉取 7.5x + 日内缓存 + streamable-http + Token 认证 + 模块工具控制 + systemd + 331 测试 | ✅ | 2026-05-26 |
+| **v2.6** | **composer→reviewer + MCP 远程上线** | 删除 composer 模块 + 新建 reviewer 七维度评审 + MCP 双路径路由 + Redis 动态 Token + HTTPS 部署 + acme.sh SSL + 276 测试 | ✅ | 2026-05-27 |
 
 ---
 
@@ -59,10 +60,6 @@ Codex ──────┘         ↓
 | `reviewer/` | ✅ 36 个 | ✅ 1 个 | — | ✅ |
 | `dispatch/` | ✅ 19 个 | ✅ 1 个 | — | ✅ |
 | `mcp/` | ✅ 28 个 | — | — | ✅ |
-
-**总计：276 个测试**
-| `cli/` | ✅ 26 个 | — | — | ✅ |
-| `integration/` | — | — | ✅ 1 个 | ✅ |
 
 **总计：276 个测试**
 
@@ -91,11 +88,11 @@ Codex ──────┘         ↓
 
 | 提交 | 说明 | 时间 |
 |------|------|------|
-| `db20f66` | fix(ingest): GitHub API 用 gh auth token 认证，解决 rate limit | 2026-05-26 |
-| `aa00981` | fix(mcp): 用 _run_async 替代 asyncio.run，修复 MCP 事件循环冲突 | 2026-05-26 |
-| `23bb186` | fix(ingest): RSSHub key 仅追加到 RSSHub URL，修复非 RSSHub 源 404 | 2026-05-26 |
-| `4d37281` | docs(journal): v2.2 增强 + v2.3 安全加固 + MCP 增强 | 2026-05-25 |
-| `3371fc3` | feat(security): v2.3 服务安全加固 + MCP 工具增强 | 2026-05-25 |
+| `d0f5cc2` | feat(mcp): Redis 动态 Token 认证 | 2026-05-27 |
+| `6022417` | feat(mcp): 添加 allowed_hosts 配置 | 2026-05-27 |
+| `c7e18f9` | fix(mcp): 修复 create_http_app lifespan 合并 | 2026-05-27 |
+| `0840f15` | feat(mcp): 双路径路由 — 按模块拆分 HTTP 端点 | 2026-05-27 |
+| `3c8f080` | refactor: 删除 composer 模块，新建 reviewer 评审模块 | 2026-05-27 |
 
 ---
 
@@ -112,8 +109,9 @@ Codex ──────┘         ↓
 7. ✅ ~~**ingest v2.2 增强**~~ — 公司融资快照 + 关键人物扩展 + 8 RSS 源 + 信源健康 + LLM 容错 + 去重量化，321 测试通过
 8. ✅ ~~**v2.3 安全加固 + MCP 增强**~~ — SearXNG nginx 反代 + RSSHub/Embedding API Key + generate_brief/search_web MCP 工具，329 测试通过
 9. ✅ ~~**v2.4 Agent 接入**~~ — Claude Code MCP 连通 + RSSHub key 修复 + asyncio _run_async + GitHub gh auth + 2 gov RSS 路由，331 测试通过
-10. 🟡 **OpenClaw 接入 linglong MCP** — OpenClaw Gateway 配置 linglong MCP server，验证 generate_brief/search_web/write_entity
-11. 🟡 **v2.5 ingest 质量优化** — 信息源精度 + 政策覆盖 + LLM 来源可信度判断 + 分析去模板化
+10. ✅ ~~**v2.6 composer→reviewer + MCP 远程上线**~~ — 删除 composer + reviewer 七维度评审 + MCP 双路径路由 + Redis Token + HTTPS 部署，276 测试通过
+11. 🟡 **OpenClaw 接入 linglong MCP** — OpenClaw Gateway 配置 linglong-ingest（远程）+ linglong-knowledge（本地）
+12. 🟡 **v2.5 ingest 质量优化** — 信息源精度 + 政策覆盖 + LLM 来源可信度判断 + 分析去模板化
 12. 🔴 **Codex CLI 接入** — 当前仅预留，尚未实际接入
 13. 🟡 **拥挤 facet 根目录清理** — concept(9)、methodology(10)、project(7) 根目录仍有未分组条目
 

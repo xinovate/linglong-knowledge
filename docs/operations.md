@@ -30,6 +30,9 @@ git push origin vx.y.z
 
 - [ ] `pip install -e .` 导入无错误
 - [ ] 全部测试通过
+- [ ] MCP 远程端点 `https://your-domain.com/mcp/ingest` 可达
+- [ ] Redis `linglong-redis` 容器运行正常
+- [ ] SSL 证书未过期（acme.sh 自动续期）
 
 ### 紧急修复
 
