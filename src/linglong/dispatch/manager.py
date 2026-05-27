@@ -1,4 +1,4 @@
-"""Dispatch manager - routes drafts to appropriate publishers."""
+"""Dispatch manager - routes articles to configured publishers."""
 
 import logging
 from typing import Any

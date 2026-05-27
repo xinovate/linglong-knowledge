@@ -2,35 +2,15 @@
 
 ## 职责
 
-- **图片 CDN 上传**：发布前将本地图片上传到阿里云 OSS，替换为 CDN URL
-- **内容路由**：根据内容类型自动分发到不同平台
-- **发布队列**：待发布 / 发布中 / 已发布 / 失败（可重试）
-- **输出追踪**：发布后记录 entity_id + publisher + published_at 到 `output_log` 表
-- **反馈收集**：阅读量、点赞、评论回流到 knowledge
-
-## 输出追踪（output_log）
-
-发布后自动在知识库 SQLite 中记录一条日志，标记哪些知识已被输出到哪个平台。
-
-```sql
-CREATE TABLE output_log (
-    id INTEGER PRIMARY KEY,
-    entity_id TEXT NOT NULL,
-    article_title TEXT,
-    publisher TEXT NOT NULL,    -- hexo / local
-    published_at TEXT NOT NULL
-);
-```
-
-**作用**：
-- reviewer 评审通过后可标记已审 entity，避免重复消费
-- 可追溯"这篇文章用了哪些知识"
+- **内容路由**：将 Markdown 文章分发到配置的发布平台（Hexo / 本地文件）
+- **OSS 图片 CDN**：发布前上传本地图片到阿里云 OSS，替换为 CDN URL（可选）
+- **发布器注册**：从 `.linglong.yaml` 读取 publishers 配置，按需初始化
 
 ## 发布流程
 
 ```mermaid
 graph TD
-    A[Article<br/>content + metadata] --> B[DispatchManager]
+    A[Markdown 文章<br/>content + metadata] --> B[DispatchManager]
     B --> O{OSS 启用?}
     O -->|是| P[OSSUploader<br/>上传图片 + URL 替换]
     O -->|否| C
