@@ -30,6 +30,7 @@ dependencies = [
 
 [project.scripts]
 linglong = "linglong.cli:main"
+ll-knowledge-mcp = "linglong.mcp:main"
 
 [project.optional-dependencies]
 dev = [

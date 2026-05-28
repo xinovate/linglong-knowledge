@@ -52,7 +52,7 @@ wiki/
 .env
 .env.local
 .knowledge.yml
-.linglong.yaml
+.knowledge.yaml
 db/
 
 # macOS

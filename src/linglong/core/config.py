@@ -17,8 +17,8 @@ _YAML_SEARCH_PATHS = [
     _PROJECT_ROOT / ".knowledge.yml",
     Path.home() / ".knowledge" / "config.yml",
     # Backward compat: fall back to old filenames
-    Path(".linglong.yaml"),
-    _PROJECT_ROOT / ".linglong.yaml",
+    Path(".knowledge.yml"),
+    _PROJECT_ROOT / ".knowledge.yml",
     Path.home() / ".linglong" / "config.yaml",
 ]
 
@@ -162,7 +162,7 @@ _config: LinglongConfig | None = None
 
 
 def _find_yaml_config() -> Path | None:
-    """Search for config file (.knowledge.yml preferred, .linglong.yaml fallback)."""
+    """Search for config file (.knowledge.yml preferred, .knowledge.yml fallback)."""
     for p in _YAML_SEARCH_PATHS:
         if p.exists():
             return p
