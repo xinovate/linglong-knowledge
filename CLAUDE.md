@@ -55,4 +55,5 @@ Agent（OpenClaw / Claude Code / Codex）──→ Knowledge Store ──→ MCP
 - [测试约定](.claude/rules/testing.md)
 - [API 设计](.claude/rules/api-design.md)
 - [安全要求](.claude/rules/security.md)
+- [隐私规约](.claude/rules/privacy.md)
 - [文档同步](.claude/rules/docs-sync.md)
