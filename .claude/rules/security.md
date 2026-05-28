@@ -54,7 +54,7 @@
 ## Cloudflare Tunnel
 
 - 远程 MCP 使用 Cloudflare Tunnel（出站连接），无需开放入站端口
-- DNS 由 Cloudflare NS 管理（`ns.cloudflare.com` / `ns.cloudflare.com`）
+- DNS 由 Cloudflare NS 管理
 - SSL 在 Cloudflare 终止，Tunnel → 本地服务走 HTTP localhost
 - 部署细节见 `docs/operations.md`
 

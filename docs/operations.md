@@ -84,7 +84,7 @@ git push origin vx.y.z
 
 ## 服务安全加固
 
-服务器 `localhost` 上部署了 Docker 服务供 linglong 使用，需启用 API Key 认证防止未授权访问。
+生产服务器上部署了 Docker 服务供 linglong 使用，需启用 API Key 认证防止未授权访问。
 
 ### 服务清单
 
@@ -144,7 +144,7 @@ MCP Server 以子进程方式启动，API Key 需通过 `env` 字段注入（不
 
 ## Cloudflare Tunnel 部署
 
-`your-domain.com` 通过 Cloudflare Tunnel 暴露 MCP 服务，绕过阿里云 ICP 域名备案拦截。
+通过 Cloudflare Tunnel 暴露 MCP 服务，无需开放服务器入站端口。
 
 ### 架构
 
@@ -152,27 +152,13 @@ MCP Server 以子进程方式启动，API Key 需通过 `env` 字段注入（不
 用户 → https://your-domain.com → Cloudflare CDN → Tunnel → 127.0.0.1:9900 (linglong-mcp)
 ```
 
-### 服务清单
+### 部署步骤
 
-| 服务 | 说明 |
-|------|------|
-| `cloudflared-mcp` | Cloudflare Tunnel 守护进程（systemd） |
-| `linglong-mcp` | MCP Server（systemd，监听 127.0.0.1:9900） |
-| `linglong-redis` | Token 认证存储（Docker，127.0.0.1:6379） |
-
-### 关键文件
-
-| 路径 | 说明 |
-|------|------|
-| `/root/.cloudflared/config.yml` | Tunnel 配置（指向 127.0.0.1:9900） |
-| `/root/.cloudflared/cert.pem` | Cloudflare 授权证书 |
-| `/root/.cloudflared/<tunnel-id>.json` | Tunnel 凭证 |
-| `/etc/systemd/system/cloudflared-mcp.service` | systemd 服务 |
-| `/etc/nginx/conf.d/blog.conf` | nginx（博客 443，MCP 已移至 Tunnel） |
-
-### DNS 配置
-
-`your-domain.com` 为 CNAME 记录指向 `cfargotunnel.com`，由 Cloudflare 代理（橙色云）。
+1. 在 Cloudflare Dashboard 创建 Tunnel
+2. 在服务器安装 `cloudflared` 并登录
+3. 配置 Tunnel 指向 `127.0.0.1:9900`
+4. DNS 添加 CNAME 记录指向 Tunnel
+5. systemd 守护 `cloudflared` 进程
 
 ### Token 管理
 
@@ -191,7 +177,7 @@ redis-cli DEL knowledge-<random>
 
 ```bash
 # 检查 Tunnel 状态
-systemctl status cloudflared-mcp
+systemctl status cloudflared
 
 # 检查 MCP 服务状态
 systemctl status linglong-mcp

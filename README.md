@@ -36,8 +36,8 @@ src/linglong/
 ## 快速开始
 
 ```bash
-git clone https://github.com/xinovate/linglong.git
-cd linglong
+git clone https://github.com/xinovate/linglong-knowledge.git
+cd linglong-knowledge
 
 # 安装依赖
 pip install -e ".[dev]"
