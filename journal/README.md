@@ -28,5 +28,5 @@
 |------|------|------|--------|------|
 | BACKLOG-002 | OpenClaw 默认 wiki 路径支持 | 多用户适配 | 中 | 待实现 |
 | BACKLOG-003 | 索引文件自动生成（index --rebuild 结构不完整） | 存储层 | 中 | 待实现 |
-| BACKLOG-005 | source facet 批量重分类（94/142 条全在 source，需 LLM 辅助细分到 concept/experience/synthesis） | 数据质量 | 高 | 待审核 |
+| BACKLOG-005 | source facet 批量重分类 | 数据质量 | 高 | ✅ v1.0 完成 |
 | LIMIT-001 | OpenClaw frontmatter 解析失败（2 个文件） | 数据质量 | 低 | ✅ 已修复 |
