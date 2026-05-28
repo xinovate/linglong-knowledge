@@ -189,33 +189,3 @@ class Entity(BaseModel):
         }
     )
 
-
-class TaskStatus(StrEnum):
-    """Status of a scheduled task."""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-
-class Task(BaseModel):
-    """Scheduled task for cross-module orchestration."""
-
-    id: str
-    project: str  # "ingest", "knowledge", "reviewer", "dispatch"
-    task_type: str  # "rss_fetch", "distill", "publish", etc.
-    status: TaskStatus = TaskStatus.PENDING
-
-    scheduled_at: datetime
-    executed_at: datetime | None = None
-    completed_at: datetime | None = None
-
-    entity_id: str | None = None
-    params: dict[str, Any] = Field(default_factory=dict)
-
-    result: dict[str, Any] | None = None
-    error: str | None = None
-
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

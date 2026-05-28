@@ -67,7 +67,7 @@ graph TD
 ## 顶层布局
 
 ```
-~/linglong/wiki/
+~/knowledge/wiki/
 ├── index.md                    # 总索引（~500 tokens，LLM 入口）
 ├── index-concept.md            # concept 分类索引
 ├── index-experience.md         # experience 分类索引

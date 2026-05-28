@@ -78,7 +78,7 @@ def run_lint_and_log(log_path: Path | None = None, stale_days: int = 90) -> int:
     Returns the exit code (0 = no errors, 1 = has errors).
     """
     if log_path is None:
-        log_path = Path.home() / ".linglong" / "logs" / "lint-schedule.log"
+        log_path = Path.home() / ".knowledge" / "logs" / "lint-schedule.log"
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -103,7 +103,7 @@ def run_daemon(stale_days: int = 90) -> None:
     cron_expr = config.knowledge.lint_schedule
 
     if not cron_expr:
-        logger.error("lint_schedule not configured; set knowledge.lint_schedule in .linglong.yaml")
+        logger.error("lint_schedule not configured; set knowledge.lint_schedule in .knowledge.yml")
         sys.exit(1)
 
     try:
@@ -115,7 +115,7 @@ def run_daemon(stale_days: int = 90) -> None:
     # Register the job
     job.do(lambda: run_lint_and_log(stale_days=stale_days))
 
-    log_path = Path.home() / ".linglong" / "logs" / "lint-schedule.log"
+    log_path = Path.home() / ".knowledge" / "logs" / "lint-schedule.log"
     logger.info("Lint daemon starting, schedule=%s, log=%s", cron_expr, log_path)
 
     # Run once immediately

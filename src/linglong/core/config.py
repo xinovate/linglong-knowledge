@@ -1,4 +1,4 @@
-"""Configuration management for Linglong."""
+"""Configuration management for Linglong Knowledge."""
 
 import logging
 import os
@@ -11,33 +11,36 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
-# YAML config search paths: CWD first, then project root, then home
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _YAML_SEARCH_PATHS = [
+    Path(".knowledge.yml"),
+    _PROJECT_ROOT / ".knowledge.yml",
+    Path.home() / ".knowledge" / "config.yml",
+    # Backward compat: fall back to old filenames
     Path(".linglong.yaml"),
     _PROJECT_ROOT / ".linglong.yaml",
     Path.home() / ".linglong" / "config.yaml",
 ]
 
+_KNOWLEDGE_HOME = Path.home() / "knowledge"
 
 
 class KnowledgeConfig(BaseSettings):
     """Knowledge module configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="LL_KNOWLEDGE_")
+    model_config = SettingsConfigDict(env_prefix="KB_KNOWLEDGE_")
 
     wiki_path: Path = Field(
-        default=Path.home() / "linglong" / "wiki", description="Path to wiki directory"
+        default=_KNOWLEDGE_HOME / "wiki", description="Path to wiki directory"
     )
     db_path: Path = Field(
-        default=Path.home() / "linglong" / "db" / "knowledge.db",
+        default=_KNOWLEDGE_HOME / "db" / "knowledge.db",
         description="SQLite database path",
     )
     vector_enabled: bool = Field(default=True, description="Enable vector search")
     vector_dimensions: int = Field(default=768, description="Embedding dimensions")
-    watch_enabled: bool = Field(default=True, description="Watch filesystem for changes")
     embedding_url: str = Field(
-        default="http://localhost:7997", description="OpenClaw embedding service URL"
+        default="http://localhost:7997", description="Embedding service URL"
     )
     embedding_model: str = Field(
         default="nomic-embed-text-v1.5", description="Embedding model name"
@@ -58,7 +61,7 @@ class KnowledgeConfig(BaseSettings):
     db_mode: str = Field(default="wal", description="SQLite journal mode")
     auto_lint: bool = Field(default=False, description="Auto-run lint after write operations")
     lint_schedule: str | None = Field(
-        default=None, description="定时巡检的 cron 表达式，如 '0 2 * * *'"
+        default=None, description="Cron expression for scheduled lint, e.g. '0 2 * * *'"
     )
 
     review_high_confidence_threshold: float = Field(
@@ -127,12 +130,11 @@ class MCPConfig(BaseModel):
     )
 
 
-
 class LinglongConfig(BaseSettings):
-    """Main Linglong configuration."""
+    """Main configuration."""
 
     model_config = SettingsConfigDict(
-        env_prefix="LL_",
+        env_prefix="KB_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
@@ -145,7 +147,7 @@ class LinglongConfig(BaseSettings):
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
     data_dir: Path = Field(
-        default=Path.home() / "linglong" / "data", description="Data directory"
+        default=_KNOWLEDGE_HOME / "data", description="Data directory"
     )
 
     def ensure_directories(self) -> None:
@@ -153,14 +155,14 @@ class LinglongConfig(BaseSettings):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.knowledge.wiki_path.mkdir(parents=True, exist_ok=True)
         self.knowledge.db_path.parent.mkdir(parents=True, exist_ok=True)
-        (Path.home() / "linglong" / "state").mkdir(parents=True, exist_ok=True)
+        (_KNOWLEDGE_HOME / "state").mkdir(parents=True, exist_ok=True)
 
 
 _config: LinglongConfig | None = None
 
 
 def _find_yaml_config() -> Path | None:
-    """搜索 .linglong.yaml 配置文件，返回找到的第一个路径。"""
+    """Search for config file (.knowledge.yml preferred, .linglong.yaml fallback)."""
     for p in _YAML_SEARCH_PATHS:
         if p.exists():
             return p
@@ -185,7 +187,7 @@ def _interpolate_env(data: Any) -> Any:
 
 
 def _load_yaml_to_config(yaml_path: Path) -> LinglongConfig:
-    """从 YAML 文件构造 LinglongConfig。"""
+    """Construct LinglongConfig from a YAML file."""
     data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     data = _interpolate_env(data)
     return LinglongConfig(**data)

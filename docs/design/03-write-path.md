@@ -134,7 +134,7 @@ linglong kb write --facet experience --title "..." --content "..." --yes
 ### 配置文件
 
 ```yaml
-# .linglong.yaml
+# .knowledge.yml
 knowledge:
   write_mode: confirm    # confirm | auto
 ```

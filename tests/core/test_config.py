@@ -43,8 +43,8 @@ class TestLinglongConfig:
     def test_knowledge_defaults(self):
         """Test KnowledgeConfig defaults."""
         config = KnowledgeConfig()
-        assert config.wiki_path == Path.home() / "linglong" / "wiki"
-        assert config.db_path == Path.home() / "linglong" / "db" / "knowledge.db"
+        assert config.wiki_path == Path.home() / "knowledge" / "wiki"
+        assert config.db_path == Path.home() / "knowledge" / "db" / "knowledge.db"
         assert config.vector_enabled is True
         assert config.vector_dimensions == 768
 

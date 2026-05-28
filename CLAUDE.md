@@ -1,14 +1,17 @@
-# CLAUDE.md — Linglong 项目协作指南
+# CLAUDE.md — Linglong Knowledge 项目协作指南
 
 ## 项目定位
 
-Linglong 是**跨 Agent 知识中枢**，串联信息采集 → 讨论沉淀 → 博客输出。
+Linglong Knowledge 是**跨 Agent 统一知识库**，通过 MCP 为 AI Agent 提供共享知识底座。
 
 ```
-ingest（采集，不写知识库）→ 用户阅读思考 → 知识库 → 博客项目（评审+发布）
+Agent（OpenClaw / Claude Code / Codex）──→ Knowledge Store ──→ MCP Server
+                                          (File + SQLite + sqlite-vec)
 ```
 
-> reviewer 和 dispatch 功能暂时由博客项目承担，本项目不维护。
+相关项目（独立仓库，本项目不维护）：
+- **linglong-scout**：信息采集，结果返回对话，不写知识库
+- **博客项目**：文章评审和发布
 
 ---
 
@@ -27,9 +30,10 @@ ingest（采集，不写知识库）→ 用户阅读思考 → 知识库 → 博
 
 ## 架构规则
 
-- **ingest 不写知识库** — 采集结果返回给对话，写入由人决定
 - **知识库只接受讨论沉淀** — 人和 Agent 讨论筛选后通过 MCP/CLI 写入
-- **评审和发布由博客项目负责**，本项目暂不维护 reviewer / dispatch
+- **三层存储**：Filesystem（Markdown）+ SQLite（元数据）+ sqlite-vec（向量索引）
+- **混合搜索**：FTS5 关键词 + sqlite-vec 语义 + RRF 融合排序
+- **Review 引擎**：基于规则的质量控制，自动确认或标记审核
 
 关键模型字段：`facet`（六分面）| `confidence`（AI 置信度）| `status`（审核状态）| `created_by`（`agent:claude`/`agent:openclaw`）
 

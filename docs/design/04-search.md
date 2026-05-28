@@ -193,7 +193,7 @@ linglong kb search "支付系统" --deep
 ### 配置文件
 
 ```yaml
-# .linglong.yaml
+# .knowledge.yml
 knowledge:
   search_mode: on_demand    # on_demand | deep
 ```

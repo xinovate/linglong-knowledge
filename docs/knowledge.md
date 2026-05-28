@@ -95,10 +95,10 @@ adapter.sync_to_linglong()
 ## 配置
 
 ```yaml
-# .linglong.yaml
+# .knowledge.yml
 knowledge:
-  wiki_path: ~/linglong/wiki
-  db_path: ~/linglong/db/knowledge.db
+  wiki_path: ~/knowledge/wiki
+  db_path: ~/knowledge/db/knowledge.db
   write_mode: confirm        # confirm | auto
   vector_enabled: true
   embedding_url: http://localhost:7997

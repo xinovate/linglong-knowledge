@@ -44,8 +44,8 @@
 ┌──────────────────────────────────────────────────────────────┐
 │  Linglong 知识库                                             │
 │                                                              │
-│  ~/linglong/wiki/          ← 7 facet 目录（真实数据源）       │
-│  ~/linglong/db/knowledge.db ← SQLite 索引（可重建）           │
+│  ~/knowledge/wiki/          ← 7 facet 目录（真实数据源）       │
+│  ~/knowledge/db/knowledge.db ← SQLite 索引（可重建）           │
 │                                                              │
 │  MCP 工具：                                                   │
 │  ┌─────────────┐ ┌──────────────┐ ┌────────────────┐        │
@@ -80,9 +80,9 @@
        │                         │
        └─────────┬───────────────┘
                  ▼
-           ~/linglong/wiki/{facet}/xxx.md
+           ~/knowledge/wiki/{facet}/xxx.md
                  +
-           ~/linglong/db/knowledge.db 索引更新
+           ~/knowledge/db/knowledge.db 索引更新
 
 
 ── 读取流程 ──────────────────────────────────────────────

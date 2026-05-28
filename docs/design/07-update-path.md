@@ -240,8 +240,8 @@ created_by: agent:openclaw
 ### 存储职责划分
 
 ```
-~/linglong/wiki/concepts/microservice-arch.md    ← 当前版本 content（真相源）
-~/linglong/db/knowledge.db                        ← versions 表（历史版本，增值数据）
+~/knowledge/wiki/concepts/microservice-arch.md    ← 当前版本 content（真相源）
+~/knowledge/db/knowledge.db                        ← versions 表（历史版本，增值数据）
 ```
 
 `linglong kb index --rebuild` 时：

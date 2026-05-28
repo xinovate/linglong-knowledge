@@ -25,7 +25,6 @@ dependencies = [
     "pydantic-settings>=2.0",
     "requests>=2.31",
     "pyyaml>=6.0",
-    "Pillow>=10.0",
     "mcp>=1.0",
 ]
 
@@ -43,16 +42,17 @@ dev = [
 knowledge = [
     "sqlite-vec>=0.1.0",
     "sqlean.py>=3.45",
-    "watchdog>=3.0",
     "markdown>=3.5",
     "python-frontmatter>=1.0",
     "schedule>=1.2",
 ]
-scrape = [
-    "playwright>=1.40",
+server = [
+    "redis>=5.0",
+    "starlette>=0.27",
+    "uvicorn>=0.24",
 ]
 all = [
-    "linglong[dev,knowledge,scrape]",
+    "linglong[dev,knowledge,server]",
 ]
 
 [tool.hatch.build.targets.wheel]

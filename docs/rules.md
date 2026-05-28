@@ -135,8 +135,8 @@ assert entity.status == EntityStatus.AUTO_CONFIRMED
 ## 配置管理
 
 - 所有可调参数通过 `core/config.py` 暴露，禁止硬编码业务常量
-- 主配置文件：`.linglong.yaml`
-- 环境变量前缀：`LL_`，模块级用 `LL_{MODULE}_`
+- 主配置文件：`.knowledge.yml`
+- 环境变量前缀：`KB_`，模块级用 `KB_{MODULE}_`
 
 ---
 
@@ -194,5 +194,5 @@ ruff check src/ tests/         # lint
 mypy src/                      # 类型检查
 
 # 配置
-cp .linglong.yaml.example .linglong.yaml
+cp .knowledge.example.yml .knowledge.yml
 ```

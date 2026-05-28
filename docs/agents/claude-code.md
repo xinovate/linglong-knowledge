@@ -42,8 +42,8 @@
 ┌──────────────────────────────────────────────────────────────┐
 │  Linglong 知识库                                             │
 │                                                              │
-│  ~/linglong/wiki/          ← 7 facet 目录（真实数据源）       │
-│  ~/linglong/db/knowledge.db ← SQLite 索引（可重建）           │
+│  ~/knowledge/wiki/          ← 7 facet 目录（真实数据源）       │
+│  ~/knowledge/db/knowledge.db ← SQLite 索引（可重建）           │
 │                                                              │
 │  同时服务：Claude Code + OpenClaw（共享知识库）                │
 └──────────────────────────────────────────────────────────────┘
@@ -68,9 +68,9 @@
        │                         │
        └─────────┬───────────────┘
                  ▼
-           ~/linglong/wiki/{facet}/xxx.md
+           ~/knowledge/wiki/{facet}/xxx.md
                  +
-           ~/linglong/db/knowledge.db 索引更新
+           ~/knowledge/db/knowledge.db 索引更新
 
 
 ── 读取流程 ──────────────────────────────────────────────
@@ -111,7 +111,7 @@ Claude Code 有两套记忆系统：
 | 系统 | 路径 | 用途 | 生命周期 | 共享范围 |
 |------|------|------|----------|----------|
 | auto memory | `~/.claude/projects/.../memory/` | 工作偏好、用户反馈、项目上下文 | 跨会话持久 | 仅 Claude Code |
-| Linglong MCP | `~/linglong/wiki/` | 知识库级概念、经验、决策 | 跨 Agent 共享 | Claude Code + OpenClaw |
+| Linglong MCP | `~/knowledge/wiki/` | 知识库级概念、经验、决策 | 跨 Agent 共享 | Claude Code + OpenClaw |
 
 **原则**：
 - auto memory 是"工作记忆" — 快速加载到上下文，指导协作行为

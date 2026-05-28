@@ -75,7 +75,7 @@ print(f"同步 {count} 条实体")
 ## 配置
 
 ```yaml
-# .linglong.yaml
+# .knowledge.yml
 knowledge:
   sync_confidence: 0.95
   openclaw_wiki_path: ~/.openclaw/workspace/memory/wiki

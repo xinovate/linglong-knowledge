@@ -150,7 +150,7 @@ def test_rejects_empty_query(store):
 
 ```python
 def test_reads_config_from_env(monkeypatch):
-    monkeypatch.setenv("LL_MCP_PORT", "8888")
+    monkeypatch.setenv("KB_MCP_PORT", "8888")
     config = get_config()
     assert config.mcp.port == 8888
 ```

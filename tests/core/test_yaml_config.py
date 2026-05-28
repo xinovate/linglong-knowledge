@@ -27,8 +27,8 @@ class TestFindYamlConfig:
     """Tests for _find_yaml_config()."""
 
     def test_finds_cwd_config(self, tmp_path, monkeypatch):
-        """Finds .linglong.yaml in current directory."""
-        yaml_file = tmp_path / ".linglong.yaml"
+        """Finds .knowledge.yml in current directory."""
+        yaml_file = tmp_path / ".knowledge.yml"
         yaml_file.write_text("debug: true\n")
         monkeypatch.chdir(tmp_path)
 
@@ -112,7 +112,7 @@ class TestGetYamlConfig:
     def test_get_config_with_yaml(self, tmp_path, monkeypatch):
         """get_config() loads from YAML when present."""
         monkeypatch.chdir(tmp_path)
-        yaml_file = tmp_path / ".linglong.yaml"
+        yaml_file = tmp_path / ".knowledge.yml"
         yaml_file.write_text(yaml.dump({"debug": True, "log_level": "DEBUG"}))
 
         config = get_config()
@@ -122,7 +122,7 @@ class TestGetYamlConfig:
     def test_get_config_caches_instance(self, tmp_path, monkeypatch):
         """get_config() returns same instance on repeated calls."""
         monkeypatch.chdir(tmp_path)
-        yaml_file = tmp_path / ".linglong.yaml"
+        yaml_file = tmp_path / ".knowledge.yml"
         yaml_file.write_text("debug: true\n")
 
         config1 = get_config()

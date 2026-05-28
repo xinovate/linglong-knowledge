@@ -1,5 +1,7 @@
 # 运维与发布
 
+Linglong Knowledge 的发布流程、服务部署和故障排查。
+
 ## 发布流程
 
 ### 发布前
@@ -30,7 +32,7 @@ git push origin vx.y.z
 
 - [ ] `pip install -e .` 导入无错误
 - [ ] 全部测试通过
-- [ ] MCP 远程端点 `https://your-domain.com/mcp/ingest` 可达
+- [ ] MCP 远程端点 `https://your-domain.com/mcp/knowledge` 可达
 - [ ] Redis `linglong-redis` 容器运行正常
 - [ ] Cloudflare Tunnel `cloudflared-mcp` 服务运行正常
 - [ ] Cloudflare SSL 证书未过期
@@ -65,12 +67,6 @@ git push origin vx.y.z
 - **状态**: 已修复，需验证长期稳定性
 - **说明**: 迁移后改为按内容哈希去重
 
-### DEBT-010: Composer State 使用内容哈希而非 entity_id
-
-- **严重程度**: 低
-- **状态**: 已关闭（composer 模块已在 v2.5 移除）
-- **说明**: 原 composer 的 State 组件已随模块一并删除
-
 ### 已解决
 
 | 编号 | 说明 | 解决时间 |
@@ -82,80 +78,26 @@ git push origin vx.y.z
 | DEBT-006 | tests/ 覆盖率不足 | 2026-05-12 |
 | DEBT-008 | 封面图生成冲突 | 2026-05-13 |
 | DEBT-009 | LLM Prompt 硬编码 | 2026-05-12 |
+| DEBT-010 | Composer State（模块已移除） | 2026-05-27 |
 
 ---
 
 ## 服务安全加固
 
-服务器 `localhost` 上部署了 3 个 Docker 服务供 linglong 使用，需启用 API Key 认证防止未授权访问。
+服务器 `localhost` 上部署了 Docker 服务供 linglong 使用，需启用 API Key 认证防止未授权访问。
 
 ### 服务清单
 
 | 端口 | 服务 | 用途 | 认证方式 |
 |------|------|------|----------|
-| 8088 | SearXNG | 网页搜索 | Bearer Token（limiter 插件） |
-| 1200 | RSSHub | RSS 聚合 | URL 参数 `?key=xxx` |
-| 7997 | Embedding | 向量嵌入 | Bearer Token（已有 `embedding_api_key` 配置） |
-
-### SearXNG 加固
-
-通过 nginx 反向代理实现 Bearer Token 认证。
-
-1. SearXNG 容器绑定到 `127.0.0.1:8089`（仅本地可访问）：
-```bash
-docker run -d --name searxng -p 127.0.0.1:8089:8080 \
-  -v /opt/searxng/settings.yml:/etc/searxng/settings.yml:ro \
-  searxng/searxng:latest
-```
-
-2. nginx 配置 `/etc/nginx/conf.d/searxng.conf`：
-```nginx
-map $http_authorization $searxng_auth {
-    "Bearer your-secret-key" 1;
-    default 0;
-}
-server {
-    listen 8088;
-    location / {
-        if ($searxng_auth = 0) {
-            return 403;
-        }
-        proxy_pass http://127.0.0.1:8089;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-3. 启用 limiter（可选，防滥用）：
-```yaml
-# settings.yml
-server:
-  limiter: true
-```
-
-### RSSHub 加固
-
-在 RSSHub 的 `docker-compose.yml` 或 `docker run` 中设置环境变量：
-
-```bash
-docker run -d -p 1200:1200 -e ACCESS_KEY=your-secret-key diygod/rsshub
-```
-
-在 linglong 配置中设置：
-
-```yaml
-# .linglong.yaml
-ingest:
-  rsshub_access_key: ${RSSHUB_ACCESS_KEY}
-```
+| 7997 | Embedding | 向量嵌入 | Bearer Token（`embedding_api_key` 配置） |
 
 ### Embedding 服务加固
 
-Embedding 服务已支持 `embedding_api_key` 配置（Bearer Token 认证）。设置方式：
+设置方式：
 
 ```yaml
-# .linglong.yaml
+# .knowledge.yml
 knowledge:
   embedding_api_key: ${EMBEDDING_API_KEY}
 ```
@@ -175,8 +117,6 @@ location /embeddings {
 
 ```bash
 # ~/.zshrc 或 ~/.bashrc
-export SEARXNG_API_KEY="your-searxng-secret"
-export RSSHUB_ACCESS_KEY="your-rsshub-secret"
 export EMBEDDING_API_KEY="your-embedding-secret"
 ```
 
@@ -187,12 +127,10 @@ MCP Server 以子进程方式启动，API Key 需通过 `env` 字段注入（不
 ```json
 {
   "mcpServers": {
-    "linglong": {
+    "linglong-knowledge": {
       "command": "bash",
-      "args": ["-c", "cd /path/to/linglong && source venv/bin/activate && python -m linglong.mcp"],
+      "args": ["-c", "cd /path/to/linglong-knowledge && source venv/bin/activate && python -m linglong.mcp"],
       "env": {
-        "SEARXNG_API_KEY": "your-key",
-        "RSSHUB_ACCESS_KEY": "your-key",
         "EMBEDDING_API_KEY": "your-key"
       }
     }
@@ -240,13 +178,13 @@ MCP Server 以子进程方式启动，API Key 需通过 `env` 字段注入（不
 
 ```bash
 # 新增 token
-docker exec linglong-redis redis-cli -a <密码> SET linglong-ingest-<random> active
+redis-cli SET knowledge-<random> active
 
 # 查看所有 token
-docker exec linglong-redis redis-cli -a <密码> KEYS 'linglong-*'
+redis-cli KEYS 'knowledge-*'
 
 # 删除 token
-docker exec linglong-redis redis-cli -a <密码> DEL linglong-ingest-<random>
+redis-cli DEL knowledge-<random>
 ```
 
 ### 故障排查
@@ -259,7 +197,7 @@ systemctl status cloudflared-mcp
 systemctl status linglong-mcp
 
 # 测试 MCP 端点
-curl -X POST https://your-domain.com/mcp/ingest \
+curl -X POST https://your-domain.com/mcp/knowledge \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \

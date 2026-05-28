@@ -42,7 +42,7 @@ def test_init_bare_creates_directories(init_dir):
     assert (wiki_path / "archive").exists()
     for facet in EntityFacet:
         assert (wiki_path / facet.value).exists()
-    assert (init_dir / ".linglong.yaml").exists()
+    assert (init_dir / ".knowledge.yml").exists()
 
 
 def test_init_bare_idempotent(init_dir):
@@ -56,7 +56,7 @@ def test_init_bare_idempotent(init_dir):
 def test_init_bare_preserves_existing_config(init_dir):
     """已有配置文件时不覆盖。"""
     _make_init_config(init_dir)
-    config_path = init_dir / ".linglong.yaml"
+    config_path = init_dir / ".knowledge.yml"
     config_path.write_text("existing: true\n", encoding="utf-8")
 
     init_bare(init_dir)
@@ -88,7 +88,7 @@ def test_init_from_backup_creates_config(init_dir):
     _make_init_config(init_dir)
     init_from_backup(init_dir / "backup", target_dir=init_dir)
 
-    assert (init_dir / ".linglong.yaml").exists()
+    assert (init_dir / ".knowledge.yml").exists()
 
 
 def test_init_from_backup_merges(init_dir):
@@ -123,5 +123,5 @@ def test_init_from_backup_missing_wiki(init_dir):
     bad_backup = init_dir / "bad_backup"
     bad_backup.mkdir()
 
-    with pytest.raises(FileNotFoundError, match="备份目录无 wiki/"):
+    with pytest.raises(FileNotFoundError, match="has no wiki"):
         init_from_backup(bad_backup, target_dir=init_dir)

@@ -5,28 +5,13 @@
 mappings:
   - code: src/linglong/core/
     docs:
-      - docs/core/config.md
+      - docs/config.md
       - docs/architecture.md
 
   - code: src/linglong/knowledge/
     docs:
-      - docs/knowledge/README.md
-      - docs/knowledge/design/
-
-  - code: src/linglong/reviewer/
-    docs:
-      - docs/api.md
-      - docs/architecture.md
-
-  - code: src/linglong/ingest/
-    docs:
-      - docs/ingest/README.md
-      - docs/roadmap.md
-      - docs/PROJECT_OVERVIEW.md
-
-  - code: src/linglong/dispatch/
-    docs:
-      - docs/dispatch/README.md
+      - docs/knowledge.md
+      - docs/design/
 
   - code: src/linglong/mcp/
     docs:

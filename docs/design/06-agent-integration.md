@@ -37,7 +37,7 @@ graph TD
     subgraph 接入层
         MCP[MCP Server<br/>9 个工具]
         CLI[linglong CLI<br/>统一命令行工具]
-        CONFIG[配置层<br/>.linglong.yaml]
+        CONFIG[配置层<br/>.knowledge.yml]
     end
 
     subgraph 知识库
@@ -112,10 +112,10 @@ graph TD
 | 索引更新 | `auto` | `knowledge.auto_index` | `--no-index` |
 
 ```yaml
-# .linglong.yaml
+# .knowledge.yml
 knowledge:
-  wiki_path: ~/linglong/wiki
-  db_path: ~/linglong/db/knowledge.db
+  wiki_path: ~/knowledge/wiki
+  db_path: ~/knowledge/db/knowledge.db
   write_mode: confirm
   search_mode: on_demand
   auto_index: true
@@ -173,8 +173,8 @@ flowchart TD
 ### 关键设计：SQLite 可重建
 
 ```
-~/linglong/wiki/          ← 真实数据源（Markdown 文件）
-~/linglong/db/knowledge.db ← 索引，可从 wiki 文件重建
+~/knowledge/wiki/          ← 真实数据源（Markdown 文件）
+~/knowledge/db/knowledge.db ← 索引，可从 wiki 文件重建
 ```
 
 ---
@@ -199,7 +199,7 @@ linglong kb migrate --from ~/.openclaw/workspace/memory/wiki/ --no-index
 | 编号 | 决策 | 选择 | 原因 | 替代方案 |
 |------|------|------|------|----------|
 | D-06a | 接入方式 | MCP 优先 + CLI 兜底 | MCP 原生协议，CLI 兜底 | 仅 CLI |
-| D-06b | 配置优先级 | CLI > .linglong.yaml > 默认值 | 灵活覆盖 | 仅配置文件 |
+| D-06b | 配置优先级 | CLI > .knowledge.yml > 默认值 | 灵活覆盖 | 仅配置文件 |
 | D-06c | 迁移策略 | 渐进式 | 降低迁移风险 | 一次性全量 |
 | D-06d | Agent 文档 | 按 Agent 拆分到 agents/ | 各 Agent 差异大，独立演进 | 单文件 |
 

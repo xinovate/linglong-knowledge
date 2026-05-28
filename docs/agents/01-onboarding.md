@@ -19,11 +19,11 @@ linglong kb init
 ```
 
 交互式向导会引导配置：
-- Wiki 存储路径（默认 `~/linglong/wiki/`）
-- 数据库路径（默认 `~/linglong/db/knowledge.db`）
+- Wiki 存储路径（默认 `~/knowledge/wiki/`）
+- 数据库路径（默认 `~/knowledge/db/knowledge.db`）
 - Embedding 服务（可选，用于语义搜索）
 
-初始化后生成 `~/.linglong.yaml` 配置文件。
+初始化后生成 `~/.knowledge.yml` 配置文件。
 
 ### 3. 验证
 
@@ -114,7 +114,7 @@ Linglong 是跨 Agent 共享的知识库，通过 MCP 工具接入。
 
 ### 与 auto memory 的边界
 - auto memory（~/.claude/projects/.../memory/）：工作偏好、协作反馈，仅 Claude Code 使用
-- Linglong（~/linglong/wiki/）：有价值的知识，所有 Agent 共享
+- Linglong（~/knowledge/wiki/）：有价值的知识，所有 Agent 共享
 - 两者不冲突，auto memory 是工作记忆，Linglong 是长期知识
 ```
 
@@ -136,7 +136,7 @@ Linglong 是跨 Agent 共享的知识库，通过 MCP 工具接入。
 
 ```bash
 pip uninstall linglong
-rm -rf ~/linglong/  # 删除知识库数据
+rm -rf ~/knowledge/  # 删除知识库数据
 ```
 
 ---
@@ -237,7 +237,7 @@ openclaw gateway restart
 
 ```bash
 pip uninstall linglong
-rm -rf ~/linglong/
+rm -rf ~/knowledge/
 ```
 
 ---

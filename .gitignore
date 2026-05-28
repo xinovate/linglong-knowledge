@@ -51,6 +51,7 @@ wiki/
 # Environment
 .env
 .env.local
+.knowledge.yml
 .linglong.yaml
 db/
 

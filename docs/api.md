@@ -1,5 +1,7 @@
 # API 文档
 
+Linglong 知识库的 Python API、MCP 工具接口和配置说明。
+
 ## 核心模型
 
 ### Entity
@@ -7,59 +9,55 @@
 知识条目，系统的核心数据单元。
 
 ```python
-class Entity(BaseModel):
-    id: str                          # UUID
-    content: str                     # Markdown 内容
-    summary: Optional[str]           # AI 生成的摘要
-    created_by: AgentID              # 创建者，如 "agent:violet"
-    confirmed_by: Optional[HumanID]  # 确认者，如 "human:alice"
-    confidence: ConfidenceScore      # 置信度，0.0 ~ 1.0
-    status: EntityStatus             # 状态
-    sources: List[Source]            # 来源列表
-    relations: List[Relation]        # 关系列表
-    versions: List[Version]          # 版本历史
-    created_at: datetime             # 创建时间
-    updated_at: datetime             # 更新时间
-    embedding_id: Optional[str]      # 向量索引 ID
+from linglong.core.models import Entity, EntityFacet, EntityStatus
+
+entity = Entity(
+    content="# Python Type Hints\n\n...",
+    facet=EntityFacet.CONCEPT,
+    created_by="agent:claude",
+    confidence=0.92,
+    status=EntityStatus.AUTO_CONFIRMED,
+)
 ```
 
-**状态枚举**：
+主要字段：
 
-```python
-class EntityStatus(str, Enum):
-    RAW = "raw"                      # 刚获取
-    PENDING_REVIEW = "pending_review" # 待审核
-    CONFIRMED = "confirmed"          # 人工确认
-    AUTO_CONFIRMED = "auto_confirmed" # 自动确认
-    REJECTED = "rejected"            # 已拒绝
-```
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | `str` | UUID，自动生成 |
+| `content` | `str` | Markdown 内容 |
+| `facet` | `EntityFacet` | 六分面分类 |
+| `group` | `str \| None` | facet 下的语义子目录 |
+| `summary` | `str \| None` | AI 生成的摘要 |
+| `created_by` | `AgentID` | 创建者（如 `agent:claude`） |
+| `confirmed_by` | `HumanID \| None` | 确认者（如 `human:alice`） |
+| `confidence` | `ConfidenceScore` | AI 置信度，0.0–1.0 |
+| `status` | `EntityStatus` | 生命周期状态 |
+| `sources` | `list[Source]` | 来源列表 |
+| `relations` | `list[Relation]` | 关系列表 |
+| `versions` | `list[Version]` | 版本历史 |
+| `embedding_id` | `str \| None` | sqlite-vec 索引 ID |
 
-### Source
+状态枚举：
 
-来源信息，追踪数据的出处。
+| 状态 | 说明 |
+|------|------|
+| `RAW` | 刚创建 |
+| `PENDING_REVIEW` | 待审核 |
+| `CONFIRMED` | 人工确认 |
+| `AUTO_CONFIRMED` | 自动确认（ReviewEngine） |
+| `REJECTED` | 已拒绝 |
 
-```python
-class Source(BaseModel):
-    type: SourceType     # rss / memory / api / ai_task / manual
-    name: str            # 来源名称，如 "techcrunch"
-    url: Optional[str]   # 来源 URL
-    metadata: Dict       # 附加元数据
-```
+六分面分类：
 
-### Task
-
-调度任务，用于跨模块编排。
-
-```python
-class Task(BaseModel):
-    id: str
-    project: str         # "ingest" / "knowledge" / "reviewer" / "dispatch"
-    task_type: str       # 任务类型
-    status: TaskStatus   # 状态
-    scheduled_at: datetime
-    entity_id: Optional[str]
-    params: Dict
-```
+| Facet | 说明 |
+|-------|------|
+| `concept` | 概念 |
+| `experience` | 经验 |
+| `methodology` | 方法论 |
+| `project` | 项目 |
+| `reference` | 参考资料 |
+| `personal` | 个人 |
 
 ---
 
@@ -67,53 +65,53 @@ class Task(BaseModel):
 
 ### KnowledgeStore
 
-#### 创建实体
+三层存储的统一接口：Filesystem（Markdown）+ SQLite（元数据）+ sqlite-vec（向量索引）。
 
 ```python
 from linglong.knowledge.store import KnowledgeStore
-from linglong.core.models import Entity
 
 store = KnowledgeStore()
+```
+
+#### 创建实体
+
+```python
+from linglong.core.models import Entity, EntityFacet
 
 entity = Entity(
     content="# 标题\n\n内容",
+    facet=EntityFacet.CONCEPT,
     created_by="agent:violet",
     confidence=0.85,
 )
 created = store.create(entity)
-print(created.id)  # 自动生成的 UUID
+print(created.id)
 ```
 
-#### 获取实体
+#### 读取实体
 
 ```python
 entity = store.get("entity-id")
-if entity:
-    print(entity.content)
 ```
 
-#### 搜索实体
+#### 搜索
 
 ```python
-# 按状态搜索
-results = store.search(status=EntityStatus.AUTO_CONFIRMED)
+# 自动选择最佳模式（关键词/向量/混合）
+results = store.search_auto(query="machine learning", limit=10)
 
-# 按创建者搜索
-results = store.search(created_by="agent:violet")
+# 语义向量搜索
+results = store.search_similar(query="embedding model", limit=5)
 
-# 组合条件
-results = store.search(
-    status=EntityStatus.CONFIRMED,
-    created_by="agent:claude",
-    limit=10,
-)
+# 按条件搜索
+results = store.search(facet=EntityFacet.CONCEPT, limit=20)
+results = store.search(since="2025-01-01", limit=10)
 ```
 
 #### 更新实体
 
 ```python
 entity.content = "更新后的内容"
-entity.confidence = 0.95
 updated = store.update(entity)
 ```
 
@@ -123,35 +121,45 @@ updated = store.update(entity)
 success = store.delete("entity-id")
 ```
 
----
-
-## Review 引擎 API
-
-### ReviewEngine
-
-#### 基本使用
+#### 同步与索引
 
 ```python
-from linglong.knowledge.review import ReviewEngine
-from linglong.core.models import Entity
+# 从外部 Agent 目录同步
+store.sync()
+
+# 重建向量索引
+store.rebuild_embeddings()
+```
+
+---
+
+## Review 引擎
+
+自动质量控制，基于规则评估实体状态。
+
+```python
+from linglong.knowledge.review import ReviewEngine, Rule, Action
 
 engine = ReviewEngine()
 
-entity = Entity(
-    content="内容",
-    created_by="agent:violet",
-    confidence=0.92,
-)
-
 reviewed = engine.review(entity)
-print(reviewed.status)  # 根据规则确定状态
+print(reviewed.status)  # AUTO_CONFIRMED / PENDING_REVIEW / REJECTED
 ```
 
-#### 自定义规则
+### 内置规则
+
+| 规则 | 条件 | 动作 |
+|------|------|------|
+| `high_confidence_trusted` | 置信度 > 0.9 + 可信来源 | `AUTO_CONFIRM` |
+| `low_confidence` | 置信度 < 0.6 | `FLAG_FOR_REVIEW` |
+| `sensitive_content` | 包含敏感词/密码/API key | `REQUIRE_HUMAN_CONFIRM` |
+| `too_short` | 内容 < 50 字符 | `FLAG_FOR_REVIEW` |
+| `personal_requires_review` | personal facet | `REQUIRE_HUMAN_CONFIRM` |
+| `source_auto_confirm` | reference facet + 置信度 ≥ 0.7 | `AUTO_CONFIRM` |
+
+### 自定义规则
 
 ```python
-from linglong.knowledge.review import Rule, Action
-
 engine.add_rule(
     Rule(
         name="custom_rule",
@@ -162,7 +170,7 @@ engine.add_rule(
 )
 ```
 
-**内置动作**：
+动作类型：
 
 | 动作 | 说明 |
 |------|------|
@@ -170,259 +178,170 @@ engine.add_rule(
 | `FLAG_FOR_REVIEW` | 标记待审 |
 | `REQUIRE_HUMAN_CONFIRM` | 需人工确认 |
 | `REJECT` | 拒绝 |
+| `MERGE` | 合并 |
 
 ---
 
-## 配置 API
+## 跨 Agent 同步
 
-### 获取配置
-
-```python
-from linglong.core.config import get_config
-
-config = get_config()
-
-# 通用配置
-print(config.debug)
-print(config.log_level)
-
-# 知识库配置
-print(config.knowledge.wiki_path)
-print(config.knowledge.db_path)
-
-# 获取配置
-print(config.ingest.fetch_interval_minutes)
-```
-
-### 环境变量
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `LL_DEBUG` | 调试模式 | `false` |
-| `LL_LOG_LEVEL` | 日志级别 | `INFO` |
-| `LL_KNOWLEDGE_WIKI_PATH` | Wiki 目录 | `./wiki` |
-| `LL_KNOWLEDGE_DB_PATH` | 数据库路径 | `./knowledge.db` |
-| `LL_KNOWLEDGE_VECTOR_ENABLED` | 启用向量 | `true` |
-| `LL_INGEST_FETCH_INTERVAL_MINUTES` | 获取间隔 | `30` |
-
----
-
-## Ingest 采集 API
-
-### IngestAgent
+三个 Sync Adapter，从各 Agent 本地目录 pull 知识到 KnowledgeStore。
 
 ```python
-from pathlib import Path
-from linglong.ingest.agent import IngestAgent
-from linglong.ingest.brief_history import BriefHistory
-from linglong.ingest.feedback import FeedbackStore
-from linglong.ingest.package import SourcePackage
-from linglong.core.config import get_config
+from linglong.knowledge.sync import OpenClawSyncAdapter, ClaudeCodeSyncAdapter, CodexSyncAdapter
 
-config = get_config()
-packages = [SourcePackage(**p) for p in config.ingest.packages]
+# OpenClaw wiki → KnowledgeStore
+adapter = OpenClawSyncAdapter()
+entities = adapter.pull()
 
-feedback_store = FeedbackStore()
-brief_history = BriefHistory(Path.home() / "linglong" / "brief_history")
-agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
-
-# 生成早报（返回 markdown 字符串）
-output = await agent.run(packages[0])
-print(output)
-```
-
-### CLI
-
-```bash
-# 生成 AI 早报
-linglong ingest
+# Claude Code memory → KnowledgeStore
+adapter = ClaudeCodeSyncAdapter()
+entities = adapter.pull()
 ```
 
 ---
 
-## 扩展接口
+## MCP Server
 
-### 自定义数据源
-
-```python
-from linglong.core.models import Entity
-
-class CustomSource:
-    async def fetch(self) -> List[Entity]:
-        # 实现获取逻辑
-        pass
-```
-
-### 自定义 Review 规则
-
-```python
-from linglong.knowledge.review import Rule, Action
-
-def my_condition(entity: Entity) -> bool:
-    return "特定条件" in entity.content
-
-rule = Rule(
-    name="my_rule",
-    condition=my_condition,
-    action=Action.FLAG_FOR_REVIEW,
-    priority=100,
-)
-```
-
----
-
-## MCP Server API
-
-Linglong 提供 MCP Server，支持 Claude Code 等 MCP Client 通过标准协议读写知识库。
+FastMCP Server，提供 8 个知识库工具，Agent 通过 MCP 协议读写知识库。
 
 ### 工具清单
 
-| 工具 | 功能 | 对应 Store 方法 |
-|------|------|----------------|
-| `search_wiki` | FTS5 全文搜索，返回摘要/预览 | `store.search()` |
-| `search_similar` | 向量语义搜索（失败回退 FTS5） | `store.search_similar()` |
-| `search_and_read` | 搜索并自动读取前 N 条完整内容 | `store.search()` + `store.get()` |
-| `read_entity` | 读取完整内容+元数据 | `store.get()` |
-| `write_entity` | 写入新知识 | `store.create()` |
-| `update_entity` | 更新已有条目（替换或追加） | `store.update()` |
-| `list_entities` | 浏览最近条目 | `store.search()` |
-| `get_template` | 获取 facet 写作模板 | `TemplateManager.get_template()` |
-| `list_templates` | 列出所有可用模板 | `TemplateManager.list_templates()` |
+| 工具 | 功能 | 核心参数 |
+|------|------|----------|
+| `search_wiki` | 自动选择最佳搜索模式 | `query`, `facet?`, `limit?` |
+| `search_similar` | 语义向量搜索（不可用退化为 FTS5） | `query`, `facet?`, `limit?` |
+| `search_and_read` | 搜索 + 读取 Top-N 完整内容 | `query`, `facet?`, `limit?`, `max_content_length?` |
+| `read_entity` | 按 ID 读取完整实体 | `entity_id` |
+| `write_entity` | 创建新实体 | `title`, `content`, `facet`, `group?`, `tags?` |
+| `update_entity` | 更新实体（替换或追加） | `entity_id`, `content`, `append?` |
+| `list_entities` | 按时间线浏览 | `facet?`, `since?`, `limit?` |
+| `get_template` | 获取 facet 写作模板 | `facet` |
+| `list_templates` | 列出所有可用模板 | 无 |
 
-### 配置方式
+### 工具行为说明
 
-详见下方 [MCP Server 接入配置](#mcp-server-接入配置)。基本方式：
+**搜索工具返回轻量预览**：优先使用 Entity 的 `summary` 字段，否则截取正文前 500 字符。Agent 可先搜索判断相关性，再用 `read_entity` 获取全文。
+
+**`search_and_read`** 是组合工具，一次调用返回搜索结果的完整内容（支持截断）。适合"详细讲讲 X"这类需要全文的场景。
+
+**`write_entity`** 写入前自动检测 facet 拥挤度——如果 facet 根目录下未分组实体过多，返回 warning 建议指定 group。
+
+### 部署模式
+
+#### stdio（本地）
+
+```bash
+python -m linglong.mcp
+```
+
+Claude Code 等本地 Agent 通过子进程连接。
+
+#### streamable-http（远程）
+
+```bash
+pip install linglong[server]
+python -m linglong.mcp --transport streamable-http --port 9900
+```
+
+通过 Cloudflare Tunnel 暴露，路由为 `/mcp/knowledge`。
+
+### 接入配置
 
 ```json
 {
   "mcpServers": {
-    "linglong-ingest": {
-      "url": "https://your-domain.com/mcp/ingest",
-      "headers": { "Authorization": "Bearer your-token" }
-    },
     "linglong-knowledge": {
-      "command": ".venv/bin/python",
+      "command": "/path/to/linglong/.venv/bin/python",
       "args": ["-m", "linglong.mcp"]
     }
   }
 }
 ```
 
-### 搜索行为说明
-
-**`search_wiki`** 返回轻量级预览，优先使用 Entity 的 AI 生成摘要（`summary`），否则截取正文前 500 字符。这种分层设计让 Agent 快速判断相关性，避免 Token 浪费。
-
-**`search_and_read`** 是 convenience 工具，内部先搜索再对前 N 个结果调用 `read_entity`，一次调用返回完整内容。适合"详细讲讲 X"这类需要全文的情境。
-
-### write_entity 最佳实践
-
-`write_entity` 的 tool description 会引导 Claude Code：写入前先搜索同类 facet 的文档，参考其 frontmatter 风格和结构，保持知识库格式一致性。也可以通过 `reference_entity_ids` 参数显式传入参考文档 ID。
-
-### 模板体系
-
-**`get_template(facet)`** 返回指定 facet 的写作模板（Markdown 格式，含 YAML frontmatter 和占位符）。Agent 写入前可调用此工具获取结构参考。
-
-当前提供 6 个模板：
-- `concept` — 概念类（定义、核心要点、实际应用）
-- `experience` — 经验类（背景、问题、解决方案、踩坑记录）
-- `project` — 项目类（目标、进度、关键决策、学习笔记）
-- `methodology` — 方法论类（流程、检查清单、常见误区）
-- `reference` — 参考资料类（外部参考、资料链接、摘录、待验证）
-- `personal` — 个人类（偏好、规则、历史变化）
-
-### Ingest 采集工具
-
-| 工具 | 功能 | 参数 |
-|------|------|------|
-| `fetch_rss` | 采集 RSS feed | `url`, `name?`, `max_items?` |
-| `execute_package` | 执行采集包（YAML 文件路径） | `package_path` |
-| `generate_brief` | 生成 AI 早报（使用配置中的包） | 无 |
-| `search_web` | 网页搜索（SearXNG） | `query`, `max_results?` |
-| `record_feedback` | 记录采集偏好 | `content_hash`, `feedback`, `tags?` |
-
-采集工具返回 Entity 列表，Agent 讨论后可通过 `write_entity` 写入知识库。
-
-`generate_brief` 读取 `.linglong.yaml` 中配置的第一个 package，无需文件路径。适合 Agent 在对话中直接触发生成。
-
-`search_web` 提供即时网页搜索能力，不依赖早报流程。适合 Agent 在对话中按需查询。
-
-### Reviewer 评审工具
-
-| 工具 | 功能 | 参数 |
-|------|------|------|
-| `review_article` | 评审文章质量（7 维度评分） | `content`, `source_entity_ids?` |
-
-`review_article` 调用 reviewer 模块对 Agent 生成的文章进行质量评审。评分维度：
-
-| 维度 | 说明 |
-|------|------|
-| `format` | 格式规范（标题、段落、Markdown 格式） |
-| `content_richness` | 内容丰富度（信息密度、数据支撑） |
-| `structure` | 结构合理性（逻辑递进、层次分明） |
-| `expression_naturalness` | 表达自然度（避免机械模板化） |
-| `pitfall_coverage` | 坑点覆盖（诚实讲缺点、失败经验） |
-| `readability` | 可读性（流畅、易懂） |
-| `accuracy` | 准确性（事实正确、来源可靠） |
-
-评审结果包含综合评分、各维度评分、改进建议。Agent 可根据建议修改后重新提交评审。
-
-### MCP Server 接入配置
-
-#### 远程部署 + 本地 stdio
-
-MCP Server 支持两种部署模式，通过 `mcp.transport` 配置：
-
-- **远程（streamable-http）**：部署在服务器，按模块路由（`/mcp/ingest`、`/mcp/knowledge` 等）
-- **本地（stdio）**：子进程模式，知识库/reviewer/dispatch 工具保留本地访问
-
-#### Claude Code
-
-在 `~/.claude/settings.json` 的 `projects` 中添加双 MCP 配置：
+远程接入（需要 Token 认证）：
 
 ```json
 {
   "mcpServers": {
-    "linglong-ingest": {
-      "url": "https://your-domain.com/mcp/ingest",
-      "headers": { "Authorization": "Bearer your-token" }
-    },
     "linglong-knowledge": {
-      "command": "/path/to/linglong/.venv/bin/python",
-      "args": ["-m", "linglong.mcp"],
-      "env": {
-        "SEARXNG_API_KEY": "your-key",
-        "RSSHUB_ACCESS_KEY": "your-key",
-        "EMBEDDING_API_KEY": "your-key"
-      }
+      "url": "https://your-domain.com/mcp/knowledge",
+      "headers": { "Authorization": "Bearer your-token" }
     }
   }
 }
 ```
 
-#### Token 认证
+### Token 认证
 
-远程 MCP 支持 Redis 动态 Token 认证。Token 格式：`linglong-{module}-{random}`。
+远程 MCP 支持 Redis 动态 Token 认证。Token 格式：`knowledge-{random}`。
 
 ```bash
-# 新增 token（服务器上执行）
-docker exec linglong-redis redis-cli -a <密码> SET linglong-ingest-<random> active
+# 新增 token
+redis-cli SET knowledge-abc123 active
 
 # 查看所有 token
-docker exec linglong-redis redis-cli -a <密码> KEYS 'linglong-*'
+redis-cli KEYS 'knowledge-*'
 
 # 删除 token
-docker exec linglong-redis redis-cli -a <密码> DEL linglong-ingest-<random>
+redis-cli DEL knowledge-abc123
 ```
 
 配置 `mcp.redis_url` 启用 Redis 认证，不配置则降级为静态 `auth_token`。
 
-#### 注意事项
+---
 
-- MCP Server 运行在自己的事件循环中，内部使用 `_run_async()`（ThreadPoolExecutor）处理异步调用
-- RSSHub `?key=` 仅追加到 `:1200` 端口的 RSSHub URL，不影响直接 RSS 源
-- GitHub API 优先使用 `gh auth token` 认证（5000 req/hr），未认证降级到 60 req/hr
+## 配置
 
-```bash
-# 本地 stdio 模式
-python -m linglong.mcp
+### Python API
+
+```python
+from linglong.core.config import get_config
+
+config = get_config()
+
+# 知识库配置
+print(config.knowledge.wiki_path)
+print(config.knowledge.db_path)
+print(config.knowledge.vector_enabled)
+
+# MCP 配置
+print(config.mcp.transport)
+print(config.mcp.port)
 ```
+
+### 配置文件 `.knowledge.yml`
+
+```yaml
+knowledge:
+  wiki_path: ~/knowledge/wiki
+  db_path: ~/knowledge/db/knowledge.db
+  generate_embeddings: true
+  write_mode: confirm
+  auto_lint: false
+  max_versions: 10
+  db_mode: wal
+
+mcp:
+  transport: stdio
+  host: 127.0.0.1
+  port: 9900
+  redis_url: ""
+  auth_token: null
+```
+
+### 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `KB_DEBUG` | 调试模式 | `false` |
+| `KB_LOG_LEVEL` | 日志级别 | `INFO` |
+| `KB_KNOWLEDGE_WIKI_PATH` | Wiki 目录 | `~/knowledge/wiki` |
+| `KB_KNOWLEDGE_DB_PATH` | 数据库路径 | `~/knowledge/db/knowledge.db` |
+| `KB_KNOWLEDGE_VECTOR_ENABLED` | 启用向量搜索 | `true` |
+| `KB_KNOWLEDGE_EMBEDDING_URL` | Embedding 服务地址 | `http://localhost:7997` |
+| `KB_KNOWLEDGE_EMBEDDING_API_KEY` | Embedding API Key | `None` |
+| `KB_MCP_TRANSPORT` | 传输协议 | `stdio` |
+| `KB_MCP_HOST` | HTTP 监听地址 | `127.0.0.1` |
+| `KB_MCP_PORT` | HTTP 监听端口 | `9900` |
+| `KB_MCP_REDIS_URL` | Redis URL（动态 Token） | `""` |
+| `KB_MCP_AUTH_TOKEN` | 静态认证 Token | `None` |

@@ -1,7 +1,7 @@
 # 工作日志
 
 > **定位**：按天记录工作过程中的问题调查、决策和发现。
-> **不记录**：阶段方向（去 `docs/PROJECT_OVERVIEW.md`）、设计决策（去 `docs/knowledge/design/00-overview.md`）。
+> **不记录**：阶段方向（去 `docs/PROJECT_OVERVIEW.md`）、设计决策（去 `docs/design/00-overview.md`）。
 > **结构**：概览 → 问题/任务 → 结论 → 关联链接。
 > **更新时机**：当天工作结束或会话压缩前。
 

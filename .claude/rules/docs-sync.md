@@ -5,8 +5,8 @@
 | 代码改动 | 必须更新 |
 |---------|---------|
 | 新增/删除/修改 MCP 工具 | `docs/api.md` + `PROJECT_OVERVIEW.md` 测试计数 |
-| 新增/修改配置字段 | `docs/api.md` + `.linglong.yaml` |
-| ingest 数据源变化 | `docs/ingest/README.md` + `docs/roadmap.md` |
+| 新增/修改配置字段 | `docs/api.md` + `.knowledge.yml` |
+| ingest 数据源变化 | `docs/roadmap.md` |
 | 版本级改动 | `PROJECT_OVERVIEW.md` 版本表 + Next Actions + `docs/roadmap.md` |
 | 架构决策变更 | `docs/architecture.md` + `docs/roadmap.md` ADR |
 | 测试数量变化 | `PROJECT_OVERVIEW.md` 测试覆盖表 |

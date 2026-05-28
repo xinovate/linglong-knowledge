@@ -3,7 +3,7 @@
 ## 认证
 
 - MCP 远程端点：Token 认证，通过 `TokenAuthMiddleware` 实现
-- Token 来源：Redis 优先，静态降级。格式：`linglong-<模块>-<随机串>`
+- Token 来源：Redis 优先，静态降级。格式：`knowledge-<random>`
 - Redis 存储：key = token 值，value = `"active"`，无 TTL
 - Token 和 API Key 禁止提交到 git，使用环境变量或 Redis
 
@@ -11,7 +11,7 @@
 
 - 所有第三方服务密钥（智谱、SearXNG、RSSHub、Embedding）从环境变量加载
 - systemd 服务文件用 `Environment=` 指令，不在 Python 源码中硬编码
-- 本地开发：密钥可放 `.linglong.yaml`（已 gitignore）或环境变量
+- 本地开发：密钥可放 `.knowledge.yml`（已 gitignore）或环境变量
 - 密钥轮换：Redis 中的 Token 支持写入新值后删除旧值，无停机切换
 
 ## SQL 注入防护

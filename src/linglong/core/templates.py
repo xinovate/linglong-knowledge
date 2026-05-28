@@ -9,7 +9,8 @@ from linglong.core.models import EntityFacet
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TEMPLATE_DIR = Path.home() / "linglong" / "templates"
+DEFAULT_TEMPLATE_DIR = Path.home() / "knowledge" / "templates"
+_LEGACY_TEMPLATE_DIR = Path.home() / "linglong" / "templates"
 
 
 class TemplateManager:
@@ -26,6 +27,10 @@ class TemplateManager:
                 return Path(config.knowledge.template_dir)
         except Exception:
             pass
+        if DEFAULT_TEMPLATE_DIR.exists():
+            return DEFAULT_TEMPLATE_DIR
+        if _LEGACY_TEMPLATE_DIR.exists():
+            return _LEGACY_TEMPLATE_DIR
         return DEFAULT_TEMPLATE_DIR
 
     def list_templates(self) -> dict[str, dict[str, Any]]:

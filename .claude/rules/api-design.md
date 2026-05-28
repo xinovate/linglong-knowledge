@@ -84,7 +84,7 @@ async def search_web(
 ## 配置字段
 
 - Python 中用 `snake_case`，YAML 中用 `snake_case`
-- 环境变量覆盖：`LL_<节>_<字段>`（如 `LL_MCP_AUTH_TOKEN`）
+- 环境变量覆盖：`KB_<section>_<field>`（如 `KB_MCP_AUTH_TOKEN`）
 - 新增配置字段必须同步到 `docs/api.md` 配置节
 - 配置字段和环境变量不重复 — 只用一种机制
 - 敏感配置（Token、API Key）只从环境变量或 Redis 读取，不进 YAML

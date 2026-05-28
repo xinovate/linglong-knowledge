@@ -162,7 +162,7 @@ linglong kb lint --stale-days 30              # 自定义过期阈值（默认 9
 
 ### 写入时触发
 
-通过 `.linglong.yaml` 开启写入后自动检查（默认关闭）：
+通过 `.knowledge.yml` 开启写入后自动检查（默认关闭）：
 
 ```yaml
 knowledge:
@@ -184,7 +184,7 @@ linglong kb lint --run-scheduled
 ```
 
 ```yaml
-# .linglong.yaml
+# .knowledge.yml
 knowledge:
   lint_schedule: "0 2 * * *"  # 每天凌晨 2 点（仅 --daemon 模式使用）
 ```

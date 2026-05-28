@@ -120,7 +120,7 @@ def cmd_write(args: argparse.Namespace) -> int:
         for e in existing:
             if args.title.lower() in e.content.lower():
                 print(f"⚠️ 已存在相似条目：{e.id} ({e.facet.value})")
-                print(f"  建议：linglong update {e.id} --append \"补充内容\"")
+                print(f"  建议：linglong update {e.id} --append \"additional content\"")
                 if not args.yes and not auto_mode:
                     return 1
 
@@ -582,7 +582,7 @@ def _reg_write(sub):
     p.add_argument("--facet", required=True,
         choices=["concept", "experience", "methodology", "project", "reference", "personal"],
         help="知识分类")
-    p.add_argument("--group", default=None, help="子目录分组（如 linglong、openclaw）")
+    p.add_argument("--group", default=None, help="Subdirectory group (e.g. linglong, openclaw)")
     p.add_argument("--title", required=True, help="标题（用作文件名）")
     p.add_argument("--content", default=None, help="内容文本")
     p.add_argument("--from-file", default=None, help="从文件读取内容")
@@ -706,7 +706,7 @@ def _reg_sync(sub):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="linglong", description="Linglong cross-agent knowledge hub")
+    parser = argparse.ArgumentParser(prog="linglong", description="Knowledge base for cross-agent knowledge sharing")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
     sub = parser.add_subparsers(dest="command", required=True)
 

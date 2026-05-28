@@ -1,19 +1,19 @@
 # 配置系统
 
-Linglong 使用 `.linglong.yaml` 作为主配置文件，基于 Pydantic BaseSettings 实现。
+Linglong 使用 `.knowledge.yml` 作为主配置文件，基于 Pydantic BaseSettings 实现。
 
 ## 配置文件
 
 **搜索路径**（优先级从高到低）：
-1. `./.linglong.yaml`（当前目录）
-2. 项目根目录 `.linglong.yaml`
-3. `~/.linglong/config.yaml`（用户 home）
+1. `./.knowledge.yml`（当前目录）
+2. 项目根目录 `.knowledge.yml`
+3. `~/.knowledge/config.yaml`（用户 home）
 
-**字段优先级**：`.linglong.yaml` > 环境变量（`LL_*`）> 默认值
+**字段优先级**：`.knowledge.yml` > 环境变量（`KB_*`）> 默认值
 
 **首次使用**：
 ```bash
-cp .linglong.yaml.example .linglong.yaml
+cp .knowledge.example.yml .knowledge.yml
 ```
 
 ## 配置结构
@@ -21,11 +21,11 @@ cp .linglong.yaml.example .linglong.yaml
 ```yaml
 debug: false
 log_level: INFO
-data_dir: ~/linglong/data
+data_dir: ~/knowledge/data
 
 knowledge:       # 知识库配置
-  wiki_path: ~/linglong/wiki
-  db_path: ~/linglong/db/knowledge.db
+  wiki_path: ~/knowledge/wiki
+  db_path: ~/knowledge/db/knowledge.db
   vector_enabled: true
   embedding_url: http://localhost:7997
   embedding_model: nomic-embed-text-v1.5
@@ -41,19 +41,19 @@ mcp:             # MCP 服务配置
 
 ## 环境变量
 
-支持环境变量，前缀 `LL_`，下划线分隔层级：
+支持环境变量，前缀 `KB_`，下划线分隔层级：
 
 | 环境变量 | 对应 YAML 字段 |
 |----------|---------------|
-| `LL_DEBUG` | `debug` |
-| `LL_KNOWLEDGE_WIKI_PATH` | `knowledge.wiki_path` |
-| `LL_KNOWLEDGE_DB_PATH` | `knowledge.db_path` |
-| `LL_KNOWLEDGE_EMBEDDING_URL` | `knowledge.embedding_url` |
-| `LL_KNOWLEDGE_EMBEDDING_API_KEY` | `knowledge.embedding_api_key` |
-| `LL_MCP_TRANSPORT` | `mcp.transport` |
-| `LL_MCP_PORT` | `mcp.port` |
-| `LL_MCP_REDIS_URL` | `mcp.redis_url` |
-| `LL_MCP_AUTH_TOKEN` | `mcp.auth_token` |
+| `KB_DEBUG` | `debug` |
+| `KB_KNOWLEDGE_WIKI_PATH` | `knowledge.wiki_path` |
+| `KB_KNOWLEDGE_DB_PATH` | `knowledge.db_path` |
+| `KB_KNOWLEDGE_EMBEDDING_URL` | `knowledge.embedding_url` |
+| `KB_KNOWLEDGE_EMBEDDING_API_KEY` | `knowledge.embedding_api_key` |
+| `KB_MCP_TRANSPORT` | `mcp.transport` |
+| `KB_MCP_PORT` | `mcp.port` |
+| `KB_MCP_REDIS_URL` | `mcp.redis_url` |
+| `KB_MCP_AUTH_TOKEN` | `mcp.auth_token` |
 
 ## 代码中使用
 
@@ -77,4 +77,4 @@ knowledge:
 ## 相关文件
 
 - `src/linglong/core/config.py` — 配置模型定义
-- `.linglong.yaml` — 用户配置（不入库）
+- `.knowledge.yml` — 用户配置（不入库）
