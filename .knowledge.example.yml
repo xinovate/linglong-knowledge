@@ -1,0 +1,50 @@
+# Knowledge base configuration
+# Copy to .knowledge.yml and customize
+# Unlisted fields use defaults
+
+# General
+debug: false
+log_level: "INFO"
+
+# Paths
+data_dir: ~/knowledge/data
+
+# Knowledge store
+knowledge:
+  wiki_path: ~/knowledge/wiki
+  db_path: ~/knowledge/db/knowledge.db
+  vector_enabled: true
+  vector_dimensions: 768
+  embedding_url: "http://localhost:7997"
+  embedding_model: "nomic-embed-text-v1.5"
+  generate_embeddings: true
+
+  # Write settings
+  write_mode: confirm        # confirm (require confirmation) / auto (auto-confirm)
+  auto_index: true
+  max_versions: 10
+  auto_lint: false
+
+  # Concurrency
+  lock_timeout: 5
+  db_mode: wal
+
+  # Scheduled lint (cron expression)
+  # lint_schedule: "0 2 * * *"
+
+  # Review engine
+  review_high_confidence_threshold: 0.9
+  review_low_confidence_threshold: 0.6
+
+  # Sync source paths (configure as needed)
+  # openclaw_wiki_path: ~/.openclaw/workspace/memory/wiki
+  # claude_memory_path: ~/.claude/projects/xxx/memory
+  # codex_path: ~/.codex
+
+# MCP server
+mcp:
+  transport: stdio           # stdio | streamable-http
+  host: "127.0.0.1"
+  port: 9900
+  # auth_token: ""           # static token, or use KB_MCP_AUTH_TOKEN
+  # redis_url: ""            # dynamic token via Redis, or use KB_MCP_REDIS_URL

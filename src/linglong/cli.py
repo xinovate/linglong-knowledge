@@ -11,7 +11,7 @@ from pathlib import Path
 
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityFacet, EntityStatus
-from linglong.dispatch.manager import DispatchManager
+
 from linglong.knowledge.store import ConcurrentModificationError, KnowledgeStore
 from linglong.knowledge.lint import LintEngine
 from linglong.knowledge.indexer import IndexGenerator
@@ -31,24 +31,6 @@ def _setup_logging(verbose: bool = False) -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-
-def cmd_publish(args: argparse.Namespace) -> int:
-    """Publish a markdown file via dispatch."""
-    _setup_logging(args.verbose)
-
-    file_path = Path(args.file)
-    if not file_path.exists():
-        logger.error("File not found: %s", file_path)
-        return 1
-
-    content = file_path.read_text(encoding="utf-8")
-    dispatch = DispatchManager()
-    result = dispatch.publish(content, {"title": file_path.stem}, publisher_name=args.publisher)
-    if not result.success:
-        logger.error("Publish failed: %s", result.error)
-        return 1
-    logger.info("Published to: %s", result.url)
-    return 0
 
 
 def cmd_kb_sync(args: argparse.Namespace) -> int:
@@ -723,13 +705,6 @@ def _reg_sync(sub):
     return p
 
 
-def _reg_publish(sub):
-    p = sub.add_parser("publish", help="Publish a markdown file")
-    p.add_argument("file", help="Markdown file to publish")
-    p.add_argument("--publisher", default=None, help="Publisher name")
-    return p
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="linglong", description="Linglong cross-agent knowledge hub")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
@@ -752,9 +727,6 @@ def main(argv: list[str] | None = None) -> int:
     _reg_init(kb_sp).set_defaults(func=cmd_init)
     _reg_migrate(kb_sp).set_defaults(func=cmd_migrate)
     _reg_kb_sync(kb_sp).set_defaults(func=cmd_kb_sync)
-
-    # ========== publish ==========
-    _reg_publish(sub).set_defaults(func=cmd_publish)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -46,15 +46,13 @@ knowledge = [
     "watchdog>=3.0",
     "markdown>=3.5",
     "python-frontmatter>=1.0",
+    "schedule>=1.2",
 ]
 scrape = [
     "playwright>=1.40",
 ]
-oss = [
-    "oss2>=2.18",
-]
 all = [
-    "linglong[dev,knowledge,scrape,oss]",
+    "linglong[dev,knowledge,scrape]",
 ]
 
 [tool.hatch.build.targets.wheel]

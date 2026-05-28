@@ -20,19 +20,6 @@ _YAML_SEARCH_PATHS = [
 ]
 
 
-class ReviewerConfig(BaseSettings):
-    """Reviewer module configuration."""
-
-    model_config = SettingsConfigDict(env_prefix="LL_REVIEWER_")
-
-    llm_provider: str = Field(default="openai", description="LLM provider")
-    llm_model: str = Field(default="gpt-4", description="LLM model name")
-    llm_api_key: str | None = Field(default=None, description="LLM API key")
-    llm_base_url: str | None = Field(default=None, description="LLM base URL")
-    llm_temperature: float = Field(default=0.3, description="LLM temperature for review")
-    llm_max_tokens: int = Field(default=4096, description="LLM max tokens")
-    passing_score: float = Field(default=6.0, description="Minimum passing score (0-10)")
-
 
 class KnowledgeConfig(BaseSettings):
     """Knowledge module configuration."""
@@ -128,7 +115,7 @@ class MCPConfig(BaseModel):
     )
     enabled_modules: list[str] = Field(
         default_factory=lambda: ["knowledge"],
-        description="Which module tool groups to expose: knowledge, reviewer",
+        description="Which module tool groups to expose: knowledge",
     )
     allowed_hosts: list[str] = Field(
         default_factory=list,
@@ -139,68 +126,6 @@ class MCPConfig(BaseModel):
         description="Redis URL for dynamic token auth (e.g. redis://:password@127.0.0.1:6379/0)",
     )
 
-
-class OSSConfig(BaseModel):
-    """Alibaba Cloud OSS configuration for image CDN."""
-
-    enabled: bool = Field(default=False, description="Enable OSS image upload")
-    bucket_name: str = Field(default="", description="OSS bucket name")
-    endpoint: str = Field(default="", description="OSS endpoint (e.g. oss-cn-hangzhou.aliyuncs.com)")
-    cdn_domain: str = Field(default="", description="CDN domain for image URLs")
-    access_key_id: str = Field(
-        default="",
-        description="OSS access key ID (prefer LL_OSS_ACCESS_KEY_ID env var)",
-    )
-    access_key_secret: str = Field(
-        default="",
-        description="OSS access key secret (prefer LL_OSS_ACCESS_KEY_SECRET env var)",
-    )
-    prefix: str = Field(default="images/", description="Object key prefix in OSS bucket")
-
-
-class DispatchConfig(BaseSettings):
-    """Dispatch module configuration."""
-
-    model_config = SettingsConfigDict(env_prefix="LL_DISPATCH_")
-
-    enabled: bool = Field(default=True, description="Enable dispatch module")
-    default_publisher: str = Field(default="hexo", description="Default publisher name")
-    publishers: list[dict[str, Any]] = Field(
-        default_factory=lambda: [
-            {
-                "name": "hexo",
-                "type": "hexo",
-                "enabled": True,
-                "config": {
-                    "hexo_path": "~/blog",
-                    "use_git_workflow": True,
-                    "git_remote": "origin",
-                    "git_branch": "master",
-                    "site_url": "https://www.linglong.wiki",
-                },
-            },
-            {
-                "name": "local",
-                "type": "local",
-                "enabled": False,
-                "config": {
-                    "output_dir": "~/Downloads",
-                    "overwrite": False,
-                },
-            },
-        ],
-        description="Publisher configurations",
-    )
-
-    hexo_site_url: str = Field(
-        default="https://www.linglong.wiki", description="Hexo site base URL"
-    )
-    hexo_deploy_command: str | None = Field(
-        default=None,
-        description="Custom SSH deploy command (None uses default git workflow)",
-    )
-
-    oss: OSSConfig = Field(default_factory=OSSConfig, description="OSS image CDN configuration")
 
 
 class LinglongConfig(BaseSettings):
@@ -217,8 +142,6 @@ class LinglongConfig(BaseSettings):
     log_level: str = Field(default="INFO", description="Logging level")
 
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
-    reviewer: ReviewerConfig = Field(default_factory=ReviewerConfig)
-    dispatch: DispatchConfig = Field(default_factory=DispatchConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
     data_dir: Path = Field(
