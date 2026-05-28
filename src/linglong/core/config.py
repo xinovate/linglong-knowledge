@@ -107,78 +107,6 @@ class KnowledgeConfig(BaseSettings):
     )
 
 
-class IngestConfig(BaseSettings):
-    """Ingest module configuration."""
-
-    model_config = SettingsConfigDict(env_prefix="LL_INGEST_")
-
-    rss_sources: list[dict[str, str]] = Field(
-        default_factory=list, description="RSS source configurations"
-    )
-    packages: list[dict[str, Any]] = Field(
-        default_factory=list,
-        description="Inline package definitions",
-    )
-    searxng_url: str = Field(
-        default="http://localhost:8088",
-        description="SearXNG instance URL for JSON API search",
-    )
-    search_timeout: float = Field(
-        default=30.0, description="Search request timeout in seconds"
-    )
-    searxng_api_key: str | None = Field(
-        default=None, description="SearXNG API key (Bearer Token via nginx auth)"
-    )
-    rsshub_access_key: str | None = Field(
-        default=None, description="RSSHub ACCESS_KEY for authenticated requests"
-    )
-
-    llm_max_tokens: int = Field(
-        default=8000, description="LLM max output tokens for brief generation"
-    )
-    llm_retries: int = Field(
-        default=2, description="LLM call retry count on failure"
-    )
-    llm_timeout: int = Field(
-        default=120, description="LLM request timeout in seconds"
-    )
-
-    github_trending_limits: dict[str, int] = Field(
-        default_factory=lambda: {"daily": 5, "weekly": 3, "monthly": 3},
-        description="GitHub trending repo counts per period",
-    )
-    github_search_fallback: dict[str, int] = Field(
-        default_factory=lambda: {"since_days": 30, "min_stars": 500},
-        description="GitHub Search API fallback parameters",
-    )
-
-    brief_history_dir: str = Field(
-        default="~/linglong/brief_history",
-        description="Directory for brief history JSON files (dedup)",
-    )
-    company_snapshot_path: str = Field(
-        default="~/linglong/company_snapshot.json",
-        description="Company funding/valuation snapshot for brief generation",
-    )
-    dedup_windows: dict[str, int] = Field(
-        default_factory=lambda: {"关键人物": 14, "公司动态": 7, "政策动态": 14, "应用落地": 7},
-        description="Per-dimension lookback days for dedup",
-    )
-
-    brief_output_dir: str = Field(
-        default="~/linglong/briefs",
-        description="Directory for cached daily briefs",
-    )
-    brief_schedule_time: str = Field(
-        default="07:30",
-        description="Daily brief schedule time (HH:MM), used for time range markers",
-    )
-    brief_cache_days: int = Field(
-        default=14,
-        description="Days to keep cached briefs",
-    )
-
-
 class MCPConfig(BaseModel):
     """MCP server configuration."""
 
@@ -199,8 +127,8 @@ class MCPConfig(BaseModel):
         description="Bearer token for authentication (None = no auth)",
     )
     enabled_modules: list[str] = Field(
-        default_factory=lambda: ["ingest", "knowledge"],
-        description="Which module tool groups to expose: ingest, knowledge, reviewer",
+        default_factory=lambda: ["knowledge"],
+        description="Which module tool groups to expose: knowledge, reviewer",
     )
     allowed_hosts: list[str] = Field(
         default_factory=list,
@@ -282,13 +210,13 @@ class LinglongConfig(BaseSettings):
         env_prefix="LL_",
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
 
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
-    ingest: IngestConfig = Field(default_factory=IngestConfig)
     reviewer: ReviewerConfig = Field(default_factory=ReviewerConfig)
     dispatch: DispatchConfig = Field(default_factory=DispatchConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)

@@ -12,7 +12,6 @@ from pathlib import Path
 from linglong.core.config import get_config
 from linglong.core.models import Entity, EntityFacet, EntityStatus
 from linglong.dispatch.manager import DispatchManager
-from linglong.ingest.package import SourcePackage
 from linglong.knowledge.store import ConcurrentModificationError, KnowledgeStore
 from linglong.knowledge.lint import LintEngine
 from linglong.knowledge.indexer import IndexGenerator
@@ -31,45 +30,6 @@ def _setup_logging(verbose: bool = False) -> None:
         level=level,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-
-
-def cmd_ingest(args: argparse.Namespace) -> int:
-    """Run ingest packages via IngestAgent."""
-    _setup_logging(args.verbose)
-    config = get_config()
-
-    packages = [SourcePackage(**p) for p in config.ingest.packages]
-    if not packages:
-        logger.warning("No packages defined in ingest.packages")
-        return 1
-
-    for package in packages:
-        if not package.enabled:
-            continue
-
-        logger.info("Executing package: %s", package.name)
-        from linglong.ingest.agent import IngestAgent
-        from linglong.ingest.brief_history import BriefHistory
-        from linglong.ingest.feedback import FeedbackStore
-
-        feedback_store = FeedbackStore()
-        history_dir = os.path.expanduser("~/linglong/brief_history")
-        brief_history = BriefHistory(Path(history_dir))
-        agent = IngestAgent(feedback_store=feedback_store, brief_history=brief_history)
-        output = asyncio.run(agent.run(package))
-
-        if output:
-            output_dir = os.path.expanduser("~/Downloads")
-            os.makedirs(output_dir, exist_ok=True)
-            today = date.today().isoformat()
-            out_path = os.path.join(output_dir, f"ai-morning-brief-{today}.md")
-            with open(out_path, "w", encoding="utf-8") as f:
-                f.write(output)
-            print(f"Morning brief written to {out_path}")
-        else:
-            print("No output generated")
-
-    return 0
 
 
 def cmd_publish(args: argparse.Namespace) -> int:
@@ -763,12 +723,6 @@ def _reg_sync(sub):
     return p
 
 
-def _reg_ingest(sub):
-    p = sub.add_parser("ingest", help="Run ingest packages")
-    p.add_argument("--write", action="store_true", help="Write collected entities to knowledge store")
-    return p
-
-
 def _reg_publish(sub):
     p = sub.add_parser("publish", help="Publish a markdown file")
     p.add_argument("file", help="Markdown file to publish")
@@ -798,9 +752,6 @@ def main(argv: list[str] | None = None) -> int:
     _reg_init(kb_sp).set_defaults(func=cmd_init)
     _reg_migrate(kb_sp).set_defaults(func=cmd_migrate)
     _reg_kb_sync(kb_sp).set_defaults(func=cmd_kb_sync)
-
-    # ========== ingest (standalone collection tool) ==========
-    _reg_ingest(sub).set_defaults(func=cmd_ingest)
 
     # ========== publish ==========
     _reg_publish(sub).set_defaults(func=cmd_publish)

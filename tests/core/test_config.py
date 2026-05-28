@@ -7,7 +7,6 @@ import pytest
 
 from linglong.core.config import (
     DispatchConfig,
-    IngestConfig,
     KnowledgeConfig,
     LinglongConfig,
     ReviewerConfig,
@@ -33,7 +32,6 @@ class TestLinglongConfig:
         assert config.debug is False
         assert config.log_level == "INFO"
         assert isinstance(config.knowledge, KnowledgeConfig)
-        assert isinstance(config.ingest, IngestConfig)
         assert isinstance(config.reviewer, ReviewerConfig)
         assert isinstance(config.dispatch, DispatchConfig)
 
@@ -61,14 +59,6 @@ class TestLinglongConfig:
         assert config.db_path == Path.home() / "linglong" / "db" / "knowledge.db"
         assert config.vector_enabled is True
         assert config.vector_dimensions == 768
-
-    def test_ingest_defaults(self):
-        """Test IngestConfig defaults."""
-        config = IngestConfig()
-        assert config.rss_sources == []
-        assert config.packages == []
-        assert config.searxng_url == "http://localhost:8088"
-        assert config.search_timeout == 30.0
 
     def test_dispatch_defaults(self):
         """Test DispatchConfig defaults."""

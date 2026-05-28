@@ -11,18 +11,13 @@ from mcp.server.fastmcp.server import TransportSecuritySettings
 
 from linglong.core.config import get_config
 from linglong.mcp.tools import (
-    execute_package,
-    fetch_rss,
-    generate_brief,
     get_template,
     list_entities,
     list_templates,
     read_entity,
-    record_feedback,
     review_article,
     search_and_read,
     search_similar,
-    search_web,
     search_wiki,
     update_entity,
     write_entity,
@@ -31,7 +26,6 @@ from linglong.mcp.tools import (
 logger = logging.getLogger(__name__)
 
 _TOOL_GROUPS: dict[str, list[object]] = {
-    "ingest": [fetch_rss, generate_brief, execute_package, search_web, record_feedback],
     "knowledge": [
         search_wiki,
         search_similar,

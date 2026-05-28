@@ -12,22 +12,6 @@ def test_cli_help():
     assert exc.value.code == 0
 
 
-def test_cli_ingest_no_packages(tmp_path, monkeypatch):
-    """ingest with no packages should warn and exit 1."""
-    from linglong.core.config import LinglongConfig, set_config
-
-    config = LinglongConfig(
-        data_dir=tmp_path / "data",
-        ingest=LinglongConfig().ingest.model_copy(
-            update={"package_paths": [str(tmp_path / "nonexistent")]}
-        ),
-    )
-    set_config(config)
-
-    code = main(["ingest"])
-    assert code == 1
-
-
 # ---------------------------------------------------------------------------
 # 知识库子命令测试
 # ---------------------------------------------------------------------------
