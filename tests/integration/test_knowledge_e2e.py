@@ -30,7 +30,6 @@ def test_full_knowledge_lifecycle():
             generate_embeddings=False,
         )
         config = LinglongConfig(
-            data_dir=base / "data",
             knowledge=knowledge_cfg,
         )
         config.ensure_directories()

@@ -22,7 +22,6 @@ def _make_config(tmp_path):
     from linglong.core.config import LinglongConfig, set_config
 
     config = LinglongConfig(
-        data_dir=tmp_path / "data",
         knowledge=LinglongConfig().knowledge.model_copy(
             update={
                 "wiki_path": tmp_path / "wiki",

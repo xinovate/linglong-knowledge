@@ -20,7 +20,6 @@ def init_dir():
 def _make_init_config(tmp_path: Path) -> LinglongConfig:
     """创建测试用 LinglongConfig，禁用 embedding。"""
     config = LinglongConfig(
-        data_dir=tmp_path / "data",
         knowledge=LinglongConfig().knowledge.model_copy(
             update={
                 "wiki_path": tmp_path / "wiki",

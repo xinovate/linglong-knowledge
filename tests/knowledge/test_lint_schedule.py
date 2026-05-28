@@ -60,7 +60,6 @@ class TestDaemonMode:
         """Provide a config with lint_schedule set."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = LinglongConfig(
-                data_dir=Path(tmpdir) / "data",
                 knowledge=LinglongConfig().knowledge.model_copy(update={
                     "wiki_path": Path(tmpdir) / "wiki",
                     "db_path": Path(tmpdir) / "knowledge.db",
@@ -107,7 +106,6 @@ class TestDaemonMode:
         """Daemon exits with error when lint_schedule is not configured."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = LinglongConfig(
-                data_dir=Path(tmpdir) / "data",
                 knowledge=LinglongConfig().knowledge.model_copy(update={
                     "wiki_path": Path(tmpdir) / "wiki",
                     "db_path": Path(tmpdir) / "knowledge.db",
@@ -125,7 +123,6 @@ class TestDaemonMode:
         """Daemon exits with error when cron expression is invalid."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = LinglongConfig(
-                data_dir=Path(tmpdir) / "data",
                 knowledge=LinglongConfig().knowledge.model_copy(update={
                     "wiki_path": Path(tmpdir) / "wiki",
                     "db_path": Path(tmpdir) / "knowledge.db",

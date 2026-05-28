@@ -17,7 +17,6 @@ def temp_store():
     """Create a temporary knowledge store for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         config = LinglongConfig(
-            data_dir=Path(tmpdir) / "data",
             knowledge=LinglongConfig().knowledge.model_copy(
                 update={
                     "wiki_path": Path(tmpdir) / "wiki",
@@ -109,7 +108,6 @@ def test_create_entity_with_embedding():
     """Entity create triggers embedding generation when enabled."""
     with tempfile.TemporaryDirectory() as tmpdir:
         config = LinglongConfig(
-            data_dir=Path(tmpdir) / "data",
             knowledge=LinglongConfig().knowledge.model_copy(
                 update={
                     "wiki_path": Path(tmpdir) / "wiki",
@@ -139,7 +137,6 @@ def test_search_similar_returns_results():
     """Vector similarity search returns relevant entities."""
     with tempfile.TemporaryDirectory() as tmpdir:
         config = LinglongConfig(
-            data_dir=Path(tmpdir) / "data",
             knowledge=LinglongConfig().knowledge.model_copy(
                 update={
                     "wiki_path": Path(tmpdir) / "wiki",
@@ -184,7 +181,6 @@ def test_search_similar_with_status_filter():
     """Vector search respects status filter."""
     with tempfile.TemporaryDirectory() as tmpdir:
         config = LinglongConfig(
-            data_dir=Path(tmpdir) / "data",
             knowledge=LinglongConfig().knowledge.model_copy(
                 update={
                     "wiki_path": Path(tmpdir) / "wiki",
@@ -484,7 +480,6 @@ def test_search_similar_with_facet():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         config = LinglongConfig(
-            data_dir=Path(tmpdir) / "data",
             knowledge=LinglongConfig().knowledge.model_copy(update={
                 "wiki_path": Path(tmpdir) / "wiki",
                 "db_path": Path(tmpdir) / "knowledge.db",

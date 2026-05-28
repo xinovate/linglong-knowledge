@@ -146,15 +146,17 @@ class LinglongConfig(BaseSettings):
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
-    data_dir: Path = Field(
-        default=_KNOWLEDGE_HOME / "data", description="Data directory"
+    log_file: Path | None = Field(
+        default=Path.home() / "linglong" / "logs" / "knowledge.log",
+        description="Log file path (None to disable file logging)",
     )
 
     def ensure_directories(self) -> None:
         """Ensure all required directories exist."""
-        self.data_dir.mkdir(parents=True, exist_ok=True)
         self.knowledge.wiki_path.mkdir(parents=True, exist_ok=True)
         self.knowledge.db_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.log_file:
+            self.log_file.parent.mkdir(parents=True, exist_ok=True)
         (_KNOWLEDGE_HOME / "state").mkdir(parents=True, exist_ok=True)
 
 

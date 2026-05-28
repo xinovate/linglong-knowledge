@@ -17,7 +17,6 @@ def index_setup():
     with tempfile.TemporaryDirectory() as tmpdir:
         wiki_path = Path(tmpdir) / "wiki"
         config = LinglongConfig(
-            data_dir=Path(tmpdir) / "data",
             knowledge=LinglongConfig().knowledge.model_copy(update={
                 "wiki_path": wiki_path,
                 "db_path": Path(tmpdir) / "knowledge.db",

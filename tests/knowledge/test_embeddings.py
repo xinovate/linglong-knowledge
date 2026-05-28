@@ -12,7 +12,6 @@ from linglong.knowledge.embeddings import EmbeddingGenerator
 def _set_config(tmp_path):
     """Set test config with embedding settings."""
     config = LinglongConfig(
-        data_dir=tmp_path / "data",
         knowledge=LinglongConfig().knowledge.model_copy(
             update={
                 "wiki_path": tmp_path / "wiki",

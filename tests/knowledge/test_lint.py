@@ -18,7 +18,6 @@ def lint_setup():
     """创建带测试数据的临时知识库。"""
     with tempfile.TemporaryDirectory() as tmpdir:
         config = LinglongConfig(
-            data_dir=Path(tmpdir) / "data",
             knowledge=LinglongConfig().knowledge.model_copy(update={
                 "wiki_path": Path(tmpdir) / "wiki",
                 "db_path": Path(tmpdir) / "knowledge.db",

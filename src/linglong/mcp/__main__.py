@@ -9,9 +9,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def _setup_file_logging(log_file) -> None:
+    """Add file handler if log_file is configured."""
+    if not log_file:
+        return
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    handler = logging.FileHandler(log_file, encoding="utf-8")
+    handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s: %(message)s"
+    ))
+    logging.getLogger().addHandler(handler)
+
+
 def main() -> None:
     """Run the MCP server."""
     config = get_config()
+    _setup_file_logging(config.log_file)
     transport = config.mcp.transport
 
     if transport == "stdio":

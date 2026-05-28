@@ -17,7 +17,6 @@ def temp_store():
     """Create a temporary knowledge store for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         config = LinglongConfig(
-            data_dir=Path(tmpdir) / "data",
             knowledge=LinglongConfig().knowledge.model_copy(
                 update={
                     "wiki_path": Path(tmpdir) / "wiki",

@@ -34,11 +34,18 @@ class TestLinglongConfig:
     def test_ensure_directories(self):
         """Test ensure_directories creates required paths."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = LinglongConfig(data_dir=Path(tmpdir) / "data")
+            wiki = Path(tmpdir) / "wiki"
+            db = Path(tmpdir) / "db" / "test.db"
+            log = Path(tmpdir) / "logs" / "knowledge.log"
+            config = LinglongConfig(
+                knowledge=KnowledgeConfig(wiki_path=wiki, db_path=db),
+                log_file=log,
+            )
             config.ensure_directories()
 
-            assert config.data_dir.exists()
             assert config.knowledge.wiki_path.exists()
+            assert config.knowledge.db_path.parent.exists()
+            assert config.log_file.parent.exists()
 
     def test_knowledge_defaults(self):
         """Test KnowledgeConfig defaults."""
