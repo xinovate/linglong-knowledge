@@ -389,7 +389,7 @@ class LintEngine:
 
             results.append(LintResult(
                 rule="crowded_facet",
-                severity="warning",
+                severity=LintSeverity.WARNING,
                 entity_id=None,
                 message=f"Facet '{facet_str}' has {count} ungrouped entities (threshold: {threshold})",
                 details={

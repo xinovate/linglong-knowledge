@@ -311,3 +311,53 @@ def list_templates() -> str:
     except Exception as exc:
         logger.exception("list_templates failed")
         return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+def rebuild(mode: str = "embeddings") -> str:
+    """Rebuild knowledge base index or embeddings.
+
+    Modes:
+      - "embeddings": Re-generate vectors for all entities.
+      - "sync": Check and fix DB↔filesystem consistency.
+      - "index": Rebuild index files for all facets.
+    """
+    try:
+        store = _get_store()
+        if mode == "embeddings":
+            stats = store.rebuild_embeddings()
+            return json.dumps(
+                {
+                    "mode": "embeddings",
+                    "total": stats["total"],
+                    "regenerated": stats["regenerated"],
+                    "unchanged": stats["unchanged"],
+                    "failed": stats["failed"],
+                },
+                ensure_ascii=False,
+            )
+        if mode == "sync":
+            issues = store.sync(fix=True)
+            return json.dumps(
+                {
+                    "mode": "sync",
+                    "issues_found": len(issues),
+                    "issues": issues[:20],
+                },
+                ensure_ascii=False,
+            )
+        if mode == "index":
+            from linglong.knowledge.indexer import IndexGenerator
+
+            gen = IndexGenerator(store.wiki_path)
+            stats = gen.generate_all()
+            return json.dumps(
+                {"mode": "index", "files_generated": stats},
+                ensure_ascii=False,
+            )
+        return json.dumps(
+            {"error": f"Unknown mode '{mode}'. Use 'embeddings', 'sync', or 'index'."},
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("rebuild failed")
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)

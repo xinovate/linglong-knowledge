@@ -43,7 +43,7 @@ class KnowledgeConfig(BaseSettings):
         default="http://localhost:7997", description="Embedding service URL"
     )
     embedding_model: str = Field(
-        default="nomic-embed-text-v1.5", description="Embedding model name"
+        default="nomic-ai/nomic-embed-text-v1.5", description="Embedding model name"
     )
     embedding_api_key: str | None = Field(
         default=None, description="Optional API key for embedding service"
