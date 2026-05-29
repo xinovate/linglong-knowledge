@@ -690,8 +690,7 @@ class KnowledgeStore:
 
             entity.updated_at = datetime.now(UTC)
 
-            self._save_to_filesystem(entity)
-
+            # DB first, then filesystem — matches create() ordering
             content_hash = self._content_hash(entity.content)
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
@@ -741,6 +740,8 @@ class KnowledgeStore:
                     ),
                 )
                 conn.commit()
+
+            self._save_to_filesystem(entity)
 
             # Regenerate embedding on content change; hash guard prevents stale writes
             if self._vector_available and self.config.generate_embeddings:
@@ -1055,6 +1056,73 @@ class KnowledgeStore:
 
         file_content = f"---\n{'\n'.join(fm_lines)}\n---\n\n{entity.content}\n"
         entity_path.write_text(file_content, encoding="utf-8")
+
+    def _parse_wiki_file(self, md_path: Path) -> Entity:
+        """Parse a wiki markdown file back into an Entity.
+
+        Handles both YAML key-value frontmatter (from _save_to_filesystem)
+        and JSON frontmatter (from older OpenClaw sync) via python-frontmatter.
+        """
+        import frontmatter
+
+        from linglong.knowledge.sync.openclaw import TYPE_TO_FACET
+
+        raw = md_path.read_text(encoding="utf-8")
+        post = frontmatter.loads(raw)
+
+        # Resolve type -> EntityFacet
+        file_type = post.get("type", "concept")
+        facet = TYPE_TO_FACET.get(file_type, EntityFacet.CONCEPT)
+
+        # Infer group from subdirectory (e.g. wiki/concept/mygroup/file.md -> "mygroup")
+        rel = md_path.relative_to(self.wiki_path)
+        parts = rel.parts
+        group = post.get("group")
+        if not group and len(parts) >= 3:
+            group = parts[1]
+
+        # Parse timestamps (Entity requires non-None datetime)
+        created_at = post.get("created_at")
+        updated_at = post.get("updated_at")
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        elif created_at is None:
+            created_at = datetime.now(UTC)
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at)
+        elif updated_at is None:
+            updated_at = datetime.now(UTC)
+
+        # Resolve entity ID from frontmatter or filename
+        entity_id = post.get("id")
+        if not entity_id:
+            stem = md_path.stem
+            if "-" in stem:
+                short = stem.rsplit("-", 1)[-1]
+                if len(short) == 8:
+                    with sqlite3.connect(self.db_path) as conn:
+                        row = conn.execute(
+                            "SELECT id FROM entities WHERE id LIKE ?",
+                            (f"{short}%",),
+                        ).fetchone()
+                    if row:
+                        entity_id = row[0]
+            if not entity_id:
+                entity_id = stem
+
+        return Entity(
+            id=entity_id,
+            content=post.content,
+            facet=facet,
+            group=group,
+            summary=post.get("summary"),
+            created_by=post.get("created_by", "agent:unknown"),
+            confirmed_by=post.get("confirmed_by"),
+            confidence=post.get("confidence", 0.5),
+            status=EntityStatus(post.get("status", "raw")),
+            created_at=created_at,
+            updated_at=updated_at,
+        )
 
     def _row_to_entity(self, row: sqlite3.Row) -> Entity:
         """Convert database row to Entity."""

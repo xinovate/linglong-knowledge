@@ -585,3 +585,75 @@ def test_create_dedup_cross_source_same_content(temp_store):
     # Should return the existing entity, not create a new one
     assert second.id == first.id
     assert second.created_by == "agent:claude"  # keeps original metadata
+
+
+def _write_orphan_file(
+    wiki_path: Path, facet: str, group: str | None, content: str
+) -> Path:
+    """Write an orphan .md file and return its path."""
+    if group:
+        path = wiki_path / facet / group / "test-orphan-abc12345.md"
+    else:
+        path = wiki_path / facet / "test-orphan-abc12345.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+class TestParseWikiFile:
+    """Tests for _parse_wiki_file() method."""
+
+    def test_parse_yaml_frontmatter(self, temp_store):
+        path = _write_orphan_file(
+            temp_store.wiki_path, "concept", None,
+            "---\n"
+            "id: test-orphan-abc12345\n"
+            "type: concept\n"
+            "created_by: agent:mcp\n"
+            "confidence: 0.9\n"
+            "status: raw\n"
+            "created_at: 2026-05-29T00:00:00+00:00\n"
+            "updated_at: 2026-05-29T00:00:00+00:00\n"
+            "---\n\n# Test Orphan\n\nSome content",
+        )
+        entity = temp_store._parse_wiki_file(path)
+        assert entity.facet == EntityFacet.CONCEPT
+        assert entity.content.startswith("# Test Orphan")
+        assert entity.created_by == "agent:mcp"
+        assert entity.confidence == 0.9
+
+    def test_parse_yaml_with_group_from_subdir(self, temp_store):
+        path = _write_orphan_file(
+            temp_store.wiki_path, "experience", "blog-dev",
+            "---\n"
+            "type: experience\n"
+            "created_by: agent:mcp\n"
+            "confidence: 0.8\n"
+            "---\n\n# Blog Dev\n\nContent",
+        )
+        entity = temp_store._parse_wiki_file(path)
+        assert entity.facet == EntityFacet.EXPERIENCE
+        assert entity.group == "blog-dev"
+
+    def test_parse_json_frontmatter(self, temp_store):
+        path = _write_orphan_file(
+            temp_store.wiki_path, "concept", None,
+            "---\n"
+            '{"id": "test-orphan-abc12345", "type": "concept",'
+            ' "created_by": "agent:openclaw",'
+            ' "confidence": 0.8, "status": "auto_confirmed"}'
+            "\n---\n\n# JSON Orphan\n\nJSON content",
+        )
+        entity = temp_store._parse_wiki_file(path)
+        assert entity.facet == EntityFacet.CONCEPT
+        assert entity.content.startswith("# JSON Orphan")
+        assert entity.confidence == 0.8
+
+    def test_parse_resolves_type_mapping(self, temp_store):
+        """Non-standard type values resolve via TYPE_TO_FACET mapping."""
+        path = _write_orphan_file(
+            temp_store.wiki_path, "reference", None,
+            "---\ntype: article\ncreated_by: agent:openclaw\n---\n\n# Article",
+        )
+        entity = temp_store._parse_wiki_file(path)
+        assert entity.facet == EntityFacet.REFERENCE

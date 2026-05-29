@@ -57,18 +57,8 @@ class LintEngine:
         for r in results:
             if r.fixed:
                 continue
-            if r.rule == "index_consistency" and r.entity_id:
-                orphan_path = r.details.get("path")
-                if orphan_path:
-                    orphan = self.store.wiki_path / orphan_path
-                elif r.facet:
-                    orphan = self.store.wiki_path / r.facet / f"{r.entity_id}.md"
-                else:
-                    orphan = None
-                if orphan and orphan.exists():
-                    orphan.unlink()
-                    r.fixed = True
-                    r.message += " (已修复：删除孤立文件)"
+            # index_consistency orphans require human confirmation
+            # — do not auto-delete or auto-import
 
         wikilink_results = [r for r in results if r.rule == "wikilinks" and not r.fixed and r.entity_id]
         if wikilink_results:
