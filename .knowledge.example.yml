@@ -1,40 +1,28 @@
 # Knowledge base configuration
 # Copy to .knowledge.yml and customize
-# Unlisted fields use defaults
+# Unlisted fields use defaults from config.py
 
 # General
 debug: false
 log_level: "INFO"
 
-# Paths
-data_dir: ~/knowledge/data
-
 # Knowledge store
 knowledge:
   wiki_path: ~/knowledge/wiki
   db_path: ~/knowledge/db/knowledge.db
-  vector_enabled: true
-  vector_dimensions: 768
-  embedding_url: "http://localhost:7997"
-  embedding_model: "nomic-embed-text-v1.5"
   generate_embeddings: true
+  embedding_url: "http://localhost:7997"
+  embedding_model: "nomic-ai/nomic-embed-text-v1.5"
+  # embedding_api_key: ${EMBEDDING_API_KEY}
 
   # Write settings
-  write_mode: confirm        # confirm (require confirmation) / auto (auto-confirm)
-  auto_index: true
-  max_versions: 10
+  write_mode: confirm        # confirm | auto
   auto_lint: false
-
-  # Concurrency
-  lock_timeout: 5
+  max_versions: 10
   db_mode: wal
 
   # Scheduled lint (cron expression)
   # lint_schedule: "0 2 * * *"
-
-  # Review engine
-  review_high_confidence_threshold: 0.9
-  review_low_confidence_threshold: 0.6
 
   # Sync source paths (configure as needed)
   # openclaw_wiki_path: ~/.openclaw/workspace/memory/wiki

@@ -53,8 +53,6 @@ class KnowledgeConfig(BaseSettings):
     )
 
     write_mode: str = Field(default="confirm", description="Write mode: confirm or auto")
-    search_mode: str = Field(default="on_demand", description="Search mode: on_demand or deep")
-    auto_index: bool = Field(default=True, description="Auto-update index on write")
     max_versions: int = Field(default=10, description="Max version history per entity")
 
     lock_timeout: int = Field(default=5, description="File lock timeout in seconds")
