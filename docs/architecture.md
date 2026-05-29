@@ -129,7 +129,7 @@ graph LR
 | 配置管理 | pydantic-settings | 环境变量 + YAML |
 | 结构化存储 | sqlean (SQLite) | 元数据查询，无额外依赖 |
 | 向量存储 | sqlite-vec | 轻量本地语义搜索 |
-| Embedding | 远程 OpenClaw 服务 | nomic-embed-text-v1.5 |
+| Embedding | 远程 embedding 服务 | nomic-ai/nomic-embed-text-v1.5 |
 | MCP 框架 | FastMCP | Agent 工具协议标准 |
 | HTTP | Starlette + Uvicorn | 轻量 ASGI |
 | 认证 | Redis (可选) | 动态 Token 管理 |

@@ -102,7 +102,7 @@ knowledge:
   write_mode: confirm        # confirm | auto
   vector_enabled: true
   embedding_url: http://localhost:7997
-  embedding_model: nomic-embed-text-v1.5
+  embedding_model: nomic-ai/nomic-embed-text-v1.5
 ```
 
 ## 设计文档
