@@ -1,25 +1,24 @@
-# Linglong
+# Linglong Knowledge
 
-> 跨 Agent 知识中枢 —— 统一知识底座，串联信息获取、知识沉淀、文章评审与多平台分发。
+> 跨 Agent 统一知识库 —— 通过 MCP 为 AI Agent 提供共享知识底座。
 
 ## 项目概述
 
-Linglong 解决 AI Agent 知识孤岛问题：OpenClaw、Claude Code、Codex 各自维护独立知识库，互不相通。Linglong 作为统一知识底座，提供完整的 **获取 → 沉淀 → 评审 → 分发** 闭环。
+Linglong Knowledge 是跨 Agent 统一知识库，解决 OpenClaw、Claude Code、Codex 等 Agent 知识孤岛问题。通过 MCP 协议提供知识读写能力，支持关键词搜索、语义向量搜索和混合搜索。
 
 ## 架构
 
 ```
-ingest → knowledge → reviewer → dispatch
+Agent（OpenClaw / Claude Code / Codex）──→ Knowledge Store ──→ MCP Server
+                                          (File + SQLite + sqlite-vec)
 ```
 
 ```
 src/linglong/
-├── core/           # 共享基础设施（配置、数据模型、LLM 客户端）
-├── ingest/         # 数据获取（RSS、API、Web、包管理）
-├── knowledge/      # 知识库存储（SQLite + 向量搜索、Review 引擎、跨 Agent 同步）
-├── reviewer/       # 文章评审（七维度评分、规则校验、LLM 审稿）
-├── dispatch/       # 多平台分发（Hexo 博客、本地文件）
-└── cli.py          # CLI 入口（ingest / kb / publish）
+├── core/           # 配置、数据模型、LLM 客户端
+├── knowledge/      # 知识库存储（SQLite + sqlite-vec、Review 引擎、Lint、同步）
+├── mcp/            # MCP Server（10 工具，stdio / HTTP）
+└── cli.py          # CLI 入口
 ```
 
 ## 模块状态
@@ -27,11 +26,10 @@ src/linglong/
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | core | ✅ | 配置中心（`.knowledge.yml`）、共享数据模型、LLM 客户端 |
-| ingest | ✅ | RSS/API/Web 数据获取、早报生成 |
-| knowledge | ✅ | SQLite + sqlite-vec 存储、Review 引擎、OpenClaw/Claude/Codex 同步 |
-| reviewer | ✅ | 七维度评分审稿、规则校验、LLM 评审建议 |
-| dispatch | ✅ | Hexo 发布（git workflow）、本地文件输出 |
-| mcp | ✅ | MCP Server（14 工具，按模块控制） |
+| knowledge | ✅ | SQLite + sqlite-vec 存储、Review 引擎、Lint 巡检、OpenClaw 同步 |
+| mcp | ✅ | MCP Server（10 工具），支持 stdio 和 HTTP 部署 |
+
+> **注意**：ingest（数据获取）、reviewer（文章评审）、dispatch（多平台分发）已拆分为独立项目。
 
 ## 快速开始
 
@@ -46,10 +44,19 @@ pip install -e ".[dev]"
 cp .knowledge.example.yml .knowledge.yml
 # 编辑 .knowledge.yml 按需修改
 
-# 运行
-linglong ingest     # 获取数据
-linglong kb write   # 写入知识库
-linglong publish    # 发布到博客
+# CLI 使用
+linglong kb lint       # 巡检知识库
+linglong kb sync       # 同步数据
+linglong kb rebuild    # 重建索引
+
+# MCP Server
+ll-knowledge-mcp       # stdio 模式（供 Claude Code 等本地 Agent 使用）
+```
+
+### MCP 注册（Claude Code）
+
+```bash
+claude mcp add ll-knowledge -- /path/to/.venv/bin/ll-knowledge-mcp
 ```
 
 ## 配置
@@ -60,33 +67,35 @@ linglong publish    # 发布到博客
 # .knowledge.yml 示例
 knowledge:
   wiki_path: ~/knowledge/wiki
+  db_path: ~/knowledge/db/knowledge.db
+  generate_embeddings: true
   embedding_url: http://localhost:7997
+  embedding_model: nomic-ai/nomic-embed-text-v1.5
 
-reviewer:
-  llm_model: glm-5.1
-  passing_score: 6.0
-
-dispatch:
-  default_publisher: hexo
+mcp:
+  transport: stdio
+  host: 127.0.0.1
+  port: 9900
 ```
 
-完整配置项参考 [`.knowledge.example.yml`](.knowledge.example.yml)。
+完整配置项参考 [`.knowledge.example.yml`](.knowledge.example.yml) 或 [配置文档](docs/config.md)。
 
 ## 技术栈
 
 - **Python 3.11+**
 - **Pydantic** — 数据验证与配置管理
 - **SQLite + sqlite-vec** — 本地存储与向量搜索
+- **FastMCP** — MCP 协议实现
 - **pytest** — 测试框架
 
 ## 文档
 
 - [项目总览](docs/PROJECT_OVERVIEW.md) — 版本状态与 Next Actions
-- [架构设计](docs/architecture.md) — 系统架构与 Mermaid 流程图
-- [开发规范](docs/rules.md) — 代码风格、Git 工作流、Agent 协作
-- [版本路线图](docs/roadmap.md) — v0.1–v1.0 演进与 ADR
-- [API 文档](docs/api.md) — 公共接口
+- [架构设计](docs/architecture.md) — 系统架构与模块依赖
+- [API 文档](docs/api.md) — MCP 工具接口与配置说明
 - [知识库模块](docs/knowledge.md) — 设计、Agent 接入、参考资料
+- [开发规范](docs/rules.md) — 代码风格、测试、安全
+- [版本路线图](docs/roadmap.md) — 演进计划与 ADR
 
 ## License
 

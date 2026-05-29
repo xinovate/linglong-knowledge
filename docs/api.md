@@ -202,7 +202,7 @@ entities = adapter.pull()
 
 ## MCP Server
 
-FastMCP Server，提供 8 个知识库工具，Agent 通过 MCP 协议读写知识库。
+FastMCP Server，提供 10 个知识库工具，Agent 通过 MCP 协议读写知识库。
 
 ### 工具清单
 
