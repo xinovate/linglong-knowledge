@@ -8,8 +8,8 @@ log_level: "INFO"
 
 # Knowledge store
 knowledge:
-  wiki_path: ~/knowledge/wiki
-  db_path: ~/knowledge/db/knowledge.db
+  wiki_path: ~/linglong/wiki
+  db_path: ~/linglong/db/knowledge.db
   generate_embeddings: true
   embedding_url: "http://localhost:7997"
   embedding_model: "nomic-ai/nomic-embed-text-v1.5"

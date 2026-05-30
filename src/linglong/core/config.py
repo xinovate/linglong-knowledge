@@ -22,7 +22,7 @@ _YAML_SEARCH_PATHS = [
     Path.home() / ".linglong" / "config.yaml",
 ]
 
-_KNOWLEDGE_HOME = Path.home() / "knowledge"
+_KNOWLEDGE_HOME = Path.home() / "linglong"
 
 
 class KnowledgeConfig(BaseSettings):
